@@ -236,7 +236,7 @@ export function apiMe() {
 // ── users ────────────────────────────────────────────────────────────
 
 export function apiListUsers() {
-  return request<{ users: User[] }>('GET', '/users')
+  return request<{ users: User[] | null }>('GET', '/users').then((d) => d.users ?? [])
 }
 
 export function apiCreateUser(body: { name: string; email: string; password: string }) {
@@ -254,7 +254,7 @@ export function apiSetPasscode(id: string, passcode: string) {
 // ── katalog ──────────────────────────────────────────────────────────
 
 export function apiListCategories() {
-  return request<{ categories: Category[] }>('GET', '/categories')
+  return request<{ categories: Category[] | null }>('GET', '/categories').then((d) => d.categories ?? [])
 }
 
 export function apiCreateCategory(name: string) {

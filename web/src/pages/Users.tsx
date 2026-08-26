@@ -17,7 +17,7 @@ export default function Users() {
 
   function load() {
     setErr('')
-    apiListUsers().then((r) => setData(r.users)).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat pengguna.'))
+    apiListUsers().then(setData).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat pengguna.'))
   }
   useEffect(() => { load() }, [])
 

@@ -35,7 +35,7 @@ export default function Produk() {
   }
   useEffect(() => { loadProducts() }, [q])
   useEffect(() => {
-    apiListCategories().then((r) => setCats(r.categories)).catch(() => {})
+    apiListCategories().then(setCats).catch(() => {})
   }, [])
 
   async function save(d: Draft) {
@@ -71,8 +71,7 @@ export default function Produk() {
     if (!n) return
     try {
       await apiCreateCategory(n)
-      const r = await apiListCategories()
-      setCats(r.categories)
+      setCats(await apiListCategories())
       setCatName('')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menambah kategori.')
@@ -82,8 +81,7 @@ export default function Produk() {
   async function deleteCat(c: Category) {
     try {
       const r = await apiDeleteCategory(c.id)
-      const next = await apiListCategories()
-      setCats(next.categories)
+      setCats(await apiListCategories())
       if (r.soft_deleted) alert(`Kategori "${c.name}" masih dipakai produk — dinonaktifkan (histori tetap aman).`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menghapus kategori.')

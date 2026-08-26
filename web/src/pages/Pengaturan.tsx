@@ -12,9 +12,9 @@ export default function Pengaturan() {
 
   useEffect(() => {
     apiGetSettings().then(setForm).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat pengaturan.'))
-    apiListUsers().then((r) => {
-      setUsers(r.users)
-      setPasscodes(Object.fromEntries(r.users.map((u) => [u.id, ''])))
+    apiListUsers().then((u) => {
+      setUsers(u)
+      setPasscodes(Object.fromEntries(u.map((x) => [x.id, ''])))
     }).catch(() => {})
   }, [])
 
