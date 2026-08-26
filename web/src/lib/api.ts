@@ -211,10 +211,12 @@ export interface ReportBundle {
 
 export function apiLogin(email: string, password: string, passcode?: string) {
   return request<AuthResp>('POST', '/auth/login', { email, password, ...(passcode ? { passcode } : {}) }, false)
+    .then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
 }
 
 export function apiRegister(name: string, email: string, password: string, storeName: string) {
   return request<AuthResp>('POST', '/auth/register', { name, email, password, storeName }, false)
+    .then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
 }
 
 export async function apiLogout() {
