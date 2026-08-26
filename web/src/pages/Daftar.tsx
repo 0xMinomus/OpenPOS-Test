@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { register, useDB } from '../lib/store'
+import { apiRegister } from '../lib/api'
+import { setSession, toSession } from '../lib/store'
 import Navbar from './Navbar'
 
 export default function Daftar() {
-  const db = useDB()
   const nav = useNavigate()
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
@@ -12,26 +12,30 @@ export default function Daftar() {
   const [password, setPassword] = useState('')
   const [store, setStore] = useState('')
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  if (db.session) {
-    nav('/app', { replace: true })
-  }
-
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr('')
     if (step === 1) {
       const em = email.trim().toLowerCase()
       if (!name.trim()) return setErr('Nama wajib diisi.')
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return setErr('Masukkan alamat email yang valid.')
-      if (db.accounts[em]) return setErr('Email sudah terdaftar. Silakan masuk.')
       if (password.length < 8) return setErr('Kata sandi minimal 8 karakter.')
       setStep(2)
       return
     }
     if (!store.trim()) return setErr('Nama toko wajib diisi.')
-    register(name.trim(), email.trim().toLowerCase(), password, store.trim())
-    nav('/app', { replace: true })
+    setBusy(true)
+    try {
+      const r = await apiRegister(name.trim(), email.trim().toLowerCase(), password, store.trim())
+      setSession(toSession(r.user))
+      nav('/app', { replace: true })
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Gagal mendaftar. Coba lagi.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -96,7 +100,7 @@ export default function Daftar() {
                   <input value={store} onChange={(e) => setStore(e.target.value)} type="text" placeholder="cth: Toko Sembako Sari" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
                   <span className="text-xs font-normal text-fog">Ditampilkan di struk dan dashboard.</span>
                 </label>
-                <button type="submit" className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85">Buat Akun</button>
+                <button type="submit" disabled={busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Membuat…' : 'Buat Akun'}</button>
               </>
             )}
           </form>

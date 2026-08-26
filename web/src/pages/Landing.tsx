@@ -1,8 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { fmtRp, useDB, type Product } from '../lib/store'
+import { fmtRp } from '../lib/store'
 import Navbar from './Navbar'
+
+interface DemoProduct {
+  id: string
+  name: string
+  sku: string
+  barcode: string
+  categoryId: string
+  sellPrice: number
+  stock: number
+}
+
+const DEMO_CATS = ['Sembako', 'Minuman', 'Rumah Tangga']
+
+const DEMO_PRODUCTS: DemoProduct[] = [
+  { id: 'b1', name: 'Beras Premium 5 kg', sku: 'BR-001', barcode: '', categoryId: 'Sembako', sellPrice: 68000, stock: 24 },
+  { id: 'g1', name: 'Gula Pasir 1 kg', sku: 'GP-001', barcode: '', categoryId: 'Sembako', sellPrice: 17500, stock: 40 },
+  { id: 'm1', name: 'Minyak Goreng 1 L', sku: 'MG-001', barcode: '', categoryId: 'Sembako', sellPrice: 20000, stock: 30 },
+  { id: 'm2', name: 'Mie Goreng Instan', sku: 'MG-002', barcode: '', categoryId: 'Sembako', sellPrice: 3500, stock: 60 },
+  { id: 'k1', name: 'Kopi Sachet 165 g', sku: 'KP-001', barcode: '', categoryId: 'Minuman', sellPrice: 14000, stock: 25 },
+  { id: 't1', name: 'Teh Celup 25 sachet', sku: 'TH-001', barcode: '', categoryId: 'Minuman', sellPrice: 10500, stock: 18 },
+  { id: 'a1', name: 'Air Mineral 600 ml', sku: 'AM-001', barcode: '', categoryId: 'Minuman', sellPrice: 3000, stock: 48 },
+  { id: 's1', name: 'Sabun Mandi 90 g', sku: 'SB-001', barcode: '', categoryId: 'Rumah Tangga', sellPrice: 6500, stock: 22 },
+]
 
 const SALES7 = [
   { day: 'Sen', omzet: 2100000 },
@@ -37,12 +60,11 @@ const TESTIMONIALS = [
 ]
 
 export default function Landing() {
-  const db = useDB()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('Semua')
   const [cart, setCart] = useState<Record<string, number>>({})
   const [done, setDone] = useState(false)
-  const [receiptItems, setReceiptItems] = useState<{ product: Product; qty: number }[]>([])
+  const [receiptItems, setReceiptItems] = useState<{ product: DemoProduct; qty: number }[]>([])
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -62,20 +84,20 @@ export default function Landing() {
     return () => io.disconnect()
   }, [])
 
-  const cats = ['Semua', ...db.categories.filter((c) => c.active).map((c) => c.name)]
-  const products = db.products.filter((p) => p.active).filter((p) => {
-    if (cat !== 'Semua' && db.categories.find((c) => c.id === p.categoryId)?.name !== cat) return false
+  const cats = ['Semua', ...DEMO_CATS]
+  const products = DEMO_PRODUCTS.filter((p) => {
+    if (cat !== 'Semua' && p.categoryId !== cat) return false
     const s = q.toLowerCase()
     return !s || p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s) || p.barcode.toLowerCase().includes(s)
   })
 
   const cartItems = useMemo(
-    () => Object.entries(cart).map(([id, qty]) => ({ product: db.products.find((p) => p.id === id)!, qty })).filter((x) => x.product),
-    [cart, db.products],
+    () => Object.entries(cart).map(([id, qty]) => ({ product: DEMO_PRODUCTS.find((p) => p.id === id)!, qty })).filter((x) => x.product),
+    [cart],
   )
   const total = cartItems.reduce((sum, { product, qty }) => sum + product.sellPrice * qty, 0)
 
-  function add(p: Product) {
+  function add(p: DemoProduct) {
     const cur = cart[p.id] ?? 0
     if (cur >= p.stock) return
     setCart({ ...cart, [p.id]: cur + 1 })

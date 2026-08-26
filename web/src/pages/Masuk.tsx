@@ -1,56 +1,53 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { login, useDB } from '../lib/store'
+import { ApiError, apiLogin } from '../lib/api'
+import { setSession, toSession } from '../lib/store'
 import Navbar from './Navbar'
 
 export default function Masuk() {
-  const db = useDB()
   const nav = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passcode, setPasscode] = useState('')
   const [needPasscode, setNeedPasscode] = useState(false)
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  if (db.session) {
-    nav('/app', { replace: true })
-  }
-
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     const em = email.trim().toLowerCase()
-    if (!em || (em !== 'admin' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))) {
-      setErr('Masukkan email atau username yang valid.')
-      return
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return setErr('Masukkan alamat email yang valid.')
+    if (!password) return setErr('Kata sandi wajib diisi.')
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiLogin(em, password)
+      setSession(toSession(r.user))
+      nav('/app', { replace: true })
+    } catch (x) {
+      if (x instanceof ApiError && x.code === 'passcode_required') {
+        setNeedPasscode(true)
+        setErr('')
+      } else {
+        setErr(x instanceof Error ? x.message : 'Gagal masuk. Coba lagi.')
+      }
+    } finally {
+      setBusy(false)
     }
-    if (!password) {
-      setErr('Kata sandi wajib diisi.')
-      return
-    }
-    const acc = db.accounts[em]
-    if (!acc || !acc.active || acc.password !== password) {
-      setErr('Email atau kata sandi tidak cocok. Coba lagi.')
-      return
-    }
-    if (acc.passcode) {
-      setNeedPasscode(true)
-      setErr('')
-      return
-    }
-    const s = login(em, password)
-    if (!s) return setErr('Email atau kata sandi tidak cocok. Coba lagi.')
-    nav('/app', { replace: true })
   }
 
-  function submitPasscode(e: React.FormEvent) {
+  async function submitPasscode(e: React.FormEvent) {
     e.preventDefault()
-    const s = login(email.trim().toLowerCase(), password, passcode)
-    if (!s) {
-      setErr('Passcode salah. Coba lagi.')
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiLogin(email.trim().toLowerCase(), password, passcode)
+      setSession(toSession(r.user))
+      nav('/app', { replace: true })
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Passcode salah. Coba lagi.')
       setPasscode('')
-      return
+    } finally {
+      setBusy(false)
     }
-    nav('/app', { replace: true })
   }
 
   return (
@@ -91,33 +88,26 @@ export default function Masuk() {
               </label>
               <div className="flex gap-3">
                 <button type="button" onClick={() => { setNeedPasscode(false); setErr('') }} className="flex-1 rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet">Kembali</button>
-                <button type="submit" disabled={passcode.length !== 5} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">Masuk</button>
+                <button type="submit" disabled={passcode.length !== 5 || busy} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">Masuk</button>
               </div>
             </form>
           ) : (
             <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
             <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
-              Email atau username
+              Email
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="text" autoComplete="username" placeholder="nama@tokosaya.com" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
               Kata sandi
               <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder="••••••••" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
             </label>
-            <div className="flex items-center justify-between text-[13px]">
-              <label className="flex cursor-pointer items-center gap-2 text-muted">
-                <input type="checkbox" className="h-4 w-4 accent-jet" /> Ingat saya
-              </label>
-              <Link to="/masuk" className="font-medium hover:underline">Lupa kata sandi?</Link>
-            </div>
-            <button type="submit" className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85">Masuk</button>
+            <button type="submit" disabled={busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Memproses…' : 'Masuk'}</button>
             </form>
           )}
 
           <p className="mt-6 border-t border-dove pt-5 text-center text-sm text-muted">
             Belum punya akun? <Link to="/daftar" className="font-medium text-jet hover:underline">Buat akun gratis</Link>
           </p>
-          <p className="mt-3 text-center font-mono text-xs text-fog">demo: admin / 123</p>
         </section>
       </main>
       <footer className="border-t border-border py-14 text-[13px] text-muted">

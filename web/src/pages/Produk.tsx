@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
-import { exportCSV, fmtRp, mutate, uid, useDB } from '../lib/store'
+import { useEffect, useRef, useState } from 'react'
+import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
+import { exportCSV, fmtRp } from '../lib/store'
 import { Button, Empty, Input, Modal, PageHead, Pill, Td, Th } from '../lib/ui'
 
 interface Draft {
@@ -17,66 +18,85 @@ interface Draft {
 const emptyDraft: Draft = { name: '', sku: '', barcode: '', categoryId: '', buyPrice: '', sellPrice: '', stock: '', unit: 'pcs' }
 
 export default function Produk() {
-  const db = useDB()
   const [q, setQ] = useState('')
+  const [products, setProducts] = useState<Product[] | null>(null)
+  const [cats, setCats] = useState<Category[]>([])
+  const [err, setErr] = useState('')
   const [editing, setEditing] = useState<Draft | null>(null)
   const [catName, setCatName] = useState('')
   const [importRows, setImportRows] = useState<{ ok: boolean; row: string[]; msg: string }[] | null>(null)
+  const [importDone, setImportDone] = useState<{ ok: number; fail: number } | null>(null)
 
-  const filtered = db.products.filter((p) => {
-    const s = q.toLowerCase()
-    return !s || p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s)
-  })
+  function loadProducts() {
+    setErr('')
+    fetchAll<Product>((page) => apiListProducts({ q: q.trim() || undefined, page, limit: 200 }))
+      .then(setProducts)
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat produk.'))
+  }
+  useEffect(() => { loadProducts() }, [q])
+  useEffect(() => {
+    apiListCategories().then((r) => setCats(r.categories)).catch(() => {})
+  }, [])
 
-  function save(d: Draft) {
+  async function save(d: Draft) {
+    setErr('')
     const sell = Number(d.sellPrice)
     if (!d.name.trim() || !d.sku.trim() || !Number.isFinite(sell)) return
-    const skuDup = db.products.some((p) => p.sku.toLowerCase() === d.sku.trim().toLowerCase() && p.id !== d.id)
-    if (skuDup) return alert('SKU sudah digunakan di toko ini.')
-    mutate((db2) => {
-      if (d.id) {
-        const p = db2.products.find((x) => x.id === d.id)!
-        Object.assign(p, {
-          name: d.name.trim(), sku: d.sku.trim(), barcode: d.barcode.trim(), categoryId: d.categoryId || null,
-          buyPrice: Number(d.buyPrice) || 0, sellPrice: sell, unit: d.unit || 'pcs',
-        })
-      } else {
-        db2.products.push({
-          id: uid(), name: d.name.trim(), sku: d.sku.trim(), barcode: d.barcode.trim(), categoryId: d.categoryId || null,
-          buyPrice: Number(d.buyPrice) || 0, sellPrice: sell, stock: Number(d.stock) || 0, unit: d.unit || 'pcs', active: true,
-        })
-      }
-    })
-    setEditing(null)
-  }
-
-  function toggleActive(id: string) {
-    mutate((db2) => { const p = db2.products.find((x) => x.id === id)!; p.active = !p.active })
-  }
-
-  function addCat() {
-    const n = catName.trim()
-    if (!n) return
-    mutate((db2) => { db2.categories.push({ id: uid(), name: n, active: true }) })
-    setCatName('')
-  }
-
-  function deleteCat(id: string) {
-    const used = db.products.some((p) => p.categoryId === id)
-    if (used) {
-      // soft-delete: kategori tetap ada historis, produk kehilangan kategori
-      mutate((db2) => { const c = db2.categories.find((x) => x.id === id)!; c.active = false })
-    } else {
-      mutate((db2) => { db2.categories = db2.categories.filter((x) => x.id !== id) })
+    const body = {
+      name: d.name.trim(), sku: d.sku.trim(), barcode: d.barcode.trim(),
+      categoryId: d.categoryId || null, buyPrice: Number(d.buyPrice) || 0,
+      sellPrice: sell, unit: d.unit || 'pcs',
+    }
+    try {
+      if (d.id) await apiUpdateProduct(d.id, body)
+      else await apiCreateProduct({ ...body, stock: Number(d.stock) || 0 })
+      setEditing(null)
+      loadProducts()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal menyimpan produk.')
     }
   }
 
-  function exportList() {
+  async function toggleActive(p: Product) {
+    try {
+      await apiSetProductActive(p.id, !p.active)
+      loadProducts()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal mengubah status.')
+    }
+  }
+
+  async function addCat() {
+    const n = catName.trim()
+    if (!n) return
+    try {
+      await apiCreateCategory(n)
+      const r = await apiListCategories()
+      setCats(r.categories)
+      setCatName('')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal menambah kategori.')
+    }
+  }
+
+  async function deleteCat(c: Category) {
+    try {
+      const r = await apiDeleteCategory(c.id)
+      const next = await apiListCategories()
+      setCats(next.categories)
+      if (r.soft_deleted) alert(`Kategori "${c.name}" masih dipakai produk — dinonaktifkan (histori tetap aman).`)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal menghapus kategori.')
+    }
+  }
+
+  async function exportList() {
+    const all = await fetchAll<Product>((page) => apiListProducts({ page, limit: 200 }))
     exportCSV('produk.csv', [
       ['nama', 'sku', 'barcode', 'kategori', 'harga_beli', 'harga_jual', 'stok', 'unit', 'aktif'],
-      ...db.products.map((p) => [
-        p.name, p.sku, p.barcode, db.categories.find((c) => c.id === p.categoryId)?.name ?? '', String(p.buyPrice),
-        String(p.sellPrice), String(p.stock), p.unit, p.active ? '1' : '0',
+      ...all.map((p) => [
+        p.name, p.sku, p.barcode, p.category_name ?? '', String(p.buy_price),
+        String(p.sell_price), String(p.stock), p.unit, p.active ? '1' : '0',
       ]),
     ])
   }
@@ -90,34 +110,41 @@ export default function Produk() {
       const parsed = rows.map((row, i) => {
         const [name, sku, , sell] = row
         if (!name || !sku || !sell) return { ok: false, row, msg: `Baris ${i + 2}: nama/SKU/harga jual wajib diisi` }
-        if (db.products.some((p) => p.sku.toLowerCase() === sku.toLowerCase())) return { ok: false, row, msg: `Baris ${i + 2}: SKU "${sku}" sudah ada` }
         return { ok: true, row, msg: 'siap diimpor' }
       })
       setImportRows(parsed)
+      setImportDone(null)
     }
     reader.readAsText(f)
   }
 
-  function commitImport() {
+  async function commitImport() {
     if (!importRows) return
-    mutate((db2) => {
-      importRows.filter((r) => r.ok).forEach(({ row }) => {
-        const [name, sku, buy, sell, stock, cat, barcode] = row
-        const categoryId = db2.categories.find((c) => c.name.toLowerCase() === (cat ?? '').toLowerCase() && c.active)?.id ?? null
-        db2.products.push({
-          id: uid(), name, sku, barcode: barcode ?? '', categoryId,
-          buyPrice: Number(buy) || 0, sellPrice: Number(sell), stock: Number(stock) || 0, unit: 'pcs', active: true,
+    let ok = 0, fail = 0
+    for (const r of importRows) {
+      if (!r.ok) continue
+      const [name, sku, buy, sell, stock, cat, barcode] = r.row
+      try {
+        await apiCreateProduct({
+          name, sku, barcode: barcode ?? '',
+          categoryId: cats.find((c) => c.name.toLowerCase() === (cat ?? '').toLowerCase() && c.active)?.id ?? null,
+          buyPrice: Number(buy) || 0, sellPrice: Number(sell), stock: Number(stock) || 0, unit: 'pcs',
         })
-      })
-    })
+        ok++
+      } catch {
+        fail++
+      }
+    }
+    setImportDone({ ok, fail })
     setImportRows(null)
+    loadProducts()
   }
 
   return (
     <>
       <PageHead
         title="Produk"
-        sub={`${db.products.length} produk · ${db.categories.filter((c) => c.active).length} kategori aktif`}
+        sub={products ? `${products.length} produk · ${cats.filter((c) => c.active).length} kategori aktif` : 'Memuat…'}
         right={
           <div className="flex gap-2">
             <Button variant="ghost" onClick={exportList}>Export CSV</Button>
@@ -128,6 +155,8 @@ export default function Produk() {
         }
       />
 
+      {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
+
       <div className="mb-5 grid gap-4 lg:grid-cols-[1fr_260px]">
         <div>
           <input
@@ -135,7 +164,9 @@ export default function Produk() {
             className="mb-4 w-full rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm focus:border-jet focus:outline-none"
           />
           <div className="overflow-x-auto rounded-2xl bg-cream p-2">
-            {filtered.length === 0 ? (
+            {!products ? (
+              <p className="py-14 text-center text-sm text-fog">Memuat…</p>
+            ) : products.length === 0 ? (
               <Empty title="Belum ada produk" sub="Tambah produk pertama untuk mulai berjualan." action={<Button onClick={() => setEditing({ ...emptyDraft })}>+ Tambah Produk</Button>} />
             ) : (
               <table className="w-full border-collapse">
@@ -145,19 +176,19 @@ export default function Produk() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p) => (
+                  {products.map((p) => (
                     <tr key={p.id}>
-                      <Td mono={false}><span className="font-medium text-fg">{p.name}</span></Td>
+                      <Td><span className="font-medium text-fg">{p.name}</span></Td>
                       <Td mono>{p.sku}</Td>
-                      <Td>{db.categories.find((c) => c.id === p.categoryId)?.name ?? '—'}</Td>
-                      <Td right>{fmtRp(p.buyPrice)}</Td>
-                      <Td right>{fmtRp(p.sellPrice)}</Td>
+                      <Td>{p.category_name ?? '—'}</Td>
+                      <Td right>{fmtRp(p.buy_price)}</Td>
+                      <Td right>{fmtRp(p.sell_price)}</Td>
                       <Td right><span className={p.stock <= 5 ? 'font-medium text-ember' : ''}>{p.stock}</span></Td>
                       <Td><Pill tone={p.active ? 'ok' : 'muted'}>{p.active ? 'Aktif' : 'Nonaktif'}</Pill></Td>
                       <Td>
                         <div className="flex justify-end gap-2 text-[13px]">
-                          <button className="font-medium text-jet hover:underline" onClick={() => setEditing({ id: p.id, name: p.name, sku: p.sku, barcode: p.barcode, categoryId: p.categoryId ?? '', buyPrice: String(p.buyPrice), sellPrice: String(p.sellPrice), stock: String(p.stock), unit: p.unit })}>Ubah</button>
-                          <button className="text-muted hover:underline" onClick={() => toggleActive(p.id)}>{p.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          <button className="font-medium text-jet hover:underline" onClick={() => setEditing({ id: p.id, name: p.name, sku: p.sku, barcode: p.barcode, categoryId: p.category_id ?? '', buyPrice: String(p.buy_price), sellPrice: String(p.sell_price), stock: String(p.stock), unit: p.unit })}>Ubah</button>
+                          <button className="text-muted hover:underline" onClick={() => toggleActive(p)}>{p.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
                         </div>
                       </Td>
                     </tr>
@@ -171,14 +202,14 @@ export default function Produk() {
         <aside className="rounded-2xl bg-cream p-5 self-start">
           <h2 className="font-mono text-xs uppercase tracking-wider text-fog">Kategori</h2>
           <div className="mt-3 space-y-1.5">
-            {db.categories.filter((c) => c.active).map((c) => (
+            {cats.filter((c) => c.active).map((c) => (
               <div key={c.id} className="flex items-center justify-between rounded-lg border border-dove bg-paper px-3 py-2 text-sm">
                 <span>{c.name}</span>
-                <button onClick={() => deleteCat(c.id)} className="text-xs text-fog hover:text-ember">hapus</button>
+                <button onClick={() => deleteCat(c)} className="text-xs text-fog hover:text-ember">hapus</button>
               </div>
             ))}
-            {db.categories.filter((c) => !c.active).length > 0 && (
-              <p className="pt-1 text-xs text-fog">{db.categories.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
+            {cats.filter((c) => !c.active).length > 0 && (
+              <p className="pt-1 text-xs text-fog">{cats.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
             )}
           </div>
           <div className="mt-4 flex gap-2">
@@ -196,7 +227,7 @@ export default function Produk() {
         {editing && (
           <FormProduk
             draft={editing}
-            cats={db.categories.filter((c) => c.active)}
+            cats={cats.filter((c) => c.active)}
             onSave={save}
             onCancel={() => setEditing(null)}
           />
@@ -232,6 +263,18 @@ export default function Produk() {
               <Button variant="ghost" onClick={() => setImportRows(null)}>Batal</Button>
               <Button onClick={commitImport} disabled={importRows.every((r) => !r.ok)}>Import {importRows.filter((r) => r.ok).length} Produk</Button>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!importDone} title="Hasil Import" onClose={() => setImportDone(null)}>
+        {importDone && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">
+              <strong className="text-sprout">{importDone.ok} produk</strong> berhasil diimpor,{' '}
+              <strong className="text-ember">{importDone.fail} gagal</strong> (SKU duplikat atau data tidak valid).
+            </p>
+            <Button className="w-full" onClick={() => setImportDone(null)}>Tutup</Button>
           </div>
         )}
       </Modal>

@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Package, ReceiptText, TriangleAlert, Store } from 'lucide-react'
-import { fmtDate, fmtRp, fmtShort, fmtTime, isToday, useDB } from '../lib/store'
+import { apiGetDashboard, type DashboardAdmin, type DashboardCashier } from '../lib/api'
+import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -27,51 +28,34 @@ const payConfig = {
 export default function Dashboard() {
   const db = useDB()
   const s = db.session!
+  const [data, setData] = useState<DashboardAdmin | DashboardCashier | null>(null)
+  const [err, setErr] = useState('')
 
-  const completed = useMemo(
-    () => db.trx.filter((t) => t.status === 'completed' && (s.role === 'admin' || t.cashier === s.email)),
-    [db.trx, s],
-  )
+  useEffect(() => {
+    apiGetDashboard().then(setData).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat dashboard.'))
+  }, [])
 
-  const today = completed.filter((t) => isToday(t.time))
-  const omzet = today.reduce((n, t) => n + t.total, 0)
-  const soldToday = today.reduce((n, t) => n + t.items.reduce((m, i) => m + i.qty, 0), 0)
-  const lowStock = db.products.filter((p) => p.active && p.stock <= 5).length
+  if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
+  if (!data) return <p className="py-14 text-center text-sm text-fog">Memuat…</p>
 
-  const sales7 = useMemo(() => [...Array(7)].map((_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    const key = d.toISOString().slice(0, 10)
-    return {
-      day: DAYS[i],
-      omzet: completed.filter((t) => t.time.slice(0, 10) === key).reduce((n, t) => n + t.total, 0),
-    }
-  }), [completed])
-
-  const payData = useMemo(() => (Object.entries(payConfig) as [keyof typeof payConfig, (typeof payConfig)[keyof typeof payConfig]][])
-    .map(([name, cfg]) => {
-      const total = today.filter((t) => t.method === name).reduce((n, t) => n + t.total, 0)
-      return { name, total, fill: cfg.color }
-    })
-    .filter((d) => d.total > 0), [today])
-
-  const topProducts = useMemo(() => {
-    const map = new Map<string, { qty: number; rev: number }>()
-    today.forEach((t) => t.items.forEach((i) => {
-      const cur = map.get(i.productId) ?? { qty: 0, rev: 0 }
-      map.set(i.productId, { qty: cur.qty + i.qty, rev: cur.rev + i.qty * i.price })
-    }))
-    return [...map.entries()].sort((a, b) => b[1].qty - a[1].qty).slice(0, 5)
-  }, [today])
-  const topMax = Math.max(...topProducts.map(([, v]) => v.qty), 1)
-
-  const recent = [...completed].sort((a, b) => b.time.localeCompare(a.time)).slice(0, 5)
+  const today = data.today
+  const isAdmin = s.role === 'admin'
+  const admin = data as DashboardAdmin
+  const sales7 = isAdmin ? admin.sales7.map((d, i) => ({ day: DAYS[i], omzet: d.omzet })) : []
+  const payData = isAdmin
+    ? (Object.entries(payConfig) as [keyof typeof payConfig, (typeof payConfig)[keyof typeof payConfig]][])
+        .map(([name, cfg]) => ({ name, total: admin.methods.find((m) => m.method === name)?.total ?? 0, fill: cfg.color }))
+        .filter((d) => d.total > 0)
+    : []
+  const topProducts = isAdmin ? admin.top_products : []
+  const topMax = Math.max(...topProducts.map((p) => p.qty), 1)
+  const recent = data.recent
 
   const kpis = [
-    { label: 'Omzet hari ini', value: fmtRp(omzet), sub: 'dari semua metode bayar', icon: Banknote },
-    { label: 'Transaksi hari ini', value: String(today.length), sub: 'selesai · tercatat otomatis', icon: ReceiptText },
-    { label: 'Produk terjual', value: String(soldToday), sub: 'satuan terjual hari ini', icon: Package },
-    ...(s.role === 'admin' ? [{ label: 'Stok menipis', value: String(lowStock), sub: 'perlu di-restock', icon: TriangleAlert }] : []),
+    { label: 'Omzet hari ini', value: fmtRp(today.omzet), sub: 'dari semua metode bayar', icon: Banknote },
+    { label: 'Transaksi hari ini', value: String(today.trx_count), sub: 'selesai · tercatat otomatis', icon: ReceiptText },
+    { label: 'Produk terjual', value: String(today.items_sold), sub: 'satuan terjual hari ini', icon: Package },
+    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), sub: 'perlu di-restock', icon: TriangleAlert }] : []),
   ]
 
   return (
@@ -101,93 +85,94 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Penjualan 7 hari terakhir</CardTitle>
-            <CardDescription>Omzet per hari</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={salesConfig} className="h-56 w-full">
-              <AreaChart data={sales7} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                <defs>
-                  <linearGradient id="fillOmzet" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-omzet)" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="var(--color-omzet)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
-                <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => fmtShort(v)} className="font-mono text-xs" />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                <Area dataKey="omzet" type="natural" fill="url(#fillOmzet)" stroke="var(--color-omzet)" strokeWidth={2} />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {isAdmin && (
+        <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Penjualan 7 hari terakhir</CardTitle>
+              <CardDescription>Omzet per hari</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={salesConfig} className="h-56 w-full">
+                <AreaChart data={sales7} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                  <defs>
+                    <linearGradient id="fillOmzet" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-omzet)" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="var(--color-omzet)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
+                  <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => fmtShort(v)} className="font-mono text-xs" />
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                  <Area dataKey="omzet" type="natural" fill="url(#fillOmzet)" stroke="var(--color-omzet)" strokeWidth={2} />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Metode pembayaran</CardTitle>
-            <CardDescription>Hari ini</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {payData.length === 0 ? (
-              <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada transaksi hari ini.</p>
-            ) : (
-              <div className="space-y-4">
-                <ChartContainer config={payConfig} className="mx-auto h-40 w-full">
-                  <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                    <Pie data={payData} dataKey="total" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} strokeWidth={0} />
-                  </PieChart>
-                </ChartContainer>
-                <div className="space-y-2">
-                  {payData.map((d) => (
-                    <div key={d.name} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="flex items-center gap-2">
-                        <span className="size-2.5 rounded-full" style={{ background: d.fill }} />
-                        {d.name}
-                      </span>
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmtRp(d.total)}</span>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Metode pembayaran</CardTitle>
+              <CardDescription>Hari ini</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {payData.length === 0 ? (
+                <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada transaksi hari ini.</p>
+              ) : (
+                <div className="space-y-4">
+                  <ChartContainer config={payConfig} className="mx-auto h-40 w-full">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                      <Pie data={payData} dataKey="total" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} strokeWidth={0} />
+                    </PieChart>
+                  </ChartContainer>
+                  <div className="space-y-2">
+                    {payData.map((d) => (
+                      <div key={d.name} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="flex items-center gap-2">
+                          <span className="size-2.5 rounded-full" style={{ background: d.fill }} />
+                          {d.name}
+                        </span>
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmtRp(d.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Produk terlaris</CardTitle>
+              <CardDescription>Hari ini</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {topProducts.length === 0 ? (
+                <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada penjualan hari ini.</p>
+              ) : (
+                <div className="space-y-4">
+                  {topProducts.map((p) => (
+                    <div key={p.product_id} className="space-y-1.5">
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="truncate font-medium">{p.name}</span>
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{p.qty} pcs</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-foreground" style={{ width: `${Math.round((p.qty / topMax) * 100)}%` }} />
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Produk terlaris</CardTitle>
-            <CardDescription>Hari ini</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topProducts.length === 0 ? (
-              <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada penjualan hari ini.</p>
-            ) : (
-              <div className="space-y-4">
-                {topProducts.map(([pid, v]) => {
-                  const p = db.products.find((x) => x.id === pid)
-                  return (
-                    <div key={pid} className="space-y-1.5">
-                      <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="truncate font-medium">{p?.name ?? 'Produk dihapus'}</span>
-                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{v.qty} pcs</span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-foreground" style={{ width: `${Math.round((v.qty / topMax) * 100)}%` }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -218,7 +203,7 @@ export default function Dashboard() {
                     <TableRow key={t.id}>
                       <TableCell className="font-mono text-xs">{t.id}</TableCell>
                       <TableCell className="font-mono text-xs">{fmtTime(t.time)}</TableCell>
-                      <TableCell>{t.cashierName}</TableCell>
+                      <TableCell>{t.cashier_name}</TableCell>
                       <TableCell className="text-right font-mono text-xs tabular-nums">{fmtRp(t.total)}</TableCell>
                       <TableCell className="text-right">
                         <TrxBadge status={t.status} />
@@ -242,7 +227,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium">Ringkasan shift Anda</p>
                 <p className="font-mono text-xs text-muted-foreground">
-                  {today.length} transaksi · {fmtRp(omzet)} — hanya transaksi yang Anda buat.
+                  {today.trx_count} transaksi · {fmtRp(today.omzet)} — hanya transaksi yang Anda buat.
                 </p>
               </div>
             </div>
@@ -251,7 +236,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {s.role === 'admin' && today.length === 0 && (
+      {isAdmin && admin.today.trx_count === 0 && (
         <Empty>
           <EmptyContent>
             <EmptyTitle>Belum ada transaksi hari ini</EmptyTitle>

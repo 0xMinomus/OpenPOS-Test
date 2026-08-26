@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { fmtRp, mutate, nextTrxId, uid, useDB, type PayMethod, type Product } from '../lib/store'
+import { useEffect, useMemo, useState } from 'react'
+import { apiCheckout, apiGetSettings, apiListProducts, fetchAll, type PayMethod, type Product, type StoreSettings, type Trx } from '../lib/api'
+import { fmtRp } from '../lib/store'
 import { Button, Modal } from '../lib/ui'
 
 const METHODS: PayMethod[] = ['Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
@@ -7,27 +8,38 @@ const METHODS: PayMethod[] = ['Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card
 interface CartLine { product: Product; qty: number }
 
 export default function Pos() {
-  const db = useDB()
-  const s = db.session!
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('Semua')
+  const [products, setProducts] = useState<Product[] | null>(null)
+  const [settings, setSettings] = useState<StoreSettings | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [discount, setDiscount] = useState(0)
   const [method, setMethod] = useState<PayMethod>('Cash')
   const [paid, setPaid] = useState('')
   const [payOpen, setPayOpen] = useState(false)
   const [err, setErr] = useState('')
-  const [receipt, setReceipt] = useState<{ id: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [receipt, setReceipt] = useState<Trx | null>(null)
 
-  const taxPct = db.settings.taxEnabled ? db.settings.taxPct : 0
-  const cats = db.categories.filter((c) => c.active)
-  const products = db.products.filter((p) => p.active).filter((p) => {
-    if (cat !== 'Semua' && p.categoryId !== cat) return false
+  function load() {
+    fetchAll<Product>((page) => apiListProducts({ active: true, page, limit: 200 })).then(setProducts).catch(() => {})
+  }
+  useEffect(() => { load() }, [])
+  useEffect(() => { apiGetSettings().then(setSettings).catch(() => {}) }, [])
+
+  const cats = useMemo(() => [...new Set((products ?? []).map((p) => p.category_id).filter((x): x is string => !!x))], [products])
+  const catName = (id: string | null) => (products ?? []).find((p) => p.category_id === id)?.category_name ?? '—'
+
+  const filtered = (products ?? []).filter((p) => {
+    if (cat !== 'Semua' && p.category_id !== cat) return false
     const s2 = q.toLowerCase()
     return !s2 || p.name.toLowerCase().includes(s2) || p.sku.toLowerCase().includes(s2) || p.barcode.toLowerCase().includes(s2)
   })
 
-  const subtotal = cart.reduce((n, l) => n + l.product.sellPrice * l.qty, 0)
+  const effStock = (p: Product) => p.stock - (cart.find((l) => l.product.id === p.id)?.qty ?? 0)
+
+  const taxPct = settings?.taxEnabled ? settings.taxPct : 0
+  const subtotal = cart.reduce((n, l) => n + l.product.sell_price * l.qty, 0)
   const tax = Math.round((subtotal - discount) * (taxPct / 100))
   const total = subtotal - discount + tax
   const change = Number(paid) - total
@@ -54,41 +66,27 @@ export default function Pos() {
     }))
   }
 
-  function checkout() {
+  async function checkout() {
     setErr('')
     if (cart.length === 0) return setErr('Keranjang kosong.')
     if (method === 'Cash' && (!paid || change < 0)) return setErr('Jumlah bayar kurang dari total.')
-    if (method !== 'Cash') {
-      // non-cash: paid = total
-    }
-    let ok = true
-    const trxId = nextTrxId(db)
-    const now = new Date().toISOString()
-    mutate((d) => {
-      for (const l of cart) {
-        const p = d.products.find((x) => x.id === l.product.id)!
-        if (p.stock < l.qty) { ok = false; return }
-      }
-      if (!ok) return
-      d.trx.push({
-        id: trxId, seq: db.seq, cashier: s.email, cashierName: s.name,
-        items: cart.map((l) => ({ productId: l.product.id, name: l.product.name, buyPrice: l.product.buyPrice, price: l.product.sellPrice, qty: l.qty })),
-        subtotal, discount, tax, total,
-        method, paid: method === 'Cash' ? Number(paid) : total, change: method === 'Cash' ? change : 0,
-        status: 'completed', time: now, customer: '',
+    setBusy(true)
+    try {
+      const trx = await apiCheckout({
+        items: cart.map((l) => ({ productId: l.product.id, qty: l.qty })),
+        discount,
+        method,
+        paid: method === 'Cash' ? Number(paid) : 0,
       })
-      for (const l of cart) {
-        const p = d.products.find((x) => x.id === l.product.id)!
-        p.stock -= l.qty
-        d.movements.push({ id: uid(), productId: p.id, type: 'sale', qty: -l.qty, reason: 'Penjualan ' + trxId, time: now, actor: s.name })
-      }
-    })
-    if (!ok) return setErr('Stok tidak cukup untuk menyelesaikan transaksi.')
-    setReceipt({ id: trxId })
-    setCart([]); setDiscount(0); setPaid(''); setPayOpen(false)
+      setReceipt(trx)
+      setCart([]); setDiscount(0); setPaid(''); setPayOpen(false)
+      load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal menyelesaikan transaksi.')
+    } finally {
+      setBusy(false)
+    }
   }
-
-  const receiptTrx = useMemo(() => db.trx.find((t) => t.id === receipt?.id), [db.trx, receipt])
 
   return (
     <>
@@ -97,7 +95,7 @@ export default function Pos() {
           <h1 className="text-2xl font-normal tracking-tight sm:text-3xl">POS Kasir</h1>
           <p className="mt-1 text-sm text-muted">Cari produk, tambah ke keranjang, selesaikan pembayaran.</p>
         </div>
-        <Button onClick={() => setPayOpen(true)} disabled={cart.length === 0}>Bayar · Selesaikan Transaksi</Button>
+        <Button onClick={() => { setPayOpen(true); setErr('') }} disabled={cart.length === 0}>Bayar · Selesaikan Transaksi</Button>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
@@ -116,32 +114,36 @@ export default function Pos() {
             >
               Semua
             </button>
-            {cats.map((c) => (
+            {cats.map((id) => (
               <button
-                key={c.id}
-                onClick={() => setCat(c.id)}
-                className={`rounded-full border px-3 py-1 text-xs ${cat === c.id ? 'border-jet bg-jet text-paper' : 'border-dove text-muted hover:border-jet'}`}
+                key={id}
+                onClick={() => setCat(id)}
+                className={`rounded-full border px-3 py-1 text-xs ${cat === id ? 'border-jet bg-jet text-paper' : 'border-dove text-muted hover:border-jet'}`}
               >
-                {c.name}
+                {catName(id)}
               </button>
             ))}
           </div>
           {err && <p className="mb-3 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
-          <div className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
-            {products.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => add(p)}
-                disabled={p.stock === 0}
-                className={`rounded-xl border p-3.5 text-left transition ${p.stock === 0 ? 'cursor-not-allowed border-dove opacity-40' : 'border-dove hover:border-jet'}`}
-              >
-                <p className="text-[13px] font-medium leading-snug">{p.name}</p>
-                <p className="mt-1 font-mono text-[11px] text-fog">{p.stock} stok</p>
-                <p className="mt-1 font-mono text-sm font-medium tabular-nums">{fmtRp(p.sellPrice)}</p>
-              </button>
-            ))}
-            {products.length === 0 && <p className="col-span-full py-10 text-center text-sm text-fog">Tidak ada produk ditemukan.</p>}
-          </div>
+          {!products ? (
+            <p className="py-10 text-center text-sm text-fog">Memuat katalog…</p>
+          ) : (
+            <div className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => add(p)}
+                  disabled={effStock(p) === 0}
+                  className={`rounded-xl border p-3.5 text-left transition ${effStock(p) === 0 ? 'cursor-not-allowed border-dove opacity-40' : 'border-dove hover:border-jet'}`}
+                >
+                  <p className="text-[13px] font-medium leading-snug">{p.name}</p>
+                  <p className="mt-1 font-mono text-[11px] text-fog">{effStock(p)} stok</p>
+                  <p className="mt-1 font-mono text-sm font-medium tabular-nums">{fmtRp(p.sell_price)}</p>
+                </button>
+              ))}
+              {filtered.length === 0 && <p className="col-span-full py-10 text-center text-sm text-fog">Tidak ada produk ditemukan.</p>}
+            </div>
+          )}
         </section>
 
         <aside className="flex flex-col rounded-2xl bg-cream p-4">
@@ -162,7 +164,7 @@ export default function Pos() {
                     <span className="w-7 text-center font-mono text-[13px] tabular-nums">{l.qty}</span>
                     <button onClick={() => setQty(l.product.id, l.qty + 1)} className="grid h-6 w-6 place-items-center rounded-full border border-dove text-sm hover:border-jet">+</button>
                   </div>
-                  <span className="font-mono text-[13px] tabular-nums">{fmtRp(l.product.sellPrice * l.qty)}</span>
+                  <span className="font-mono text-[13px] tabular-nums">{fmtRp(l.product.sell_price * l.qty)}</span>
                 </div>
               </div>
             ))}
@@ -224,43 +226,41 @@ export default function Pos() {
             <span>Total</span>
             <span className="font-mono font-medium tabular-nums">{fmtRp(total)}</span>
           </div>
-          <Button className="w-full" onClick={checkout}>Selesaikan Transaksi</Button>
+          <Button className="w-full" onClick={checkout} disabled={busy}>{busy ? 'Memproses…' : 'Selesaikan Transaksi'}</Button>
         </div>
       </Modal>
 
-      <Modal open={!!receiptTrx} title="Transaksi berhasil" onClose={() => setReceipt(null)}>
-        {receiptTrx && <Receipt trxId={receiptTrx.id} onClose={() => setReceipt(null)} />}
+      <Modal open={!!receipt} title="Transaksi berhasil" onClose={() => setReceipt(null)}>
+        {receipt && <Receipt trx={receipt} settings={settings} onClose={() => setReceipt(null)} />}
       </Modal>
     </>
   )
 }
 
-function Receipt({ trxId, onClose }: { trxId: string; onClose: () => void }) {
-  const db = useDB()
-  const t = db.trx.find((x) => x.id === trxId)!
-  const st = db.settings
+function Receipt({ trx, settings, onClose }: { trx: Trx; settings: StoreSettings | null; onClose: () => void }) {
+  const st = settings ?? { storeName: '', address: '', phone: '', receiptHeader: '', receiptFooter: '', paper: '58mm' } as StoreSettings
   return (
     <div>
       <div id="receipt" className="mx-auto w-full max-w-80 rounded-lg border border-dove bg-paper p-4 font-mono text-[12px] leading-relaxed" style={{ width: st.paper }}>
         <p className="text-center text-sm font-medium">{st.storeName}</p>
         {st.address && <p className="text-center">{st.address}</p>}
         {st.phone && <p className="text-center">{st.phone}</p>}
-        <p className="mt-2">{new Date(t.time).toLocaleString('id-ID')}</p>
-        <p>ID {t.id} · {t.cashierName}</p>
+        <p className="mt-2">{new Date(trx.time).toLocaleString('id-ID')}</p>
+        <p>ID {trx.id} · {trx.cashier_name}</p>
         <div className="my-2 border-t border-dashed border-dove" />
-        {t.items.map((i) => (
-          <div key={i.productId} className="flex justify-between gap-2">
+        {trx.items.map((i) => (
+          <div key={i.product_id} className="flex justify-between gap-2">
             <span className="flex-1">{i.name}</span>
             <span className="tabular-nums">{i.qty}×{fmtRp(i.price)}</span>
           </div>
         ))}
         <div className="my-2 border-t border-dashed border-dove" />
-        <div className="flex justify-between"><span>Subtotal</span><span className="tabular-nums">{fmtRp(t.subtotal)}</span></div>
-        {t.discount > 0 && <div className="flex justify-between"><span>Diskon</span><span className="tabular-nums">-{fmtRp(t.discount)}</span></div>}
-        {t.tax > 0 && <div className="flex justify-between"><span>Pajak</span><span className="tabular-nums">{fmtRp(t.tax)}</span></div>}
-        <div className="flex justify-between font-medium"><span>Total</span><span className="tabular-nums">{fmtRp(t.total)}</span></div>
-        <div className="flex justify-between"><span>Bayar ({t.method})</span><span className="tabular-nums">{fmtRp(t.paid)}</span></div>
-        <div className="flex justify-between"><span>Kembalian</span><span className="tabular-nums">{fmtRp(t.change)}</span></div>
+        <div className="flex justify-between"><span>Subtotal</span><span className="tabular-nums">{fmtRp(trx.subtotal)}</span></div>
+        {trx.discount > 0 && <div className="flex justify-between"><span>Diskon</span><span className="tabular-nums">-{fmtRp(trx.discount)}</span></div>}
+        {trx.tax > 0 && <div className="flex justify-between"><span>Pajak</span><span className="tabular-nums">{fmtRp(trx.tax)}</span></div>}
+        <div className="flex justify-between font-medium"><span>Total</span><span className="tabular-nums">{fmtRp(trx.total)}</span></div>
+        <div className="flex justify-between"><span>Bayar ({trx.method})</span><span className="tabular-nums">{fmtRp(trx.paid)}</span></div>
+        <div className="flex justify-between"><span>Kembalian</span><span className="tabular-nums">{fmtRp(trx.change)}</span></div>
         <div className="my-2 border-t border-dashed border-dove" />
         <p className="text-center">{st.receiptHeader}</p>
         <p className="text-center text-[11px] text-fog">{st.receiptFooter}</p>

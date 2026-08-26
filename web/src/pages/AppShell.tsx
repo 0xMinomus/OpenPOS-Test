@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import {
   LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings,
-  Moon, Sun, LogOut, ChevronsUpDown, Check,
+  Moon, Sun, LogOut, ChevronsUpDown,
 } from 'lucide-react'
-import { loginAs, logout, useDB, useTheme } from '../lib/store'
+import { apiLogout, apiMe, hasToken } from '../lib/api'
+import { setSession, toSession, useDB, useTheme } from '../lib/store'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
   SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -28,9 +29,23 @@ export default function AppShell() {
   const db = useDB()
   const loc = useLocation()
   const [theme, setTheme] = useTheme()
+  const [boot, setBoot] = useState(!hasToken())
   const s = db.session
 
-  if (!s) return <Navigate to="/masuk" replace />
+  useEffect(() => {
+    if (!hasToken() || s) return
+    let dead = false
+    apiMe()
+      .then((r) => { if (!dead) setSession(toSession(r.user)) })
+      .catch(() => { if (!dead) { apiLogout(); setSession(null) } })
+      .finally(() => { if (!dead) setBoot(true) })
+    return () => { dead = true }
+  }, [s])
+
+  if (!s) {
+    if (hasToken() && !boot) return null
+    return <Navigate to="/masuk" replace />
+  }
 
   const menu = MENU.filter((m) => !m.adminOnly || s.role === 'admin')
 
@@ -103,40 +118,19 @@ function UserMenu() {
   const nav = useNavigate()
   const s = db.session!
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState<string | null>(null)
-  const [passcode, setPasscode] = useState('')
-  const [err, setErr] = useState('')
-  const accounts = Object.values(db.accounts).filter((a) => a.active)
-  const pendingAcc = db.accounts[pending ?? '']
+  const [busy, setBusy] = useState(false)
 
-  function pick(email: string) {
-    setErr('')
-    if (email === s.email) return setOpen(false)
-    if (db.accounts[email].passcode) {
-      setPending(email)
-      setPasscode('')
-    } else {
-      if (loginAs(email)) nav('/app')
-      setOpen(false)
-    }
-  }
-
-  function submitPasscode() {
-    if (!pendingAcc) return
-    if (loginAs(pendingAcc.email, passcode)) {
-      setPending(null)
-      setOpen(false)
-      nav('/app')
-    } else {
-      setErr('Passcode salah. Coba lagi.')
-      setPasscode('')
-    }
+  async function keluar() {
+    setBusy(true)
+    await apiLogout()
+    setSession(null)
+    nav('/masuk', { replace: true })
   }
 
   return (
     <div className="relative">
       <button
-        onClick={() => { setOpen(!open); setPending(null); setErr('') }}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
@@ -158,85 +152,25 @@ function UserMenu() {
             role="menu"
             className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-64 rounded-lg bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-foreground/10"
           >
-            {pendingAcc ? (
-              <div className="space-y-2 p-2">
-                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Passcode · {pendingAcc.name}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Avatar className="size-7 rounded-md">
-                    <AvatarFallback className="rounded-md font-mono text-xs">{pendingAcc.name.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span className="grid flex-1 leading-tight">
-                    <span className="truncate text-sm font-medium">{pendingAcc.name}</span>
-                    <span className="truncate font-mono text-[11px] text-muted-foreground">{pendingAcc.role === 'admin' ? 'Admin' : 'Kasir'}</span>
-                  </span>
-                </div>
-                <input
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') submitPasscode() }}
-                  inputMode="numeric"
-                  autoFocus
-                  placeholder="•••••"
-                  aria-label="Passcode 5 angka"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-center text-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                {err && <p className="text-xs text-destructive">{err}</p>}
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => { setPending(null); setErr('') }}
-                    className="rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    onClick={submitPasscode}
-                    disabled={passcode.length !== 5}
-                    className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
-                  >
-                    Masuk
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="px-2 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Ganti akun</p>
-                <div className="max-h-64 overflow-y-auto">
-                  {accounts.map((a) => {
-                    const active = a.email === s.email
-                    return (
-                      <button
-                        key={a.email}
-                        role="menuitem"
-                        onClick={() => pick(a.email)}
-                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'}`}
-                      >
-                        <Avatar className="size-7 rounded-md">
-                          <AvatarFallback className="rounded-md font-mono text-xs">{a.name.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="grid flex-1 leading-tight">
-                          <span className="truncate font-medium">{a.name}</span>
-                          <span className="truncate font-mono text-[11px] text-muted-foreground">
-                            {a.role === 'admin' ? 'Admin' : 'Kasir'} · {a.email}{a.passcode ? ' · 🔒' : ''}
-                          </span>
-                        </span>
-                        {active && <Check className="size-4 shrink-0" />}
-                      </button>
-                    )
-                  })}
-                </div>
-                <div className="my-1 h-px bg-border" />
-                <button
-                  role="menuitem"
-                  onClick={() => { logout(); nav('/masuk'); setOpen(false) }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-                >
-                  <LogOut className="size-4" />
-                  Keluar
-                </button>
-              </>
-            )}
+            <div className="flex items-center gap-2 px-2 py-1.5">
+              <Avatar className="size-7 rounded-md">
+                <AvatarFallback className="rounded-md font-mono text-xs">{s.name.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="grid flex-1 leading-tight">
+                <span className="truncate text-sm font-medium">{s.name}</span>
+                <span className="truncate font-mono text-[11px] text-muted-foreground">{s.role === 'admin' ? 'Admin' : 'Kasir'} · {s.email}</span>
+              </span>
+            </div>
+            <div className="my-1 h-px bg-border" />
+            <button
+              role="menuitem"
+              onClick={keluar}
+              disabled={busy}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              <LogOut className="size-4" />
+              {busy ? 'Keluar…' : 'Keluar'}
+            </button>
           </div>
         </>
       )}
