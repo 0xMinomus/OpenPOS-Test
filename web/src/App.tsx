@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import ErrorBoundary from './lib/ErrorBoundary'
 import Landing from './pages/Landing'
 import Masuk from './pages/Masuk'
 import Daftar from './pages/Daftar'
@@ -16,7 +17,8 @@ import Pengaturan from './pages/Pengaturan'
 export default function App() {
   return (
     <TooltipProvider>
-      <Routes>
+      <ErrorBoundary>
+        <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/masuk" element={<Masuk />} />
         <Route path="/daftar" element={<Daftar />} />
@@ -32,6 +34,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
     </TooltipProvider>
   )
 }
