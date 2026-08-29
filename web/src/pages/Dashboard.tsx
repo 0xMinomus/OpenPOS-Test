@@ -94,15 +94,15 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={salesConfig} className="h-56 w-full">
-                <AreaChart data={sales7} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                  <defs>
-                    <linearGradient id="fillOmzet" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-omzet)" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="var(--color-omzet)" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
-                  <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
+<AreaChart data={sales7} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+                <defs>
+                  <linearGradient id="fillOmzet" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-omzet)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="var(--color-omzet)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
+                <XAxis dataKey="day" interval={0} padding={{ left: 12, right: 12 }} tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
                   <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => fmtShort(v)} className="font-mono text-xs" />
                   <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
                   <Area dataKey="omzet" type="natural" fill="url(#fillOmzet)" stroke="var(--color-omzet)" strokeWidth={2} />

@@ -384,15 +384,15 @@ export default function Landing() {
               </div>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={SALES7} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                    <defs>
-                      <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--t-jet)" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
-                    <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
+<AreaChart data={SALES7} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+                      <defs>
+                        <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--t-jet)" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
+                      <XAxis dataKey="day" interval={0} padding={{ left: 12, right: 12 }} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
                     <YAxis hide />
                     <Tooltip cursor={{ stroke: 'var(--t-fog)', strokeDasharray: '4 4' }} content={<SalesTooltip />} />
                     <Area type="monotone" dataKey="omzet" stroke="var(--t-jet)" strokeWidth={2} fill="url(#landingSales)" />
