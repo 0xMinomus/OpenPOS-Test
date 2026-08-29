@@ -366,18 +366,12 @@ export default function Landing() {
               <h2 className="mt-5 text-[clamp(30px,3.8vw,46px)] font-normal leading-[1.14] tracking-[-0.025em]">
                 Sederhana untuk siapa pun, andal untuk bisnis yang bertumbuh.
               </h2>
-              <p className="mt-5 font-mono text-[13px] tracking-wide text-steel">simple enough for anyone, reliable for a growing business</p>
               <p className="mt-5 text-lg leading-relaxed text-muted">
                 OpenPOS lahir dari masalah yang sering terjadi. Mayoritas UMKM di Indonesia masih mencatat penjualan di buku kas atau Excel, sementara aplikasi kasir yang ada umumnya berbayar per bulan dan terlalu rumit untuk dipelajari.
               </p>
               <p className="mt-4 text-lg leading-relaxed text-muted">
                 Kami membuatnya berbeda. Antarmuka kasir yang sederhana, cukup untuk operasional harian toko kecil, dan gratis selamanya. Tanpa langganan dan tanpa masa percobaan yang berubah menjadi tagihan.
               </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {['Toko kelontong', 'Toko pakaian', 'Minimarket', 'Toko elektronik', 'Toko kosmetik'].map((t) => (
-                  <span key={t} className="rounded-full border border-dove px-3.5 py-1.5 text-[13px] text-muted">{t}</span>
-                ))}
-              </div>
             </div>
             <div className="reveal rounded-2xl bg-cream p-8" data-delay="1">
               <div className="mb-5 flex items-center gap-2">
