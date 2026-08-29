@@ -65,8 +65,8 @@ export default function Daftar() {
           </div>
 
           <p className="font-mono text-xs uppercase tracking-widest text-steel">Daftar · buat akun</p>
-          <h1 className="mt-3 text-[clamp(32px,4vw,44px)] font-normal leading-[1.1] tracking-[-0.025em]">Mulai toko Anda hari ini</h1>
-          <p className="mt-2 mb-7 text-[15px] text-muted">Satu akun membuat Admin dan toko Anda sekaligus. Gratis selamanya — tanpa kartu kredit.</p>
+          <h1 className="mt-3 text-[clamp(32px,4vw,44px)] font-normal leading-[1.1] tracking-[-0.025em]">Buat toko Anda hari ini</h1>
+          <p className="mt-2 mb-7 text-[15px] text-muted">Satu akun langsung membuat akun admin dan toko Anda sekaligus. Gratis selamanya tanpa kartu kredit.</p>
 
           {err && (
             <p className="mb-4 flex items-start gap-2 rounded-lg bg-sand px-3.5 py-3 text-[13px]" role="alert">

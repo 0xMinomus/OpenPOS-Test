@@ -109,7 +109,7 @@ export default function Stok() {
         </div>
       </div>
 
-      <Modal open={!!adjustFor} title={`Penyesuaian stok — ${adjustFor?.name ?? ''}`} onClose={() => setAdjustFor(null)}>
+      <Modal open={!!adjustFor} title={`Penyesuaian stok · ${adjustFor?.name ?? ''}`} onClose={() => setAdjustFor(null)}>
         {adjustFor && (
           <div className="space-y-4">
             <p className="text-sm text-muted">Stok saat ini: <strong className="text-fg">{adjustFor.stock} {adjustFor.unit}</strong></p>

@@ -64,7 +64,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Ringkasan toko</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Halo {s.name} — berikut performa {s.store} hari ini.
+            Halo {s.name}, ini ringkasan performa {s.store} hari ini.
           </p>
         </div>
         <p className="font-mono text-xs text-muted-foreground">{fmtDate(new Date().toISOString())}</p>
@@ -227,7 +227,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium">Ringkasan shift Anda</p>
                 <p className="font-mono text-xs text-muted-foreground">
-                  {today.trx_count} transaksi · {fmtRp(today.omzet)} — hanya transaksi yang Anda buat.
+                  {today.trx_count} transaksi · {fmtRp(today.omzet)}. Hanya transaksi yang Anda buat.
                 </p>
               </div>
             </div>

@@ -82,7 +82,7 @@ export default function Produk() {
     try {
       const r = await apiDeleteCategory(c.id)
       setCats(await apiListCategories())
-      if (r.soft_deleted) alert(`Kategori "${c.name}" masih dipakai produk — dinonaktifkan (histori tetap aman).`)
+      if (r.soft_deleted) alert(`Kategori "${c.name}" masih dipakai produk, jadi hanya dinonaktifkan. Histori tetap aman.`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menghapus kategori.')
     }
@@ -296,7 +296,7 @@ function FormProduk({ draft, cats, onSave, onCancel }: { draft: Draft; cats: { i
       <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
         Kategori
         <select value={d.categoryId} onChange={(e) => set('categoryId')(e.target.value)} className="rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] focus:border-jet focus:outline-none">
-          <option value="">— tanpa kategori —</option>
+          <option value="">Tanpa kategori</option>
           {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>

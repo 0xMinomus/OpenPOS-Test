@@ -119,7 +119,7 @@ export default function Pengaturan() {
 
         <section className="rounded-2xl bg-cream p-6">
           <h2 className="mb-2 font-mono text-xs uppercase tracking-wider text-fog">Informasi</h2>
-          <p className="text-sm text-muted">Currency: <strong className="text-fg">IDR (Rupiah)</strong> — default, tidak dapat diubah pada MVP. Data tersimpan aman di server.</p>
+          <p className="text-sm text-muted">Mata uang: <strong className="text-fg">IDR (Rupiah)</strong>. Tidak dapat diubah pada MVP. Data tersimpan aman di server.</p>
         </section>
 
         <Button onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan Pengaturan'}</Button>
