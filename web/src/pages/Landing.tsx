@@ -27,15 +27,15 @@ const DEMO_PRODUCTS: DemoProduct[] = [
   { id: 's1', name: 'Sabun Mandi 90 g', sku: 'SB-001', barcode: '', categoryId: 'Rumah Tangga', sellPrice: 6500, stock: 22 },
 ]
 
-const SALES7 = [
-  { day: 'Sen', omzet: 2100000 },
-  { day: 'Sel', omzet: 1850000 },
-  { day: 'Rab', omzet: 2400000 },
-  { day: 'Kam', omzet: 2900000 },
-  { day: 'Jum', omzet: 3650000 },
-  { day: 'Sab', omzet: 4200000 },
-  { day: 'Min', omzet: 3100000 },
-]
+const SALES7_DAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+
+function randomSales7() {
+  const base = 1500000 + Math.random() * 2500000
+  return SALES7_DAYS.map((day, i) => ({
+    day,
+    omzet: Math.round((base + i * 150000 + Math.random() * 1800000 - 900000) / 1000) * 1000,
+  }))
+}
 
 function SalesTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: { day: string } }[] }) {
   if (!active || !payload?.length) return null
@@ -65,6 +65,7 @@ export default function Landing() {
   const [cart, setCart] = useState<Record<string, number>>({})
   const [done, setDone] = useState(false)
   const [receiptItems, setReceiptItems] = useState<{ product: DemoProduct; qty: number }[]>([])
+  const [sales7] = useState(randomSales7)
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -384,7 +385,7 @@ export default function Landing() {
               </div>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-<AreaChart data={SALES7} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+<AreaChart data={sales7} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
                       <defs>
                         <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
