@@ -1,41 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { apiGetDashboard, apiListProducts, fetchAll, hasToken, type Product } from '../lib/api'
 import { fmtRp } from '../lib/store'
 import Navbar from './Navbar'
-
-interface DemoProduct {
-  id: string
-  name: string
-  sku: string
-  barcode: string
-  categoryId: string
-  sellPrice: number
-  stock: number
-}
-
-const DEMO_CATS = ['Sembako', 'Minuman', 'Rumah Tangga']
-
-const DEMO_PRODUCTS: DemoProduct[] = [
-  { id: 'b1', name: 'Beras Premium 5 kg', sku: 'BR-001', barcode: '', categoryId: 'Sembako', sellPrice: 68000, stock: 24 },
-  { id: 'g1', name: 'Gula Pasir 1 kg', sku: 'GP-001', barcode: '', categoryId: 'Sembako', sellPrice: 17500, stock: 40 },
-  { id: 'm1', name: 'Minyak Goreng 1 L', sku: 'MG-001', barcode: '', categoryId: 'Sembako', sellPrice: 20000, stock: 30 },
-  { id: 'm2', name: 'Mie Goreng Instan', sku: 'MG-002', barcode: '', categoryId: 'Sembako', sellPrice: 3500, stock: 60 },
-  { id: 'k1', name: 'Kopi Sachet 165 g', sku: 'KP-001', barcode: '', categoryId: 'Minuman', sellPrice: 14000, stock: 25 },
-  { id: 't1', name: 'Teh Celup 25 sachet', sku: 'TH-001', barcode: '', categoryId: 'Minuman', sellPrice: 10500, stock: 18 },
-  { id: 'a1', name: 'Air Mineral 600 ml', sku: 'AM-001', barcode: '', categoryId: 'Minuman', sellPrice: 3000, stock: 48 },
-  { id: 's1', name: 'Sabun Mandi 90 g', sku: 'SB-001', barcode: '', categoryId: 'Rumah Tangga', sellPrice: 6500, stock: 22 },
-]
-
-const SALES7 = [
-  { day: 'Sen', omzet: 2100000 },
-  { day: 'Sel', omzet: 1850000 },
-  { day: 'Rab', omzet: 2400000 },
-  { day: 'Kam', omzet: 2900000 },
-  { day: 'Jum', omzet: 3650000 },
-  { day: 'Sab', omzet: 4200000 },
-  { day: 'Min', omzet: 3100000 },
-]
 
 function SalesTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: { day: string } }[] }) {
   if (!active || !payload?.length) return null
@@ -64,7 +32,24 @@ export default function Landing() {
   const [cat, setCat] = useState('Semua')
   const [cart, setCart] = useState<Record<string, number>>({})
   const [done, setDone] = useState(false)
-  const [receiptItems, setReceiptItems] = useState<{ product: DemoProduct; qty: number }[]>([])
+  const [receiptItems, setReceiptItems] = useState<{ product: Product; qty: number }[]>([])
+  const [products, setProducts] = useState<Product[] | null>(null)
+  const [sales7, setSales7] = useState<{ day: string; omzet: number }[] | null>(null)
+  const loggedIn = hasToken()
+
+  useEffect(() => {
+    if (!loggedIn) return
+    let dead = false
+    fetchAll<Product>((page) => apiListProducts({ active: true, page, limit: 200 }))
+      .then((d) => { if (!dead) setProducts(d) })
+      .catch(() => {})
+    apiGetDashboard().then((d) => {
+      if (dead) return
+      const s = d.role === 'admin' ? d.sales7 : null
+      if (s) setSales7(s.map((x, i) => ({ day: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'][i], omzet: x.omzet })))
+    }).catch(() => {})
+    return () => { dead = true }
+  }, [loggedIn])
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -84,20 +69,20 @@ export default function Landing() {
     return () => io.disconnect()
   }, [])
 
-  const cats = ['Semua', ...DEMO_CATS]
-  const products = DEMO_PRODUCTS.filter((p) => {
-    if (cat !== 'Semua' && p.categoryId !== cat) return false
+  const cats = ['Semua', ...new Set((products ?? []).map((p) => p.category_name).filter((x): x is string => !!x))]
+  const visible = (products ?? []).filter((p) => {
+    if (cat !== 'Semua' && p.category_name !== cat) return false
     const s = q.toLowerCase()
     return !s || p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s) || p.barcode.toLowerCase().includes(s)
   })
 
   const cartItems = useMemo(
-    () => Object.entries(cart).map(([id, qty]) => ({ product: DEMO_PRODUCTS.find((p) => p.id === id)!, qty })).filter((x) => x.product),
-    [cart],
+    () => Object.entries(cart).map(([id, qty]) => ({ product: (products ?? []).find((p) => p.id === id)!, qty })).filter((x) => x.product),
+    [cart, products],
   )
-  const total = cartItems.reduce((sum, { product, qty }) => sum + product.sellPrice * qty, 0)
+  const total = cartItems.reduce((sum, { product, qty }) => sum + product.sell_price * qty, 0)
 
-  function add(p: DemoProduct) {
+  function add(p: Product) {
     const cur = cart[p.id] ?? 0
     if (cur >= p.stock) return
     setCart({ ...cart, [p.id]: cur + 1 })
@@ -191,14 +176,22 @@ export default function Landing() {
                 </div>
                 <div className="grid items-start gap-3 lg:grid-cols-[1fr_300px] lg:gap-4">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-4">
-                    {products.map((p) => (
+                    {!products ? (
+                      <div className="col-span-full flex flex-col items-center gap-3 rounded-lg border border-dashed border-[#2c2c2c] p-8 text-center">
+                        <p className="text-[13px] text-[#9d9d9d]">Masuk untuk mencoba dengan produk toko Anda.</p>
+                        <Link to="/masuk" className="rounded-full bg-[#ffffff] px-5 py-2 text-xs font-semibold text-[#0a0a0a] transition hover:opacity-85">Masuk</Link>
+                      </div>
+                    ) : visible.length === 0 ? (
+                      <p className="col-span-full py-8 text-center font-mono text-xs text-[#9d9d9d]">Tidak ada produk ditemukan.</p>
+                    ) : (
+                      visible.map((p) => (
                       <div
                         key={p.id}
                         className="pos-product flex flex-col gap-1.5 rounded-lg border border-[#262626] bg-[#1b1b1b] p-2.5 sm:p-3"
                       >
                         <p className="line-clamp-2 text-[13px] font-medium leading-[1.35] text-[#ededed]">{p.name}</p>
                         <p className="font-mono text-[11px] text-[#9d9d9d]">{p.stock} stok</p>
-                        <p className="mt-auto font-mono text-sm text-[#ffffff]">{fmtRp(p.sellPrice)}</p>
+                        <p className="mt-auto font-mono text-sm text-[#ffffff]">{fmtRp(p.sell_price)}</p>
                         <button
                           onClick={() => add(p)}
                           disabled={p.stock === 0}
@@ -207,7 +200,8 @@ export default function Landing() {
                           Tambah
                         </button>
                       </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                   <aside className="flex flex-col gap-3 rounded-xl border border-[#262626] bg-[#1a1a1a] p-4">
                     <h4 className="text-[13px] font-medium tracking-tight text-[#ffffff]">Keranjang</h4>
@@ -221,13 +215,13 @@ export default function Landing() {
                             {receiptItems.map(({ product, qty }) => (
                               <div key={product.id} className="flex justify-between gap-3">
                                 <span className="flex-1 truncate">{product.name}</span>
-                                <span className="tabular-nums">{qty}×{fmtRp(product.sellPrice)}</span>
+                                <span className="tabular-nums">{qty}×{fmtRp(product.sell_price)}</span>
                               </div>
                             ))}
                           </div>
                           <div className="border-t border-dashed border-[#2c2c2c] pt-1.5">
-                            <div className="flex justify-between"><span className="text-[#9d9d9d]">Total</span><span className="font-medium tabular-nums text-[#ffffff]">{fmtRp(receiptItems.reduce((n, { product, qty }) => n + product.sellPrice * qty, 0))}</span></div>
-                            <div className="flex justify-between"><span className="text-[#9d9d9d]">Bayar (Cash)</span><span className="tabular-nums">{fmtRp(receiptItems.reduce((n, { product, qty }) => n + product.sellPrice * qty, 0))}</span></div>
+                            <div className="flex justify-between"><span className="text-[#9d9d9d]">Total</span><span className="font-medium tabular-nums text-[#ffffff]">{fmtRp(receiptItems.reduce((n, { product, qty }) => n + product.sell_price * qty, 0))}</span></div>
+                            <div className="flex justify-between"><span className="text-[#9d9d9d]">Bayar (Cash)</span><span className="tabular-nums">{fmtRp(receiptItems.reduce((n, { product, qty }) => n + product.sell_price * qty, 0))}</span></div>
                             <div className="flex justify-between"><span className="text-[#9d9d9d]">Kembalian</span><span className="tabular-nums">Rp 0</span></div>
                           </div>
                           <p className="border-t border-dashed border-[#2c2c2c] pt-1.5 text-center tracking-widest text-sprout">PEMBAYARAN BERHASIL</p>
@@ -276,7 +270,7 @@ export default function Landing() {
               </div>
             </div>
             <p className="mt-4.5 text-center font-mono text-xs text-steel">
-              demo interaktif — cari produk dan klik "tambah"
+              coba interaktif — produk dari toko Anda · transaksi hanya pratinjau
             </p>
           </div>
         </section>
@@ -389,23 +383,30 @@ export default function Landing() {
                 <span className="font-mono text-xs tracking-wide text-steel">openpos — penjualan 7 hari</span>
               </div>
               <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={SALES7} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                    <defs>
-                      <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--t-jet)" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
-                    <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
-                    <YAxis hide />
-                    <Tooltip cursor={{ stroke: 'var(--t-fog)', strokeDasharray: '4 4' }} content={<SalesTooltip />} />
-                    <Area type="monotone" dataKey="omzet" stroke="var(--t-jet)" strokeWidth={2} fill="url(#landingSales)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {!sales7 ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-dove">
+                    <p className="text-sm text-muted">Masuk untuk melihat omzet toko Anda.</p>
+                    <Link to="/masuk" className="rounded-full bg-jet px-5 py-2 text-xs font-medium text-paper hover:opacity-85">Masuk</Link>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sales7} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                      <defs>
+                        <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--t-jet)" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
+                      <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
+                      <YAxis hide />
+                      <Tooltip cursor={{ stroke: 'var(--t-fog)', strokeDasharray: '4 4' }} content={<SalesTooltip />} />
+                      <Area type="monotone" dataKey="omzet" stroke="var(--t-jet)" strokeWidth={2} fill="url(#landingSales)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
-              <p className="mt-3 text-center font-mono text-[11px] text-steel">omzet per hari · data demo</p>
+              <p className="mt-3 text-center font-mono text-[11px] text-steel">omzet per hari · 7 hari terakhir</p>
             </div>
           </div>
         </section>
