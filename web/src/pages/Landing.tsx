@@ -392,7 +392,7 @@ export default function Landing() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
-                    <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
+                    <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
                     <YAxis hide />
                     <Tooltip cursor={{ stroke: 'var(--t-fog)', strokeDasharray: '4 4' }} content={<SalesTooltip />} />
                     <Area type="monotone" dataKey="omzet" stroke="var(--t-jet)" strokeWidth={2} fill="url(#landingSales)" />

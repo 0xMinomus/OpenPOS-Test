@@ -102,7 +102,7 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
+                  <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
                   <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => fmtShort(v)} className="font-mono text-xs" />
                   <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
                   <Area dataKey="omzet" type="natural" fill="url(#fillOmzet)" stroke="var(--color-omzet)" strokeWidth={2} />
