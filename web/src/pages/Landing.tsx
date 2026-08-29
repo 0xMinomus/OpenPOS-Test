@@ -367,7 +367,7 @@ export default function Landing() {
               <h2 className="mt-5 text-[clamp(30px,3.8vw,46px)] font-normal leading-[1.14] tracking-[-0.025em]">
                 Sederhana untuk siapa pun, andal untuk bisnis yang bertumbuh.
               </h2>
-              <p className="mt-5 text-lg leading-relaxed text-muted">
+              <p className="mt-10 text-lg leading-relaxed text-muted">
                 OpenPOS lahir dari masalah yang sering terjadi. Mayoritas UMKM di Indonesia masih mencatat penjualan di buku kas atau Excel, sementara aplikasi kasir yang ada umumnya berbayar per bulan dan terlalu rumit untuk dipelajari.
               </p>
               <p className="mt-4 text-lg leading-relaxed text-muted">
