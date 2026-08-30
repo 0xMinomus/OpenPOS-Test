@@ -447,7 +447,7 @@ function Footer() {
         <div className="flex flex-col gap-1.5 text-right md:items-end">
           <span className="font-mono text-xs">© 2026 OpenPOS</span>
           <span className="font-mono text-xs">gratis selamanya · untuk UMKM</span>
-          <span className="font-mono text-xs">v1.0 · MVP</span>
+          <span className="font-mono text-xs">v1.0</span>
         </div>
       </div>
     </footer>
