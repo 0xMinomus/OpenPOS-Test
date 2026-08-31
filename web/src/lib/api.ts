@@ -233,6 +233,17 @@ export function apiMe() {
   return request<{ user: User }>('GET', '/auth/me')
 }
 
+// ── verifikasi email OTP ─────────────────────────────────────────────
+// Kontrak: docs/API-CONTRACT-EMAIL-OTP.md (diajukan ke backend developer)
+
+export function apiSendOtp(email: string) {
+  return request<{ message: string }>('POST', '/auth/otp/send', { email }, false)
+}
+
+export function apiVerifyOtp(email: string, code: string) {
+  return request<{ verified: boolean; message: string }>('POST', '/auth/otp/verify', { email, code }, false)
+}
+
 // ── users ────────────────────────────────────────────────────────────
 
 export function apiListUsers() {
