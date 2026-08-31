@@ -114,11 +114,11 @@ export default function Daftar() {
           aria-hidden="true"
         />
         <section className="auth-card w-full max-w-110 rounded-2xl bg-cream p-10">
-          <div className="mb-7 flex items-center gap-2" aria-label="Langkah pendaftaran">
+          <div className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Langkah pendaftaran">
             {STEPS.map((s, i) => (
-              <div key={s.n} className={`flex items-center gap-2 font-mono text-xs ${step >= s.n ? 'text-jet' : 'text-fog'}`}>
-                {i > 0 && <span className="h-px w-6 bg-dove" />}
-                <span className={`grid h-5.5 w-5.5 place-items-center rounded-full border text-[11px] ${step >= s.n ? 'border-jet bg-jet text-paper' : 'border-dove'}`}>
+              <div key={s.n} className={`flex items-center gap-1.5 font-mono text-[10px] ${step >= s.n ? 'text-jet' : 'text-fog'}`}>
+                {i > 0 && <span className="h-px w-3.5 bg-dove" />}
+                <span className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] ${step >= s.n ? 'border-jet bg-jet text-paper' : 'border-dove'}`}>
                   {step > s.n ? '✓' : s.n}
                 </span>
                 {s.label}
