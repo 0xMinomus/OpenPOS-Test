@@ -44,6 +44,7 @@ export default function Daftar() {
       if (x instanceof ApiError && x.status === 429) setCooldown(60)
       setOtpMsg('')
       setErr(x instanceof Error ? x.message : 'Gagal mengirim kode. Coba lagi.')
+      throw x
     }
   }
 
@@ -176,7 +177,7 @@ export default function Daftar() {
               </button>
               <button
                 type="button"
-                onClick={sendOtp}
+                onClick={() => sendOtp().catch(() => {})}
                 disabled={cooldown > 0 || busy}
                 className="text-center text-[13px] text-muted hover:underline disabled:opacity-50"
               >
