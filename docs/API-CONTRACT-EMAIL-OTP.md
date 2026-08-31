@@ -24,12 +24,16 @@ Mengirim kode OTP 6 digit ke email. Tersimpan di server dengan masa berlaku.
 | Status | Body |
 |---|---|
 | 400 | `{ "error": "Email tidak valid." }` |
+| **409** | `{ "error": "Email sudah terdaftar. Silakan masuk." }` — **email sudah punya akun, OTP tidak dikirim** |
 | 429 | `{ "error": "Terlalu sering meminta kode. Coba lagi dalam 60 detik." }` |
+
+> **Amendemen:** `POST /auth/otp/send` wajib menolak (409) email yang sudah terdaftar sebagai user/cashier — frontend memakai ini untuk menampilkan larangan di langkah pertama pendaftaran sebelum OTP dikirim.
 
 **Aturan:**
 - OTP 6 digit, **kedaluwarsa 10 menit** sejak dikirim.
 - Cooldown kirim ulang 60 detik per email (429 bila dilanggar).
 - OTP terbaru menggantikan OTP lama untuk email yang sama.
+- Email yang sudah terdaftar → **409, OTP tidak dikirim**.
 
 ## 2. `POST /auth/otp/verify` — publik
 

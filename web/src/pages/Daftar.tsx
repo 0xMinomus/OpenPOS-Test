@@ -28,11 +28,6 @@ export default function Daftar() {
   const [cooldown, setCooldown] = useState(0)
 
   useEffect(() => {
-    if (step !== 2) return
-    sendOtp()
-  }, [step])
-
-  useEffect(() => {
     if (cooldown <= 0) return
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
     return () => clearTimeout(t)
@@ -101,7 +96,11 @@ export default function Daftar() {
     if (!name.trim()) return setErr('Nama wajib diisi.')
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setErr('Masukkan alamat email yang valid.')
     if (password.length < 8) return setErr('Kata sandi minimal 8 karakter.')
-    setStep(2)
+    setBusy(true)
+    sendOtp()
+      .then(() => setStep(2))
+      .catch(() => {})
+      .finally(() => setBusy(false))
   }
 
   return (
@@ -152,7 +151,7 @@ export default function Daftar() {
                 Kata sandi
                 <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" placeholder="Minimal 8 karakter" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
               </label>
-              <button type="submit" className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85">Lanjutkan</button>
+              <button type="submit" disabled={busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Mengirim kode…' : 'Lanjutkan'}</button>
             </form>
           )}
 
