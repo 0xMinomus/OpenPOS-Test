@@ -125,10 +125,7 @@ export default function Landing() {
       <main>
         <section id="beranda" className="overflow-hidden pt-[clamp(36px,5vw,92px)] pb-10">
           <div className="container mx-auto max-w-6xl px-5 md:px-8 text-center">
-            <span className="hero-reveal beta-pill inline-flex items-center rounded-full bg-sand px-3.5 py-1.5 text-xs font-medium tracking-wide text-jet">
-              100% gratis · untuk UMKM
-            </span>
-            <h1 className="hero-reveal mx-auto mt-4 text-[clamp(30px,8.5vw,40px)] font-normal leading-[1.08] tracking-[-0.025em] sm:text-[clamp(40px,5.2vw,60px)]">
+            <h1 className="hero-reveal mx-auto mt-8 text-[clamp(30px,8.5vw,40px)] font-normal leading-[1.08] tracking-[-0.025em] sm:text-[clamp(40px,5.2vw,60px)]">
               Aplikasi kasir gratis<br />untuk toko Anda.
             </h1>
             <p className="hero-reveal mx-auto mt-4 max-w-[520px] text-base leading-relaxed text-muted sm:mt-6 sm:text-lg">
