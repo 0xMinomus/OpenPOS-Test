@@ -30,15 +30,12 @@ export default function Navbar({ dark }: { dark?: boolean }) {
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur-xl">
-      <div className="relative mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 md:gap-5 md:px-8">
+      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 md:gap-5 md:px-8">
         <Link to="/" onClick={goHome} className="flex items-center justify-self-start">
           <img src="/logo.png" alt="OpenPOS" className="h-6 w-auto sm:h-7" />
         </Link>
         {!dark && (
-          <nav
-            className="hidden gap-8 text-sm text-muted md:absolute md:left-1/2 md:flex md:-translate-x-1/2"
-            aria-label="Navigasi utama"
-          >
+          <nav className="hidden gap-8 text-sm text-muted md:flex" aria-label="Navigasi utama">
             {SECTIONS.map((s) => (
               <button key={s.id} onClick={() => goSection(s.id)} className="hover:text-jet">{s.label}</button>
             ))}
