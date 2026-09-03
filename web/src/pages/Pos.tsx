@@ -16,6 +16,7 @@ export default function Pos() {
   const [discount, setDiscount] = useState(0)
   const [method, setMethod] = useState<PayMethod>('Cash')
   const [paid, setPaid] = useState('')
+  const [exactCash, setExactCash] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -42,7 +43,7 @@ export default function Pos() {
   const subtotal = cart.reduce((n, l) => n + l.product.sell_price * l.qty, 0)
   const tax = Math.round((subtotal - discount) * (taxPct / 100))
   const total = subtotal - discount + tax
-  const change = Number(paid) - total
+  const change = exactCash ? 0 : Number(paid) - total
 
   function add(p: Product) {
     setCart((c) => {
@@ -69,17 +70,17 @@ export default function Pos() {
   async function checkout() {
     setErr('')
     if (cart.length === 0) return setErr('Keranjang kosong.')
-    if (method === 'Cash' && (!paid || change < 0)) return setErr('Jumlah bayar kurang dari total.')
+    if (method === 'Cash' && !exactCash && (!paid || change < 0)) return setErr('Jumlah bayar kurang dari total.')
     setBusy(true)
     try {
       const trx = await apiCheckout({
         items: cart.map((l) => ({ productId: l.product.id, qty: l.qty })),
         discount,
         method,
-        paid: method === 'Cash' ? Number(paid) : 0,
+        paid: method === 'Cash' ? (exactCash ? total : Number(paid)) : 0,
       })
       setReceipt(trx)
-      setCart([]); setDiscount(0); setPaid(''); setPayOpen(false)
+      setCart([]); setDiscount(0); setPaid(''); setExactCash(false); setPayOpen(false)
       load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menyelesaikan transaksi.')
@@ -205,18 +206,32 @@ export default function Pos() {
             </div>
           </div>
           {method === 'Cash' ? (
-            <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
-              Jumlah dibayar
-              <input
-                type="number" min="0" value={paid} onChange={(e) => setPaid(e.target.value)}
-                placeholder="0" autoFocus
-                className="rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] focus:border-jet focus:outline-none"
-              />
-            </label>
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={exactCash}
+                  onChange={(e) => { setExactCash(e.target.checked); if (e.target.checked) setPaid('') }}
+                  className="h-4 w-4 accent-jet"
+                />
+                Uang Pas
+                <span className="text-[13px] text-muted">total dibayar tunai pas, tanpa kembalian</span>
+              </label>
+              {!exactCash && (
+                <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+                  Jumlah dibayar
+                  <input
+                    type="number" min="0" value={paid} onChange={(e) => setPaid(e.target.value)}
+                    placeholder="0" autoFocus
+                    className="rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] focus:border-jet focus:outline-none"
+                  />
+                </label>
+              )}
+            </div>
           ) : (
             <p className="text-sm text-muted">Total {fmtRp(total)} akan dicatat sebagai pembayaran {method}.</p>
           )}
-          {method === 'Cash' && paid && change >= 0 && (
+          {method === 'Cash' && (exactCash ? change === 0 : paid) && change >= 0 && (
             <div className="flex justify-between rounded-lg bg-surface px-3.5 py-3 text-sm">
               <span className="text-muted">Kembalian</span>
               <span className="font-mono font-medium tabular-nums">{fmtRp(change)}</span>
