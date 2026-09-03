@@ -397,8 +397,8 @@ export default function Landing() {
                     <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
                     <YAxis hide />
                     <Tooltip cursor={{ stroke: 'var(--t-fog)', strokeDasharray: '4 4' }} content={<SalesTooltip />} />
-                    <Area className="landing-chart-hover" type="monotone" dataKey="omzet" stroke="oklch(0.5 0.1 160)" strokeWidth={2} fill="url(#landingSalesHover)" />
                     <Area type="monotone" dataKey="omzet" stroke="var(--t-jet)" strokeWidth={2} fill="url(#landingSales)" />
+                    <Area className="landing-chart-hover" type="monotone" dataKey="omzet" stroke="oklch(0.5 0.1 160)" strokeWidth={2} fill="url(#landingSalesHover)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
