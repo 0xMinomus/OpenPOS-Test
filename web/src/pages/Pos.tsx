@@ -215,7 +215,6 @@ export default function Pos() {
                   className="h-4 w-4 accent-jet"
                 />
                 Uang Pas
-                <span className="text-[13px] text-muted">total dibayar tunai pas, tanpa kembalian</span>
               </label>
               {!exactCash && (
                 <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
