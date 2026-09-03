@@ -14,7 +14,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyTitle } from '@/components/
 const DAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
 const salesConfig = {
-  omzet: { label: 'Omzet', color: 'var(--chart-1)' },
+  omzet: { label: 'Omzet', color: 'var(--chart-omzet)' },
 } as const
 
 const payConfig = {
