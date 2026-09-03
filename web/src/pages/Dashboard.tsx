@@ -52,10 +52,10 @@ export default function Dashboard() {
   const recent = data.recent
 
   const kpis = [
-    { label: 'Omzet hari ini', value: fmtRp(today.omzet), sub: 'dari semua metode bayar', icon: Banknote },
-    { label: 'Transaksi hari ini', value: String(today.trx_count), sub: 'selesai · tercatat otomatis', icon: ReceiptText },
-    { label: 'Produk terjual', value: String(today.items_sold), sub: 'satuan terjual hari ini', icon: Package },
-    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), sub: 'perlu di-restock', icon: TriangleAlert }] : []),
+    { label: 'Omzet hari ini', value: fmtRp(today.omzet), sub: 'dari semua metode bayar', icon: Banknote, color: 'text-[var(--chart-1)]' },
+    { label: 'Transaksi hari ini', value: String(today.trx_count), sub: 'selesai · tercatat otomatis', icon: ReceiptText, color: 'text-[var(--chart-2)]' },
+    { label: 'Produk terjual', value: String(today.items_sold), sub: 'satuan terjual hari ini', icon: Package, color: 'text-[var(--chart-3)]' },
+    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), sub: 'perlu di-restock', icon: TriangleAlert, color: 'text-[var(--chart-5)]' }] : []),
   ]
 
   return (
@@ -75,7 +75,7 @@ export default function Dashboard() {
           <Card key={k.label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">{k.label}</CardTitle>
-              <k.icon className="size-4 text-muted-foreground" />
+              <k.icon className={`size-4 ${k.color}`} />
             </CardHeader>
             <CardContent>
               <p className="font-mono text-2xl font-medium tabular-nums">{k.value}</p>
@@ -164,7 +164,7 @@ export default function Dashboard() {
                         <span className="font-mono text-xs tabular-nums text-muted-foreground">{p.qty} pcs</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-foreground" style={{ width: `${Math.round((p.qty / topMax) * 100)}%` }} />
+                        <div className="h-full rounded-full" style={{ width: `${Math.round((p.qty / topMax) * 100)}%`, background: 'var(--chart-2)' }} />
                       </div>
                     </div>
                   ))}
@@ -252,12 +252,12 @@ export default function Dashboard() {
 }
 
 function TrxBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-    completed: { label: 'Selesai', variant: 'default' },
-    pending: { label: 'Proses', variant: 'outline' },
-    cancelled: { label: 'Dibatalkan', variant: 'secondary' },
-    refunded: { label: 'Refund', variant: 'secondary' },
+  const map: Record<string, { label: string; className: string }> = {
+    completed: { label: 'Selesai', className: 'bg-[var(--t-success-bg)] text-[var(--t-sprout)]' },
+    pending: { label: 'Proses', className: 'bg-muted text-muted-foreground' },
+    cancelled: { label: 'Dibatalkan', className: 'bg-muted text-muted-foreground' },
+    refunded: { label: 'Refund', className: 'bg-[color-mix(in_oklch,var(--chart-5)_14%,transparent)] text-[var(--chart-5)]' },
   }
-  const b = map[status] ?? { label: status, variant: 'outline' as const }
-  return <Badge variant={b.variant}>{b.label}</Badge>
+  const b = map[status] ?? { label: status, className: 'bg-muted text-muted-foreground' }
+  return <Badge className={b.className}>{b.label}</Badge>
 }
