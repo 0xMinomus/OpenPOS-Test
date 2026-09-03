@@ -96,7 +96,6 @@ export default function Pos() {
           <h1 className="text-2xl font-normal tracking-tight sm:text-3xl">POS Kasir</h1>
           <p className="mt-1 text-sm text-muted">Cari produk, tambah ke keranjang, selesaikan pembayaran.</p>
         </div>
-        <Button onClick={() => { setPayOpen(true); setErr('') }} disabled={cart.length === 0}>Bayar · Selesaikan Transaksi</Button>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
