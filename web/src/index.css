@@ -248,6 +248,9 @@ button { cursor: pointer; }
   .hero-reveal:nth-child(4) { animation-delay: 0.26s; }
   .hero-visual { animation: rise 0.6s cubic-bezier(0.2, 0, 0, 1) both; animation-delay: 0.34s; }
 
+  .landing-chart-hover { transition: opacity 0.35s ease; opacity: 0; }
+  .landing-chart:hover .landing-chart-hover { opacity: 1; }
+
   .pos-product { transition: transform 0.15s ease, border-color 0.15s ease; }
   .pos-product:hover { transform: translateY(-2px); border-color: #6a6a6a; }
   .pos-item { animation: slide-in 0.22s ease both; }

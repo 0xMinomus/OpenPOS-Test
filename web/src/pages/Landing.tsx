@@ -380,19 +380,24 @@ export default function Landing() {
                 </span>
                 <span className="font-mono text-xs tracking-wide text-steel">openpos · penjualan 7 hari terakhir</span>
               </div>
-              <div className="h-52 w-full">
+<div className="landing-chart h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-<AreaChart data={sales7} margin={{ top: 4, right: 14, bottom: 4, left: 14 }}>
-                      <defs>
-                        <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="var(--t-jet)" stopOpacity={0.02} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
-                      <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
+                  <AreaChart data={sales7} margin={{ top: 4, right: 14, bottom: 4, left: 14 }}>
+                    <defs>
+                      <linearGradient id="landingSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--t-jet)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="var(--t-jet)" stopOpacity={0.02} />
+                      </linearGradient>
+                      <linearGradient id="landingSalesHover" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="oklch(0.5 0.1 160)" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="oklch(0.5 0.1 160)" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--t-dove)" />
+                    <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono', fill: 'var(--t-fog)' }} />
                     <YAxis hide />
                     <Tooltip cursor={{ stroke: 'var(--t-fog)', strokeDasharray: '4 4' }} content={<SalesTooltip />} />
+                    <Area className="landing-chart-hover" type="monotone" dataKey="omzet" stroke="oklch(0.5 0.1 160)" strokeWidth={2} fill="url(#landingSalesHover)" />
                     <Area type="monotone" dataKey="omzet" stroke="var(--t-jet)" strokeWidth={2} fill="url(#landingSales)" />
                   </AreaChart>
                 </ResponsiveContainer>
