@@ -43,7 +43,7 @@ export default function Transaksi() {
     }
     exportCSV('transaksi.csv', [
       ['id', 'waktu', 'kasir', 'metode', 'subtotal', 'diskon', 'pajak', 'total', 'dibayar', 'kembalian', 'status'],
-      ...all.map((t) => [t.id, t.time, t.cashier_name, t.method, String(t.subtotal), String(t.discount), String(t.tax), String(t.total), String(t.paid), String(t.change), t.status]),
+      ...all.map((t) => [t.id, t.created_at, t.cashier_name, t.method, String(t.subtotal), String(t.discount), String(t.tax), String(t.total), String(t.paid), String(t.change), t.status]),
     ])
   }
 
@@ -115,7 +115,7 @@ export default function Transaksi() {
               {trx.map((t) => (
                 <tr key={t.id}>
                   <Td mono>{t.id}</Td>
-                  <Td mono>{fmtDate(t.time)} {fmtTime(t.time)}</Td>
+                  <Td mono>{fmtDate(t.created_at)} {fmtTime(t.created_at)}</Td>
                   <Td>{t.cashier_name}</Td>
                   <Td>{t.method}</Td>
                   <Td right>{fmtRp(t.total)}</Td>
@@ -195,7 +195,7 @@ function TrxDetail({ t }: { t: Trx }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg bg-surface p-4 font-mono text-[13px]">
-        <span className="text-fog">Waktu</span><span>{fmtDate(t.time)} {fmtTime(t.time)}</span>
+        <span className="text-fog">Waktu</span><span>{fmtDate(t.created_at)} {fmtTime(t.created_at)}</span>
         <span className="text-fog">Kasir</span><span>{t.cashier_name}</span>
         <span className="text-fog">Metode</span><span>{t.method}</span>
         <span className="text-fog">Status</span><span><StatusPill status={t.status} /></span>

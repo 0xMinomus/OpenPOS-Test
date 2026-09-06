@@ -149,7 +149,7 @@ export interface Trx {
   change: number
   status: 'completed' | 'pending' | 'cancelled' | 'refunded'
   customer: string
-  time: string
+  created_at: string
 }
 
 export interface Movement {

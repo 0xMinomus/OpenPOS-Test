@@ -252,7 +252,7 @@ export default function Pos() {
 
 function Receipt({ trx, settings, onClose }: { trx: Trx; settings: StoreSettings | null; onClose: () => void }) {
   const st = settings ?? { storeName: '', address: '', phone: '', receiptHeader: '', receiptFooter: '', paper: '58mm' } as StoreSettings
-  const t = new Date(trx.time)
+  const t = new Date(trx.created_at)
   const date = t.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
   const time = t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   return (
