@@ -1,8 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import ErrorBoundary from './lib/ErrorBoundary'
-import { apiGetCashierShift } from './lib/api'
 import { useDB } from './lib/store'
 import Landing from './pages/Landing'
 import Masuk from './pages/Masuk'
@@ -20,28 +19,15 @@ import Shift from './pages/Shift'
 
 // Kasir hanya boleh bekerja saat shift berjalan: tanpa shift aktif,
 // dashboard, POS, dan transaksi dialihkan ke halaman Shift.
+// Status shift dibaca dari store global (di-refresh AppShell, di-update instan saat mulai/tutup).
 function RequireShift({ children }: { children: ReactNode }) {
   const db = useDB()
   const s = db.session
-  const [state, setState] = useState<'loading' | 'ok' | 'none'>('loading')
-
-  useEffect(() => {
-    if (!s) return
-    if (s.role !== 'cashier') {
-      setState('ok')
-      return
-    }
-    let dead = false
-    setState('loading')
-    apiGetCashierShift()
-      .then((d) => { if (!dead) setState(d?.shift?.started_at ? 'ok' : 'none') })
-      .catch(() => { if (!dead) setState('none') })
-    return () => { dead = true }
-  }, [s?.id, s?.role])
+  const active = db.shiftActive
 
   if (s?.role !== 'cashier') return <>{children}</>
-  if (state === 'loading') return <p className="py-14 text-center text-sm text-muted-foreground">Memuat…</p>
-  if (state === 'none') return <Navigate to="/app/shift" replace />
+  if (active === null) return <p className="py-14 text-center text-sm text-muted-foreground">Memuat…</p>
+  if (active === false) return <Navigate to="/app/shift" replace />
   return <>{children}</>
 }
 

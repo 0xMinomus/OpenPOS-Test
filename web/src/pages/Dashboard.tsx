@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Clock, Package, ReceiptText, TriangleAlert } from 'lucide-react'
 import { apiCloseShift, apiGetCashierShift, apiGetDashboard, apiListTransactions, fetchAll, type CashierShift, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
-import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
+import { fmtDate, fmtRp, fmtShort, fmtTime, setShiftActive, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -88,6 +88,7 @@ export default function Dashboard() {
     try {
       await apiCloseShift()
       setShift(null)
+      setShiftActive(false)
       setData(null)
       apiGetDashboard().then((d) => { setData(d); setDataFor(sessionKey) }).catch(() => {})
     } catch (x) {

@@ -5,7 +5,7 @@ import {
   Moon, Sun, LogOut, ChevronsUpDown, Check,
 } from 'lucide-react'
 import { ApiError, apiGetCashierShift, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
-import { setSession, toSession, useDB, useTheme } from '../lib/store'
+import { setSession, setShiftActive, toSession, useDB, useTheme } from '../lib/store'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
   SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -31,7 +31,6 @@ export default function AppShell() {
   const loc = useLocation()
   const [theme, setTheme] = useTheme()
   const [boot, setBoot] = useState(!hasToken())
-  const [shiftState, setShiftState] = useState<'loading' | 'ok' | 'none'>('loading')
   const s = db.session
 
   useEffect(() => {
@@ -44,17 +43,19 @@ export default function AppShell() {
     return () => { dead = true }
   }, [s])
 
-  // Status shift kasir: tanpa shift aktif, menu Dashboard/POS/Transaksi dikunci.
+  // Status shift kasir (sumber kebenaran global). Saat admin/kasir ganti akun,
+  // status di-refresh dari server; aksi mulai/tutup shift meng-update langsung.
   useEffect(() => {
-    if (!s || s.role !== 'cashier') {
-      setShiftState('ok')
+    if (!s) return
+    if (s.role !== 'cashier') {
+      setShiftActive(true)
       return
     }
     let dead = false
-    setShiftState('loading')
+    setShiftActive(null)
     apiGetCashierShift()
-      .then((d) => { if (!dead) setShiftState(d?.shift?.started_at ? 'ok' : 'none') })
-      .catch(() => { if (!dead) setShiftState('none') })
+      .then((d) => { if (!dead) setShiftActive(!!d?.shift?.started_at) })
+      .catch(() => { if (!dead) setShiftActive(false) })
     return () => { dead = true }
   }, [s?.id, s?.role])
 
@@ -64,7 +65,7 @@ export default function AppShell() {
   }
 
   const menu = MENU.filter((m) => !m.adminOnly || s.role === 'admin')
-  const shiftLocked = s.role === 'cashier' && shiftState === 'none'
+  const shiftLocked = s.role === 'cashier' && db.shiftActive === false
   const lockedTo = new Set(['/app', '/app/pos', '/app/transaksi'])
 
   return (

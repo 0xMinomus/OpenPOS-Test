@@ -5,7 +5,7 @@ import {
   apiCloseShift, apiGetCashierShift, apiListShifts, apiStartShift,
   type CashierShift, type ShiftLog,
 } from '../lib/api'
-import { fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
+import { fmtDate, fmtRp, fmtTime, setShiftActive, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
@@ -33,9 +33,13 @@ export default function Shift() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [openingCash, setOpeningCash] = useState('')
+  const [loaded, setLoaded] = useState(false)
 
   function loadShift() {
-    apiGetCashierShift().then(setShift).catch(() => setShift(null))
+    setLoaded(false)
+    apiGetCashierShift()
+      .then((d) => { setShift(d); setLoaded(true) })
+      .catch(() => { setShift(null); setLoaded(true) })
   }
   function loadLogs() {
     if (s.role !== 'admin') return
@@ -48,6 +52,7 @@ export default function Shift() {
     try {
       const st = await apiStartShift(openingCash ? Number(openingCash) : undefined)
       setShift({ shift: st, hourly: [], top_products: [] })
+      setShiftActive(true)
       setOpeningCash('')
       loadLogs()
       nav('/app', { replace: true })
@@ -64,6 +69,7 @@ export default function Shift() {
     try {
       await apiCloseShift()
       setShift(null)
+      setShiftActive(false)
       loadLogs()
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Gagal menutup shift.')
@@ -88,7 +94,9 @@ export default function Shift() {
 
       {s.role === 'cashier' && (
         <div className="space-y-5">
-          {active ? (
+          {!loaded ? (
+            <div className="h-28 animate-pulse rounded-2xl bg-muted" />
+          ) : active ? (
             <Card>
               <CardContent className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 p-5">
                 <div className="flex items-center gap-3">

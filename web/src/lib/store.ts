@@ -17,10 +17,12 @@ export function toSession(u: User): Session {
 }
 
 let session: Session | null = null
+// Status shift aktif (kasir): null = belum diketahui (loading), false = terkunci.
+let shiftActive: boolean | null = null
 let version = 0
 const subs = new Set<() => void>()
 
-export function useDB(): { session: Session | null } {
+export function useDB(): { session: Session | null; shiftActive: boolean | null } {
   useSyncExternalStore(
     (cb) => {
       subs.add(cb)
@@ -28,7 +30,7 @@ export function useDB(): { session: Session | null } {
     },
     () => version,
   )
-  return { session }
+  return { session, shiftActive }
 }
 
 export function setSession(s: Session | null) {
@@ -37,8 +39,18 @@ export function setSession(s: Session | null) {
   subs.forEach((cb) => cb())
 }
 
+export function setShiftActive(v: boolean | null) {
+  shiftActive = v
+  version++
+  subs.forEach((cb) => cb())
+}
+
 export function getSession(): Session | null {
   return session
+}
+
+export function getShiftActive(): boolean | null {
+  return shiftActive
 }
 
 // ── theme ────────────────────────────────────────────────────────────
