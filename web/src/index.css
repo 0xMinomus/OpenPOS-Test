@@ -175,6 +175,61 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Landing selalu terang: timpa semua token tema di dalam wrapper ini,
+   tanpa peduli class .dark di <html>. Ditaruh setelah blok .dark agar menang. */
+.landing-light {
+  --t-bg: #fffdf9;
+  --t-surface: #faf6ef;
+  --t-fg: #0a0a0a;
+  --t-muted: #57534a;
+  --t-border: #ddd3c2;
+  --t-jet: #0a0a0a;
+  --t-charcoal: #151515;
+  --t-fog: #8a8478;
+  --t-steel: #57534a;
+  --t-dove: #ddd3c2;
+  --t-cream: #faf6ef;
+  --t-paper: #ffffff;
+  --t-sand: #f3ede1;
+  --t-ember: #ff5f57;
+  --t-sunbeam: #ffbd2e;
+  --t-sprout: #28c840;
+  --t-success-bg: #eaf6ec;
+  --background: oklch(0.995 0.004 90);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.955 0.01 85);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.955 0.01 85);
+  --muted-foreground: oklch(0.52 0.01 85);
+  --accent: oklch(0.955 0.01 85);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.895 0.012 85);
+  --input: oklch(0.895 0.012 85);
+  --ring: oklch(0.68 0.015 85);
+  --chart-1: oklch(0.52 0.1 252);
+  --chart-2: oklch(0.55 0.09 195);
+  --chart-3: oklch(0.65 0.12 75);
+  --chart-4: oklch(0.55 0.12 290);
+  --chart-5: oklch(0.58 0.1 15);
+  --chart-omzet: oklch(0.5 0.1 160);
+  --sidebar: oklch(0.975 0.008 85);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.945 0.01 85);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.895 0.012 85);
+  --sidebar-ring: oklch(0.68 0.015 85);
+  color-scheme: light;
+}
+
 html { scroll-behavior: smooth; overflow-x: hidden; }
 body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 button { cursor: pointer; }

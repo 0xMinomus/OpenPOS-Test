@@ -120,7 +120,7 @@ export default function Landing() {
   }
 
   return (
-    <div className="bg-bg text-fg">
+    <div className="landing-light bg-bg text-fg">
       <Navbar />
       <main>
         <section id="beranda" className="overflow-hidden pt-[clamp(36px,5vw,92px)] pb-10">
@@ -163,10 +163,7 @@ export default function Landing() {
             />
             <div className="relative z-1 overflow-hidden rounded-xl border border-[#262626] bg-[#151515] shadow-[rgba(0,0,0,0.06)_0_0_0_1px,rgba(15,23,42,0.18)_0_18px_40px_-24px]">
               <div className="flex items-center gap-2 border-b border-[#262626] px-4.5 py-3.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-ember" />
-                <span className="h-2.5 w-2.5 rounded-full bg-sunbeam" />
-                <span className="h-2.5 w-2.5 rounded-full bg-sprout" />
-                <span className="ml-2 font-mono text-xs tracking-wide text-[#9d9d9d]">openpos · kasir</span>
+                <span className="font-mono text-xs tracking-wide text-[#9d9d9d]">openpos · kasir</span>
               </div>
               <div className="p-3 sm:p-5">
                 <input
@@ -373,11 +370,6 @@ export default function Landing() {
             </div>
             <div className="reveal rounded-2xl bg-cream p-8" data-delay="1">
               <div className="mb-5 flex items-center gap-2">
-                <span className="flex gap-1.5" aria-hidden="true">
-                  <span className="h-2.5 w-2.5 rounded-full bg-ember" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-sunbeam" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-sprout" />
-                </span>
                 <span className="font-mono text-xs tracking-wide text-steel">openpos · penjualan 7 hari terakhir</span>
               </div>
 <div className="landing-chart h-52 w-full">
