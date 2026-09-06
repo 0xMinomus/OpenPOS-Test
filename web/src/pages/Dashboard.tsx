@@ -74,6 +74,77 @@ export default function Dashboard() {
     ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), icon: TriangleAlert, tint: iconTint.rose }] : []),
   ]
 
+  if (!isAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Halo, {s.name}</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {today.trx_count > 0
+                ? `${today.trx_count} transaksi hari ini dengan omzet ${fmtRp(today.omzet)}.`
+                : 'Belum ada transaksi hari ini.'}
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground">{fmtDate(new Date().toISOString())}</p>
+        </div>
+
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+            <div className="flex items-center gap-3">
+              <div className="grid size-11 place-items-center rounded-xl bg-[color-mix(in_oklch,var(--chart-omzet)_12%,transparent)]">
+                <Store className="size-5 text-[var(--chart-omzet)]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Kasir siap</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Mulai transaksi baru untuk pelanggan.</p>
+              </div>
+            </div>
+            <Button size="lg" render={<Link to="/app/pos" />}>Buka POS</Button>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          {kpis.map((k) => (
+            <Card key={k.label}>
+              <CardContent className="relative min-h-36 p-5">
+                <span className={`absolute right-5 top-5 grid size-9 place-items-center rounded-lg ${k.tint.bg}`}>
+                  <k.icon className={`size-4.5 ${k.tint.color}`} />
+                </span>
+                <div className="flex h-full flex-col justify-center pr-9">
+                  <span className="text-sm font-medium text-muted-foreground">{k.label}</span>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">{k.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base">Transaksi saya</CardTitle>
+              <CardDescription>Hari ini</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" render={<Link to="/app/transaksi" />}>
+              Lihat semua
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {recent.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">Belum ada transaksi. Mulai dari POS Kasir.</p>
+                <Button className="mt-4" render={<Link to="/app/pos" />}>Buka POS</Button>
+              </div>
+            ) : (
+              <RecentList recent={recent} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -192,43 +263,11 @@ export default function Dashboard() {
             {recent.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi.</p>
             ) : (
-              <div className="space-y-2">
-                {recent.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3.5 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{t.cashier_name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{fmtTime(t.time)}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2.5">
-                      <span className="text-sm font-semibold tabular-nums">{fmtRp(t.total)}</span>
-                      <TrxBadge status={t.status} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <RecentList recent={recent} />
             )}
           </CardContent>
         </Card>
       </div>
-
-      {s.role === 'cashier' && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-            <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-xl bg-muted">
-                <Store className="size-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Ringkasan shift Anda</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {today.trx_count} transaksi · {fmtRp(today.omzet)}. Hanya transaksi yang Anda buat.
-                </p>
-              </div>
-            </div>
-            <Button render={<Link to="/app/pos" />}>Buka POS</Button>
-          </CardContent>
-        </Card>
-      )}
 
       {isAdmin && admin.today.trx_count === 0 && (
         <Empty>
@@ -261,6 +300,25 @@ function DashboardSkeleton() {
         <div className="h-64 animate-pulse rounded-2xl bg-muted" />
         <div className="h-64 animate-pulse rounded-2xl bg-muted" />
       </div>
+    </div>
+  )
+}
+
+function RecentList({ recent }: { recent: DashboardAdmin['recent'] }) {
+  return (
+    <div className="space-y-2">
+      {recent.map((t) => (
+        <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3.5 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{t.cashier_name}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{fmtTime(t.time)}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2.5">
+            <span className="text-sm font-semibold tabular-nums">{fmtRp(t.total)}</span>
+            <TrxBadge status={t.status} />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
