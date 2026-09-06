@@ -36,15 +36,23 @@ export default function Dashboard() {
   const s = db.session!
   const [data, setData] = useState<DashboardAdmin | DashboardCashier | null>(null)
   const [err, setErr] = useState('')
+  // Kunci sesi pemilik data: cegah render data kasir sebagai admin (atau sebaliknya)
+  // saat ganti akun — crash terjadi di render, sebelum effect sempat fetch ulang.
+  const sessionKey = `${s.id}:${s.role}`
+  const [dataFor, setDataFor] = useState(sessionKey)
 
   useEffect(() => {
+    let dead = false
     setData(null)
     setErr('')
-    apiGetDashboard().then(setData).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat dashboard.'))
-  }, [s.id, s.role])
+    apiGetDashboard()
+      .then((d) => { if (!dead) { setData(d); setDataFor(sessionKey) } })
+      .catch((e) => { if (!dead) setErr(e instanceof Error ? e.message : 'Gagal memuat dashboard.') })
+    return () => { dead = true }
+  }, [sessionKey])
 
   if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
-  if (!data) return <DashboardSkeleton />
+  if (!data || dataFor !== sessionKey) return <DashboardSkeleton />
 
   const today = data.today
   const isAdmin = s.role === 'admin'
