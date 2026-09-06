@@ -30,7 +30,7 @@ export default function Transaksi() {
       .catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat transaksi.'))
       .finally(() => setLoading(false))
   }
-  useEffect(() => { load() }, [q, method, date, page])
+  useEffect(() => { load() }, [q, method, date, page, s.id, s.role])
 
   const pages = Math.max(1, Math.ceil(total / PAGE))
 

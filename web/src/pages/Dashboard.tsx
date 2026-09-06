@@ -38,8 +38,10 @@ export default function Dashboard() {
   const [err, setErr] = useState('')
 
   useEffect(() => {
+    setData(null)
+    setErr('')
     apiGetDashboard().then(setData).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat dashboard.'))
-  }, [])
+  }, [s.id, s.role])
 
   if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
   if (!data) return <DashboardSkeleton />
