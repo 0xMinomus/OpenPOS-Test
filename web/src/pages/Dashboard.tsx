@@ -58,10 +58,10 @@ export default function Dashboard() {
   const recent = data.recent
 
   const kpis = [
-    { label: 'Omzet hari ini', value: fmtRp(today.omzet), sub: 'dari semua metode bayar', icon: Banknote, tint: iconTint.blue },
-    { label: 'Transaksi hari ini', value: String(today.trx_count), sub: 'transaksi selesai', icon: ReceiptText, tint: iconTint.teal },
-    { label: 'Produk terjual', value: String(today.items_sold), sub: 'satuan terjual hari ini', icon: Package, tint: iconTint.amber },
-    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), sub: 'perlu di-restock', icon: TriangleAlert, tint: iconTint.rose }] : []),
+    { label: 'Omzet hari ini', value: fmtRp(today.omzet), icon: Banknote, tint: iconTint.blue },
+    { label: 'Transaksi hari ini', value: String(today.trx_count), icon: ReceiptText, tint: iconTint.teal },
+    { label: 'Produk terjual', value: String(today.items_sold), icon: Package, tint: iconTint.amber },
+    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), icon: TriangleAlert, tint: iconTint.rose }] : []),
   ]
 
   return (
@@ -84,12 +84,11 @@ export default function Dashboard() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-muted-foreground">{k.label}</span>
-                <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${k.tint.bg}`}>
-                  <k.icon className={`size-5 ${k.tint.color}`} />
+                <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${k.tint.bg}`}>
+                  <k.icon className={`size-4.5 ${k.tint.color}`} />
                 </span>
               </div>
-              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight">{k.value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{k.sub}</p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight">{k.value}</p>
             </CardContent>
           </Card>
         ))}
