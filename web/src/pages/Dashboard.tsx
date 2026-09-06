@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Clock, Package, ReceiptText, TriangleAlert } from 'lucide-react'
-import { apiCloseShift, apiGetCashierShift, apiGetDashboard, type CashierShift, type DashboardAdmin, type DashboardCashier } from '../lib/api'
-import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
+import { apiCloseShift, apiGetCashierShift, apiGetDashboard, apiListTransactions, type CashierShift, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
+import { fmtDate, fmtRp, fmtShort, fmtTime, trxItemsLabel, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [err, setErr] = useState('')
   const [shift, setShift] = useState<CashierShift | null>(null)
   const [shiftBusy, setShiftBusy] = useState(false)
+  const [recentTrx, setRecentTrx] = useState<Trx[] | null>(null)
   // Kunci sesi pemilik data: cegah render data kasir sebagai admin (atau sebaliknya)
   // saat ganti akun — crash terjadi di render, sebelum effect sempat fetch ulang.
   const sessionKey = `${s.id}:${s.role}`
@@ -61,6 +62,15 @@ export default function Dashboard() {
     apiGetCashierShift()
       .then((d) => { if (!dead) setShift(d) })
       .catch(() => {})
+    return () => { dead = true }
+  }, [sessionKey])
+
+  // Transaksi terbaru dengan detail item (dashboard recent tidak membawa items).
+  useEffect(() => {
+    let dead = false
+    apiListTransactions({ limit: 5 })
+      .then((r) => { if (!dead) setRecentTrx(r.items) })
+      .catch(() => { if (!dead) setRecentTrx([]) })
     return () => { dead = true }
   }, [sessionKey])
 
@@ -93,7 +103,6 @@ export default function Dashboard() {
     : []
   const topProducts = isAdmin ? admin.top_products : []
   const topMax = Math.max(...topProducts.map((p) => p.qty), 1)
-  const recent = data.recent
 
   const kpis = [
     { label: 'Omzet hari ini', value: fmtRp(today.omzet), icon: Banknote, tint: iconTint.blue },
@@ -237,13 +246,15 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {recent.length === 0 ? (
+            {recentTrx === null ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Memuat…</p>
+            ) : recentTrx.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">Belum ada transaksi. Mulai dari POS Kasir.</p>
                 <Button className="mt-4" render={<Link to="/app/pos" />}>Buka POS</Button>
               </div>
             ) : (
-              <RecentList recent={recent} />
+              <RecentList items={recentTrx} />
             )}
           </CardContent>
         </Card>
@@ -367,10 +378,12 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {recent.length === 0 ? (
+            {recentTrx === null ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">Memuat…</p>
+            ) : recentTrx.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi.</p>
             ) : (
-              <RecentList recent={recent} />
+              <RecentList items={recentTrx} />
             )}
           </CardContent>
         </Card>
@@ -411,14 +424,14 @@ function DashboardSkeleton() {
   )
 }
 
-function RecentList({ recent }: { recent: DashboardAdmin['recent'] }) {
+function RecentList({ items }: { items: Trx[] }) {
   return (
     <div className="space-y-2">
-      {recent.map((t) => (
+      {items.map((t) => (
         <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3.5 py-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{t.cashier_name}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{fmtTime(t.time)}</p>
+            <p className="truncate text-sm font-medium">{trxItemsLabel(t.items)}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{fmtTime(t.created_at)}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2.5">
             <span className="text-sm font-semibold tabular-nums">{fmtRp(t.total)}</span>

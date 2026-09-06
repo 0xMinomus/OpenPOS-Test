@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
-import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
+import { exportCSV, fmtDate, fmtRp, fmtTime, trxItemsLabel, useDB } from '../lib/store'
 import { Button, Modal, PageHead, StatusPill, Td, Th } from '../lib/ui'
 
 const PAGE = 20
@@ -108,7 +108,7 @@ export default function Transaksi() {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <Th>ID</Th><Th>Waktu</Th><Th>Kasir</Th><Th>Metode</Th><Th right>Total</Th><Th>Status</Th><Th />
+                <Th>ID</Th><Th>Waktu</Th><Th>Kasir</Th><Th>Metode</Th><Th>Produk</Th><Th right>Total</Th><Th>Status</Th><Th />
               </tr>
             </thead>
             <tbody>
@@ -118,6 +118,9 @@ export default function Transaksi() {
                   <Td mono>{fmtDate(t.created_at)} {fmtTime(t.created_at)}</Td>
                   <Td>{t.cashier_name}</Td>
                   <Td>{t.method}</Td>
+                  <Td>
+                    <span className="line-clamp-2 max-w-64 text-[13px] leading-snug text-fg">{trxItemsLabel(t.items)}</span>
+                  </Td>
                   <Td right>{fmtRp(t.total)}</Td>
                   <Td><StatusPill status={t.status} /></Td>
                   <Td>
