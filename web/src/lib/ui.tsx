@@ -9,15 +9,15 @@ export function TrxItems({ items, className }: { items: TrxItem[]; className?: s
       {shown.map((i) => (
         <span
           key={i.product_id}
-          className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-dove bg-surface px-1.5 py-1"
+          className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-dove bg-surface px-2 py-1"
         >
-          <span className="truncate text-[12px] leading-none text-fg">{i.name}</span>
-          <span className="rounded-sm bg-paper px-1 py-0.5 font-mono text-[10px] font-medium leading-none tabular-nums text-steel ring-1 ring-dove">
+          <span className="truncate text-[13px] leading-none text-fg">{i.name}</span>
+          <span className="rounded-sm bg-paper px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none tabular-nums text-steel ring-1 ring-dove">
             ×{i.qty}
           </span>
         </span>
       ))}
-      {rest > 0 && <span className="text-xs text-fog">+{rest} lainnya</span>}
+      {rest > 0 && <span className="text-[13px] text-fog">+{rest} lainnya</span>}
     </div>
   )
 }
