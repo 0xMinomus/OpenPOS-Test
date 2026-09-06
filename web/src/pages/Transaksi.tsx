@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
-import { exportCSV, fmtDate, fmtRp, fmtTime, trxItemsLabel, useDB } from '../lib/store'
-import { Button, Modal, PageHead, StatusPill, Td, Th } from '../lib/ui'
+import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
+import { Button, Modal, PageHead, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 
 const PAGE = 20
 const METHODS = ['Semua', 'Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
@@ -119,7 +119,7 @@ export default function Transaksi() {
                   <Td>{t.cashier_name}</Td>
                   <Td>{t.method}</Td>
                   <Td>
-                    <span className="line-clamp-2 max-w-64 text-[13px] leading-snug text-fg">{trxItemsLabel(t.items)}</span>
+                    <TrxItems items={t.items} className="max-w-64" />
                   </Td>
                   <Td right>{fmtRp(t.total)}</Td>
                   <Td><StatusPill status={t.status} /></Td>

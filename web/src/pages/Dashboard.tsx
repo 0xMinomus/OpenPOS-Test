@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Clock, Package, ReceiptText, TriangleAlert } from 'lucide-react'
 import { apiCloseShift, apiGetCashierShift, apiGetDashboard, apiListTransactions, type CashierShift, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
-import { fmtDate, fmtRp, fmtShort, fmtTime, trxItemsLabel, useDB } from '../lib/store'
+import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyTitle } from '@/components/ui/empty'
+import { TrxItems } from '../lib/ui'
 
 const DAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
@@ -430,8 +431,8 @@ function RecentList({ items }: { items: Trx[] }) {
       {items.map((t) => (
         <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3.5 py-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{trxItemsLabel(t.items)}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{fmtTime(t.created_at)}</p>
+            <TrxItems items={t.items} />
+            <p className="mt-1 text-xs text-muted-foreground">{fmtTime(t.created_at)}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2.5">
             <span className="text-sm font-semibold tabular-nums">{fmtRp(t.total)}</span>

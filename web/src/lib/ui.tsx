@@ -1,4 +1,26 @@
 import type { ReactNode } from 'react'
+import type { TrxItem } from './api'
+
+export function TrxItems({ items, className }: { items: TrxItem[]; className?: string }) {
+  const shown = items.slice(0, 2)
+  const rest = items.length - shown.length
+  return (
+    <div className={`flex flex-wrap items-center gap-1.5 ${className ?? ''}`}>
+      {shown.map((i) => (
+        <span
+          key={i.product_id}
+          className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-dove bg-surface px-1.5 py-1"
+        >
+          <span className="truncate text-[12px] leading-none text-fg">{i.name}</span>
+          <span className="rounded-sm bg-paper px-1 py-0.5 font-mono text-[10px] font-medium leading-none tabular-nums text-steel ring-1 ring-dove">
+            ×{i.qty}
+          </span>
+        </span>
+      ))}
+      {rest > 0 && <span className="text-xs text-fog">+{rest} lainnya</span>}
+    </div>
+  )
+}
 
 export function Button({
   children, onClick, type = 'button', variant = 'primary', disabled, className = '',

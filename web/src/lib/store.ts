@@ -1,15 +1,8 @@
 import { useEffect, useSyncExternalStore, useState } from 'react'
-import type { Role, TrxItem, User } from './api'
+import type { Role, User } from './api'
 
 export type { Role }
 export type { Trx, Product, Category, Movement, StoreSettings, PayMethod } from './api'
-
-export function trxItemsLabel(items: TrxItem[]): string {
-  if (items.length === 0) return '—'
-  const label = items.slice(0, 2).map((i) => `${i.name} ×${i.qty}`).join(', ')
-  const rest = items.length - 2
-  return rest > 0 ? `${label} +${rest} lainnya` : label
-}
 
 export interface Session {
   id: string
