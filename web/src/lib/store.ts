@@ -53,7 +53,7 @@ export function applyTheme(pref: ThemePref) {
 export function useTheme(): [ThemePref, (p: ThemePref) => void] {
   const [pref, setPref] = useState<ThemePref>(() => {
     const saved = localStorage.getItem('op_theme')
-    return saved === 'light' ? 'light' : 'dark'
+    return saved === 'dark' ? 'dark' : 'light'
   })
   useEffect(() => {
     applyTheme(pref)
