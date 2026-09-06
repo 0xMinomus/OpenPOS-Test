@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings, Clock,
   Moon, Sun, LogOut, ChevronsUpDown, Check,
 } from 'lucide-react'
-import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
+import { ApiError, apiGetCashierShift, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
 import { setSession, toSession, useDB, useTheme } from '../lib/store'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
@@ -31,6 +31,7 @@ export default function AppShell() {
   const loc = useLocation()
   const [theme, setTheme] = useTheme()
   const [boot, setBoot] = useState(!hasToken())
+  const [shiftState, setShiftState] = useState<'loading' | 'ok' | 'none'>('loading')
   const s = db.session
 
   useEffect(() => {
@@ -43,12 +44,28 @@ export default function AppShell() {
     return () => { dead = true }
   }, [s])
 
+  // Status shift kasir: tanpa shift aktif, menu Dashboard/POS/Transaksi dikunci.
+  useEffect(() => {
+    if (!s || s.role !== 'cashier') {
+      setShiftState('ok')
+      return
+    }
+    let dead = false
+    setShiftState('loading')
+    apiGetCashierShift()
+      .then((d) => { if (!dead) setShiftState(d?.shift?.started_at ? 'ok' : 'none') })
+      .catch(() => { if (!dead) setShiftState('none') })
+    return () => { dead = true }
+  }, [s?.id, s?.role])
+
   if (!s) {
     if (hasToken() && !boot) return null
     return <Navigate to="/masuk" replace />
   }
 
   const menu = MENU.filter((m) => !m.adminOnly || s.role === 'admin')
+  const shiftLocked = s.role === 'cashier' && shiftState === 'none'
+  const lockedTo = new Set(['/app', '/app/pos', '/app/transaksi'])
 
   return (
     <SidebarProvider>
@@ -71,12 +88,26 @@ export default function AppShell() {
             <SidebarMenu>
               {menu.map((m) => {
                 const active = loc.pathname === m.to || (m.to !== '/app' && loc.pathname.startsWith(m.to))
+                const locked = shiftLocked && lockedTo.has(m.to)
                 return (
                   <SidebarMenuItem key={m.to}>
-                    <SidebarMenuButton isActive={active} render={<Link to={m.to} />}>
-                      <m.icon />
-                      <span>{m.label}</span>
-                    </SidebarMenuButton>
+                    {locked ? (
+                      <SidebarMenuButton
+                        isActive={false}
+                        disabled
+                        aria-disabled="true"
+                        title="Mulai shift terlebih dahulu"
+                        className="pointer-events-none cursor-not-allowed opacity-45"
+                      >
+                        <m.icon />
+                        <span>{m.label}</span>
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton isActive={active} render={<Link to={m.to} />}>
+                        <m.icon />
+                        <span>{m.label}</span>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 )
               })}
