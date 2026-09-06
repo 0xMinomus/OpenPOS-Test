@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Clock, Package, ReceiptText, TriangleAlert } from 'lucide-react'
 import { apiCloseShift, apiGetCashierShift, apiGetDashboard, type CashierShift, type DashboardAdmin, type DashboardCashier } from '../lib/api'
-import { fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
+import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -291,8 +291,9 @@ export default function Dashboard() {
             <CardContent>
               <ChartContainer config={salesConfig} className="h-56 w-full">
                 <BarChart data={sales7} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
+                  <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
                   <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12 }} />
-                  <YAxis hide domain={[0, 'auto']} />
+                  <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} className="font-mono text-xs" />
                   <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
                   <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={38} />
                 </BarChart>
