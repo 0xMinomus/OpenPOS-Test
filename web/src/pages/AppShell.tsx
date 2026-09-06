@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import {
   LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings,
-  Moon, Sun, LogOut, ChevronsUpDown,
+  Moon, Sun, LogOut, ChevronsUpDown, Check,
 } from 'lucide-react'
-import { apiLogout, apiMe, hasToken } from '../lib/api'
+import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
 import { setSession, toSession, useDB, useTheme } from '../lib/store'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
@@ -119,6 +119,24 @@ function UserMenu() {
   const s = db.session!
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [accounts, setAccounts] = useState<User[]>(() => getCachedAccounts())
+  const [pending, setPending] = useState<User | null>(null)
+  const [passcode, setPasscode] = useState('')
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    if (s.role !== 'admin') return
+    apiListUsers()
+      .then((users) => { setAccounts(users); setCachedAccounts(users) })
+      .catch(() => {})
+  }, [s.role, s.id])
+
+  function resetMenu() {
+    setOpen(false)
+    setPending(null)
+    setPasscode('')
+    setErr('')
+  }
 
   async function keluar() {
     setBusy(true)
@@ -127,10 +145,48 @@ function UserMenu() {
     nav('/masuk', { replace: true })
   }
 
+  async function pick(u: User) {
+    if (u.id === s.id) return resetMenu()
+    setErr('')
+    setBusy(true)
+    try {
+      const r = await apiSwitchAccount(u.id)
+      setSession(toSession(r.user))
+      resetMenu()
+      nav('/app')
+    } catch (x) {
+      if (x instanceof ApiError && x.code === 'passcode_required') {
+        setPending(u)
+        setPasscode('')
+      } else {
+        setErr(x instanceof Error ? x.message : 'Gagal ganti akun.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitPasscode() {
+    if (!pending) return
+    setErr('')
+    setBusy(true)
+    try {
+      const r = await apiSwitchAccount(pending.id, passcode)
+      setSession(toSession(r.user))
+      resetMenu()
+      nav('/app')
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Passcode salah. Coba lagi.')
+      setPasscode('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); setPending(null); setErr('') }}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
@@ -152,25 +208,82 @@ function UserMenu() {
             role="menu"
             className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-64 rounded-lg bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-foreground/10"
           >
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <Avatar className="size-7 rounded-md">
-                <AvatarFallback className="rounded-md font-mono text-xs">{s.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="grid flex-1 leading-tight">
-                <span className="truncate text-sm font-medium">{s.name}</span>
-                <span className="truncate font-mono text-[11px] text-muted-foreground">{s.role === 'admin' ? 'Admin' : 'Kasir'} · {s.email}</span>
-              </span>
-            </div>
-            <div className="my-1 h-px bg-border" />
-            <button
-              role="menuitem"
-              onClick={keluar}
-              disabled={busy}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
-            >
-              <LogOut className="size-4" />
-              {busy ? 'Keluar…' : 'Keluar'}
-            </button>
+            {pending ? (
+              <div className="space-y-2 p-2">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Passcode · {pending.name}
+                </p>
+                <input
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitPasscode() }}
+                  inputMode="numeric"
+                  autoFocus
+                  placeholder="•••••"
+                  aria-label="Passcode 5 angka"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-center font-mono text-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {err && <p className="text-xs text-destructive">{err}</p>}
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => { setPending(null); setErr('') }}
+                    className="rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={submitPasscode}
+                    disabled={passcode.length !== 5 || busy}
+                    className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                  >
+                    {busy ? '…' : 'Masuk'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="px-2 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Ganti akun</p>
+                <div className="max-h-64 overflow-y-auto">
+                  {accounts.filter((a) => a.active).map((a) => {
+                    const active = a.id === s.id
+                    return (
+                      <button
+                        key={`${a.role}-${a.id}`}
+                        role="menuitem"
+                        disabled={busy}
+                        onClick={() => pick(a)}
+                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm disabled:opacity-50 ${active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'}`}
+                      >
+                        <Avatar className="size-7 rounded-md">
+                          <AvatarFallback className="rounded-md font-mono text-xs">{a.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="grid flex-1 leading-tight">
+                          <span className="truncate font-medium">{a.name}</span>
+                          <span className="truncate font-mono text-[11px] text-muted-foreground">
+                            {a.role === 'admin' ? 'Admin' : 'Kasir'}
+                          </span>
+                        </span>
+                        {active && <Check className="size-4 shrink-0" />}
+                      </button>
+                    )
+                  })}
+                  {accounts.length === 0 && (
+                    <p className="px-2 py-2 text-xs text-muted-foreground">Daftar akun tidak tersedia.</p>
+                  )}
+                </div>
+                {err && <p className="px-2 py-1 text-xs text-destructive">{err}</p>}
+                <div className="my-1 h-px bg-border" />
+                <button
+                  role="menuitem"
+                  onClick={keluar}
+                  disabled={busy}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  <LogOut className="size-4" />
+                  {busy ? 'Keluar…' : 'Keluar'}
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

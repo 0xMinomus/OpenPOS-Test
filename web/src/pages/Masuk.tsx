@@ -130,6 +130,9 @@ export default function Masuk() {
             </div>
           )}
 
+          <p className="mt-4 text-center text-[13px] text-muted">
+            Halaman ini khusus pemilik toko. Kasir tidak perlu login, admin menambahkannya dari menu User Management.
+          </p>
           <p className="mt-6 border-t border-dove pt-5 text-center text-sm text-muted">
             Belum punya akun? <Link to="/daftar" className="font-medium text-jet hover:underline">Buat akun gratis</Link>
           </p>

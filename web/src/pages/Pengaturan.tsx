@@ -39,7 +39,7 @@ export default function Pengaturan() {
     if (pc && !/^\d{5}$/.test(pc)) return setErr('Passcode harus 5 angka.')
     setMsg(''); setErr(''); setBusy(true)
     try {
-      await apiSetPasscode(u.id, pc)
+      await apiSetPasscode(u.id, pc, u.role)
       setPasscodes({ ...passcodes, [u.id]: '' })
       setMsg(pc ? 'Passcode disimpan.' : 'Passcode dihapus.')
     } catch (e) {

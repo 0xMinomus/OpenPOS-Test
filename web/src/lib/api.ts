@@ -233,6 +233,36 @@ export function apiMe() {
   return request<{ user: User }>('GET', '/auth/me')
 }
 
+// ── ganti akun cepat (admin ⇄ kasir, dalam toko yang sama) ────────────
+// Kontrak: README backend §"Alur Pembagian Sesi Akun".
+
+export function apiSwitchAccount(targetUserId: string, passcode?: string) {
+  return request<AuthResp>(
+    'POST',
+    '/auth/switch',
+    passcode ? { target_user_id: targetUserId, passcode } : { target_user_id: targetUserId },
+  ).then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
+}
+
+const ACCOUNTS_KEY = 'op_accounts'
+
+export function getCachedAccounts(): User[] {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY)
+    return raw ? (JSON.parse(raw) as User[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function setCachedAccounts(users: User[]) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(users))
+  } catch {
+    // abaikan — cache hanya akselerator menu ganti akun
+  }
+}
+
 // ── verifikasi email OTP ─────────────────────────────────────────────
 // Kontrak: docs/API-CONTRACT-EMAIL-OTP.md (diajukan ke backend developer)
 
@@ -258,8 +288,8 @@ export function apiListUsers() {
   return request<{ users: User[] | null }>('GET', '/users').then((d) => d.users ?? [])
 }
 
-export function apiCreateUser(body: { name: string; email: string; password: string }) {
-  return request<{ user: User }>('POST', '/users', body)
+export function apiCreateUser(body: { name: string }) {
+  return request<{ user: User }>('POST', '/users', body).then((d) => d.user)
 }
 
 export function apiSetUserActive(id: string, active: boolean) {
