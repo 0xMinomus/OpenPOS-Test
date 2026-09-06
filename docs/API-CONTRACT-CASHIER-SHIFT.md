@@ -37,7 +37,26 @@ Ringkasan shift kasir yang sedang berjalan + data analitik untuk dashboard kasir
 
 **Error:** `401` token invalid · `500` gagal memuat.
 
-## 2. `POST /cashier/shift/close` — 🔒 kasir (admin boleh)
+## 2. `POST /cashier/shift/start` — 🔒 kasir (admin boleh)
+
+Memulai shift baru. Shift sebelumnya (yang masih berjalan) otomatis ditutup.
+
+**Request:**
+```json
+{ "opening_cash": 500000 }
+```
+`opening_cash` opsional (jumlah uang awal di laci, integer rupiah).
+
+**Response `201`:**
+```json
+{
+  "shift": { "started_at": "2026-09-06T08:42:00Z", "opening_cash": 500000, "sales": 0, "trx_count": 0 }
+}
+```
+
+**Error:** `400` `{ "error": "Masih ada shift yang berjalan. Tutup dulu sebelum membuka yang baru." }` (bila tidak auto-close).
+
+## 3. `POST /cashier/shift/close` — 🔒 kasir (admin boleh)
 
 Menutup shift berjalan. Di backend: berhenti mencatat shift aktif (bila ada tabel shift), atau cukup mengembalikan ringkasan dan menandai shift selesai.
 
@@ -53,10 +72,40 @@ Menutup shift berjalan. Di backend: berhenti mencatat shift aktif (bila ada tabe
 
 **Error:** `400` `{ "error": "Tidak ada shift yang berjalan." }`
 
+## 4. `GET /shifts` — 🔒 admin (kasir → 403)
+
+Log seluruh shift di toko, terbaru dulu — untuk halaman Shift admin (ringkasan kinerja per kasir).
+
+**Response `200`:**
+```json
+{
+  "shifts": [
+    {
+      "id": 1,
+      "cashier_name": "Andi Kasir",
+      "started_at": "2026-09-06T08:42:00Z",
+      "closed_at": "2026-09-06T15:30:00Z",
+      "opening_cash": 500000,
+      "sales": 637500,
+      "trx_count": 1
+    }
+  ]
+}
+```
+
+**Aturan:**
+- `closed_at` null = shift masih berjalan (frontend menampilkan badge "Berjalan").
+- `sales` = total omzet transaksi selama shift; `trx_count` = jumlah transaksi.
+- Satu shift = satu kasir; kasir baru yang dibuka saat shift lama belum ditutup → shift lama otomatis ditutup (dengan `closed_at`-nya).
+
+**Error:** `401` token invalid · `403` bukan admin · `500` gagal memuat.
+
 ---
 
 ## Frontend (yang akan memakai kontrak ini)
 
 - `GET /cashier/shift` → mengisi card "Shift sedang berjalan", chart "Penjualan Hari Ini" (per jam), dan "Produk Terlaris".
+- `POST /cashier/shift/start` → tombol "Mulai Shift" (dengan input kas awal opsional).
 - `POST /cashier/shift/close` → tombol "Tutup Shift", lalu muat ulang dashboard.
+- `GET /shifts` → halaman Shift admin: tabel log shift per kasir (mulai, tutup, durasi, penjualan, transaksi).
 - Jika endpoint belum tersedia (404/405), dashboard kasir menampilkan fallback dari `GET /dashboard` (`today.omzet`, `today.trx_count`, `today.items_sold`) dan bagian yang tidak punya data menampilkan empty state — tanpa dummy.

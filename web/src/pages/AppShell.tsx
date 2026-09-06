@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import {
-  LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings,
+  LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings, Clock,
   Moon, Sun, LogOut, ChevronsUpDown, Check,
 } from 'lucide-react'
 import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
@@ -20,6 +20,7 @@ const MENU: { label: string; to: string; icon: React.ComponentType<{ className?:
   { label: 'Produk', to: '/app/produk', icon: Package, adminOnly: true },
   { label: 'Stok', to: '/app/stok', icon: Boxes, adminOnly: true },
   { label: 'Transaksi', to: '/app/transaksi', icon: ReceiptText },
+  { label: 'Shift', to: '/app/shift', icon: Clock },
   { label: 'Laporan', to: '/app/laporan', icon: BarChart3, adminOnly: true },
   { label: 'User Management', to: '/app/users', icon: Users, adminOnly: true },
   { label: 'Pengaturan', to: '/app/pengaturan', icon: Settings, adminOnly: true },

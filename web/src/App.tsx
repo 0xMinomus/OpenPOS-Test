@@ -13,6 +13,7 @@ import Transaksi from './pages/Transaksi'
 import Laporan from './pages/Laporan'
 import Users from './pages/Users'
 import Pengaturan from './pages/Pengaturan'
+import Shift from './pages/Shift'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="produk" element={<Produk />} />
           <Route path="stok" element={<Stok />} />
           <Route path="transaksi" element={<Transaksi />} />
+          <Route path="shift" element={<Shift />} />
           <Route path="laporan" element={<Laporan />} />
           <Route path="users" element={<Users />} />
           <Route path="pengaturan" element={<Pengaturan />} />

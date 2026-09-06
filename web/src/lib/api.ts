@@ -413,8 +413,30 @@ export function apiGetCashierShift() {
   return request<CashierShift>('GET', '/cashier/shift')
 }
 
+export function apiStartShift(openingCash?: number) {
+  return request<{ shift: CashierShift['shift'] }>(
+    'POST',
+    '/cashier/shift/start',
+    openingCash != null ? { opening_cash: openingCash } : {},
+  ).then((d) => d.shift)
+}
+
 export function apiCloseShift() {
   return request<{ message: string; summary?: { sales: number; trx_count: number } }>('POST', '/cashier/shift/close', {})
+}
+
+export interface ShiftLog {
+  id: string
+  cashier_name: string
+  started_at: string
+  closed_at: string | null
+  opening_cash: number | null
+  sales: number
+  trx_count: number
+}
+
+export function apiListShifts() {
+  return request<{ shifts: ShiftLog[] | null }>('GET', '/shifts').then((d) => d.shifts ?? [])
 }
 
 export function apiGetReport(period: string) {
