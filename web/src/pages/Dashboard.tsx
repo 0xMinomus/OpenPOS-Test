@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Package, ReceiptText, TriangleAlert, Store } from 'lucide-react'
 import { apiGetDashboard, type DashboardAdmin, type DashboardCashier } from '../lib/api'
-import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
+import { fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Area, AreaChart, CartesianGrid, Pie, PieChart, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyTitle } from '@/components/ui/empty'
 
@@ -25,6 +24,13 @@ const payConfig = {
   Card: { label: 'Card', color: 'var(--chart-5)' },
 } as const
 
+const iconTint = {
+  blue: { color: 'text-[var(--chart-1)]', bg: 'bg-[color-mix(in_oklch,var(--chart-1)_12%,transparent)]' },
+  teal: { color: 'text-[var(--chart-2)]', bg: 'bg-[color-mix(in_oklch,var(--chart-2)_12%,transparent)]' },
+  amber: { color: 'text-[var(--chart-3)]', bg: 'bg-[color-mix(in_oklch,var(--chart-3)_14%,transparent)]' },
+  rose: { color: 'text-[var(--chart-5)]', bg: 'bg-[color-mix(in_oklch,var(--chart-5)_12%,transparent)]' },
+} as const
+
 export default function Dashboard() {
   const db = useDB()
   const s = db.session!
@@ -36,7 +42,7 @@ export default function Dashboard() {
   }, [])
 
   if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
-  if (!data) return <p className="py-14 text-center text-sm text-fog">Memuat…</p>
+  if (!data) return <DashboardSkeleton />
 
   const today = data.today
   const isAdmin = s.role === 'admin'
@@ -52,10 +58,10 @@ export default function Dashboard() {
   const recent = data.recent
 
   const kpis = [
-    { label: 'Omzet hari ini', value: fmtRp(today.omzet), sub: 'dari semua metode bayar', icon: Banknote, color: 'text-[var(--chart-1)]' },
-    { label: 'Transaksi hari ini', value: String(today.trx_count), sub: 'selesai · tercatat otomatis', icon: ReceiptText, color: 'text-[var(--chart-2)]' },
-    { label: 'Produk terjual', value: String(today.items_sold), sub: 'satuan terjual hari ini', icon: Package, color: 'text-[var(--chart-3)]' },
-    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), sub: 'perlu di-restock', icon: TriangleAlert, color: 'text-[var(--chart-5)]' }] : []),
+    { label: 'Omzet hari ini', value: fmtRp(today.omzet), sub: 'dari semua metode bayar', icon: Banknote, tint: iconTint.blue },
+    { label: 'Transaksi hari ini', value: String(today.trx_count), sub: 'transaksi selesai', icon: ReceiptText, tint: iconTint.teal },
+    { label: 'Produk terjual', value: String(today.items_sold), sub: 'satuan terjual hari ini', icon: Package, tint: iconTint.amber },
+    ...(isAdmin ? [{ label: 'Stok menipis', value: String(admin.today.low_stock ?? 0), sub: 'perlu di-restock', icon: TriangleAlert, tint: iconTint.rose }] : []),
   ]
 
   return (
@@ -63,23 +69,27 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Ringkasan toko</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Halo {s.name}, ini ringkasan performa {s.store} hari ini.
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {today.trx_count > 0
+              ? `${today.trx_count} transaksi hari ini dengan omzet ${fmtRp(today.omzet)}.`
+              : 'Belum ada transaksi hari ini. Buka POS Kasir untuk memulai.'}
           </p>
         </div>
-        <p className="font-mono text-xs text-muted-foreground">{fmtDate(new Date().toISOString())}</p>
+        <p className="text-sm text-muted-foreground">{fmtDate(new Date().toISOString())}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{k.label}</CardTitle>
-              <k.icon className={`size-4 ${k.color}`} />
-            </CardHeader>
-            <CardContent>
-              <p className="font-mono text-2xl font-medium tabular-nums">{k.value}</p>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">{k.sub}</p>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-muted-foreground">{k.label}</span>
+                <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${k.tint.bg}`}>
+                  <k.icon className={`size-5 ${k.tint.color}`} />
+                </span>
+              </div>
+              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight">{k.value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{k.sub}</p>
             </CardContent>
           </Card>
         ))}
@@ -94,19 +104,12 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={salesConfig} className="h-56 w-full">
-                <AreaChart data={sales7} margin={{ top: 4, right: 8, bottom: 8, left: 8 }}>
-                  <defs>
-                    <linearGradient id="fillOmzet" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-omzet)" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="var(--color-omzet)" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
-                  <XAxis dataKey="day" height={30} interval={0} padding={{ left: 12, right: 12 }} tickLine={false} axisLine={false} tickMargin={8} className="font-mono text-xs" />
-                  <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} className="font-mono text-xs" />
-                  <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                  <Area dataKey="omzet" type="monotone" dot={false} fill="url(#fillOmzet)" stroke="var(--color-omzet)" strokeWidth={2} />
-                </AreaChart>
+                <BarChart data={sales7} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
+                  <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12 }} />
+                  <YAxis hide domain={[0, 'auto']} />
+                  <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                  <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={38} />
+                </BarChart>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -118,26 +121,18 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {payData.length === 0 ? (
-                <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada transaksi hari ini.</p>
+                <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi hari ini.</p>
               ) : (
-                <div className="space-y-4">
-                  <ChartContainer config={payConfig} className="mx-auto h-40 w-full">
-                    <PieChart>
-                      <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                      <Pie data={payData} dataKey="total" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} strokeWidth={0} />
-                    </PieChart>
-                  </ChartContainer>
-                  <div className="space-y-2">
-                    {payData.map((d) => (
-                      <div key={d.name} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="flex items-center gap-2">
-                          <span className="size-2.5 rounded-full" style={{ background: d.fill }} />
-                          {d.name}
-                        </span>
-                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmtRp(d.total)}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="space-y-2.5">
+                  {payData.map((d) => (
+                    <div key={d.name} className="flex items-center justify-between rounded-lg border border-border/60 px-3.5 py-3">
+                      <span className="flex items-center gap-2.5 text-sm">
+                        <span className="size-2.5 rounded-full" style={{ background: d.fill }} />
+                        {d.name}
+                      </span>
+                      <span className="text-sm font-medium tabular-nums">{fmtRp(d.total)}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -154,16 +149,16 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {topProducts.length === 0 ? (
-                <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada penjualan hari ini.</p>
+                <p className="py-12 text-center text-sm text-muted-foreground">Belum ada penjualan hari ini.</p>
               ) : (
                 <div className="space-y-4">
                   {topProducts.map((p) => (
-                    <div key={p.product_id} className="space-y-1.5">
+                    <div key={p.product_id} className="space-y-2">
                       <div className="flex items-baseline justify-between gap-3 text-sm">
                         <span className="truncate font-medium">{p.name}</span>
-                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{p.qty} pcs</span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">{p.qty} pcs</span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full" style={{ width: `${Math.round((p.qty / topMax) * 100)}%`, background: 'var(--chart-2)' }} />
                       </div>
                     </div>
@@ -181,37 +176,27 @@ export default function Dashboard() {
               <CardDescription>5 terakhir</CardDescription>
             </div>
             <Button variant="outline" size="sm" render={<Link to="/app/transaksi" />}>
-                Lihat semua
-              </Button>
+              Lihat semua
+            </Button>
           </CardHeader>
           <CardContent>
             {recent.length === 0 ? (
-              <p className="py-12 text-center font-mono text-xs text-muted-foreground">Belum ada transaksi.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi.</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Waktu</TableHead>
-                    <TableHead>Kasir</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recent.map((t) => (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-mono text-xs">{t.id}</TableCell>
-                      <TableCell className="font-mono text-xs">{fmtTime(t.time)}</TableCell>
-                      <TableCell>{t.cashier_name}</TableCell>
-                      <TableCell className="text-right font-mono text-xs tabular-nums">{fmtRp(t.total)}</TableCell>
-                      <TableCell className="text-right">
-                        <TrxBadge status={t.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-2">
+                {recent.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3.5 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{t.cashier_name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{fmtTime(t.time)}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                      <span className="text-sm font-semibold tabular-nums">{fmtRp(t.total)}</span>
+                      <TrxBadge status={t.status} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -221,12 +206,12 @@ export default function Dashboard() {
         <Card className="border-dashed">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
             <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-lg bg-muted">
+              <div className="grid size-11 place-items-center rounded-xl bg-muted">
                 <Store className="size-5" />
               </div>
               <div>
                 <p className="text-sm font-medium">Ringkasan shift Anda</p>
-                <p className="font-mono text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {today.trx_count} transaksi · {fmtRp(today.omzet)}. Hanya transaksi yang Anda buat.
                 </p>
               </div>
@@ -247,6 +232,26 @@ export default function Dashboard() {
           </EmptyContent>
         </Empty>
       )}
+    </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Memuat dashboard">
+      <div className="space-y-2">
+        <div className="h-8 w-56 animate-pulse rounded-md bg-muted" />
+        <div className="h-4 w-72 animate-pulse rounded-md bg-muted" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+      </div>
     </div>
   )
 }
