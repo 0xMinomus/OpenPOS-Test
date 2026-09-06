@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { apiRegister, apiSendOtp, apiSetPasscode, apiVerifyOtp, ApiError } from '../lib/api'
+import { apiGetSettings, apiGoogleLogin, apiRegister, apiSendOtp, apiSetPasscode, apiUpdateSettings, apiVerifyOtp, ApiError, type User } from '../lib/api'
 import { setSession, toSession } from '../lib/store'
 import Navbar from './Navbar'
 
@@ -11,8 +11,76 @@ const STEPS = [
   { n: 4, label: 'Selesai' },
 ]
 
+declare global {
+  interface Window { google?: any }
+}
+
+function loadGsi(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-gsi]')) {
+      const iv = setInterval(() => {
+        if (window.google?.accounts?.id) { clearInterval(iv); resolve() }
+      }, 100)
+      setTimeout(() => { clearInterval(iv); reject(new Error('Gagal memuat login Google.')) }, 10000)
+      return
+    }
+    const s = document.createElement('script')
+    s.src = 'https://accounts.google.com/gsi/client'
+    s.async = true
+    s.defer = true
+    s.dataset.gsi = '1'
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('Gagal memuat login Google.'))
+    document.head.appendChild(s)
+  })
+}
+
+function GoogleButton({ onToken, busy }: { onToken: (credential: string) => void; busy: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [loadErr, setLoadErr] = useState('')
+  const cbRef = useRef(onToken)
+  cbRef.current = onToken
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+
+  useEffect(() => {
+    if (!clientId) return
+    let dead = false
+    loadGsi()
+      .then(() => {
+        if (dead || !ref.current) return
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (resp: { credential?: string }) => { if (resp?.credential) cbRef.current(resp.credential) },
+        })
+        window.google.accounts.id.renderButton(ref.current, {
+          type: 'standard', theme: 'outline', size: 'large', width: 320, text: 'signup_with', locale: 'id',
+        })
+      })
+      .catch(() => { if (!dead) setLoadErr('Gagal memuat login Google. Periksa koneksi lalu muat ulang.') })
+    return () => { dead = true }
+  }, [clientId])
+
+  if (!clientId) {
+    return (
+      <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">
+        Login Google belum dikonfigurasi (VITE_GOOGLE_CLIENT_ID kosong). Silakan daftar dengan email.
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {busy && <p className="text-[13px] text-muted">Memproses login Google…</p>}
+      <div ref={ref} aria-label="Daftar dengan Google" className="flex justify-center" />
+      {loadErr && <p className="text-[13px] text-ember">{loadErr}</p>}
+    </div>
+  )
+}
+
 export default function Daftar() {
   const nav = useNavigate()
+  const [mode, setMode] = useState<'choice' | 'email' | 'google-onboard'>('choice')
+  const [googleUser, setGoogleUser] = useState<User | null>(null)
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -78,7 +146,7 @@ export default function Daftar() {
       const r = await apiRegister(name.trim(), email.trim().toLowerCase(), password, store.trim())
       setSession(toSession(r.user))
       try {
-        await apiSetPasscode(r.user.id, passcode)
+        await apiSetPasscode(r.user.id, passcode, 'admin')
       } catch {
         // passcode bukan penghalang masuk; gagal disimpan ditangani halaman Pengaturan
       }
@@ -104,6 +172,55 @@ export default function Daftar() {
       .finally(() => setBusy(false))
   }
 
+  async function handleGoogle(credential: string) {
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiGoogleLogin(credential)
+      setSession(toSession(r.user))
+      // Akun yang baru dibuat detik ini → lengkapi nama toko + passcode.
+      // Akun lama (Google dipakai untuk masuk) → langsung ke dashboard.
+      const age = r.user.created_at ? Date.now() - new Date(r.user.created_at).getTime() : Infinity
+      if (age < 2 * 60 * 1000) {
+        setGoogleUser(r.user)
+        setStore(r.user.store_name)
+        setMode('google-onboard')
+        setStep(3)
+      } else {
+        nav('/app', { replace: true })
+      }
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitGoogle(e: React.FormEvent) {
+    e.preventDefault()
+    setErr('')
+    if (!store.trim()) return setErr('Nama toko wajib diisi.')
+    if (step === 3) {
+      setStep(4)
+      return
+    }
+    if (!/^\d{5}$/.test(passcode)) return setErr('Passcode harus 5 angka.')
+    if (passcode !== confirm) return setErr('Passcode tidak cocok.')
+    if (!googleUser) return setErr('Sesi Google tidak valid. Ulangi dari awal.')
+    setBusy(true)
+    try {
+      if (store.trim() !== googleUser.store_name) {
+        const cur = await apiGetSettings()
+        await apiUpdateSettings({ ...cur, storeName: store.trim() })
+      }
+      await apiSetPasscode(googleUser.id, passcode, 'admin')
+      nav('/app', { replace: true })
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Gagal menyimpan. Coba lagi.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="bg-bg text-fg">
       <Navbar />
@@ -114,17 +231,19 @@ export default function Daftar() {
           aria-hidden="true"
         />
         <section className="auth-card w-full max-w-110 rounded-2xl bg-cream p-10">
-          <div className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Langkah pendaftaran">
-            {STEPS.map((s, i) => (
-              <div key={s.n} className={`flex items-center gap-1.5 font-mono text-[10px] ${step >= s.n ? 'text-jet' : 'text-fog'}`}>
-                {i > 0 && <span className="h-px w-3.5 bg-dove" />}
-                <span className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] ${step >= s.n ? 'border-jet bg-jet text-paper' : 'border-dove'}`}>
-                  {step > s.n ? '✓' : s.n}
-                </span>
-                {s.label}
-              </div>
-            ))}
-          </div>
+          {mode !== 'choice' && (
+            <div className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Langkah pendaftaran">
+              {STEPS.map((s, i) => (
+                <div key={s.n} className={`flex items-center gap-1.5 font-mono text-[10px] ${step >= s.n ? 'text-jet' : 'text-fog'}`}>
+                  {i > 0 && <span className="h-px w-3.5 bg-dove" />}
+                  <span className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] ${step >= s.n ? 'border-jet bg-jet text-paper' : 'border-dove'}`}>
+                    {step > s.n ? '✓' : s.n}
+                  </span>
+                  {s.label}
+                </div>
+              ))}
+            </div>
+          )}
 
           <p className="font-mono text-xs uppercase tracking-widest text-steel">Daftar · buat akun</p>
           <h1 className="mt-3 text-[clamp(32px,4vw,44px)] font-normal leading-[1.1] tracking-[-0.025em]">Buat toko Anda hari ini</h1>
@@ -137,7 +256,24 @@ export default function Daftar() {
             </p>
           )}
 
-          {step === 1 && (
+          {mode === 'choice' && (
+            <div className="flex flex-col gap-4">
+              <GoogleButton onToken={handleGoogle} busy={busy} />
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-dove" />
+                <span className="text-xs text-fog">atau</span>
+                <span className="h-px flex-1 bg-dove" />
+              </div>
+              <button
+                onClick={() => { setErr(''); setMode('email') }}
+                className="rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet"
+              >
+                Daftar dengan Email
+              </button>
+            </div>
+          )}
+
+          {mode === 'email' && step === 1 && (
             <form onSubmit={step1Next} className="flex flex-col gap-4" noValidate>
               <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
                 Nama Anda
@@ -153,10 +289,13 @@ export default function Daftar() {
                 <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" placeholder="Minimal 8 karakter" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
               </label>
               <button type="submit" disabled={busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Mengirim kode…' : 'Lanjutkan'}</button>
+              <button type="button" onClick={() => { setErr(''); setMode('choice') }} className="text-center text-[13px] text-muted hover:underline">
+                Kembali
+              </button>
             </form>
           )}
 
-          {step === 2 && (
+          {mode === 'email' && step === 2 && (
             <form onSubmit={verifyOtp} className="flex flex-col gap-4" noValidate>
               <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
                 {otpMsg || 'Mengirim kode OTP…'}
@@ -186,8 +325,8 @@ export default function Daftar() {
             </form>
           )}
 
-          {step >= 3 && (
-            <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+          {(mode === 'email' || mode === 'google-onboard') && step >= 3 && (
+            <form onSubmit={mode === 'google-onboard' ? submitGoogle : submit} className="flex flex-col gap-4" noValidate>
               {step === 3 && (
                 <>
                   <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
@@ -224,7 +363,7 @@ export default function Daftar() {
                     />
                   </label>
                   <button type="submit" disabled={!store.trim() || busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">
-                    {busy ? 'Membuat akun…' : 'Buat Akun'}
+                    {busy ? (mode === 'google-onboard' ? 'Menyimpan…' : 'Membuat akun…') : (mode === 'google-onboard' ? 'Selesai' : 'Buat Akun')}
                   </button>
                 </>
               )}

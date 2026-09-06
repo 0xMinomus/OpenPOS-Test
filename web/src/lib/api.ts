@@ -96,7 +96,7 @@ export interface User {
   active: boolean
   store_id: string
   store_name: string
-  created_at: string
+  created_at?: string
 }
 
 export interface AuthResp {
@@ -244,6 +244,14 @@ export function apiVerifyOtp(email: string, code: string) {
   return request<{ verified: boolean; message: string }>('POST', '/auth/otp/verify', { email, code }, false)
 }
 
+// ── Google login (GIS ID-token flow) ───────────────────────────────────
+// Kontrak: FRONTEND_AUTH.md di repo backend (adrr-dev/openPOS)
+
+export function apiGoogleLogin(idToken: string, storeName?: string) {
+  return request<AuthResp>('POST', '/auth/google', storeName ? { id_token: idToken, storeName } : { id_token: idToken }, false)
+    .then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
+}
+
 // ── users ────────────────────────────────────────────────────────────
 
 export function apiListUsers() {
@@ -258,8 +266,8 @@ export function apiSetUserActive(id: string, active: boolean) {
   return request<{ message: string }>('PATCH', `/users/${id}/active`, { active })
 }
 
-export function apiSetPasscode(id: string, passcode: string) {
-  return request<{ message: string }>('PUT', `/users/${id}/passcode`, { passcode })
+export function apiSetPasscode(id: string, passcode: string, role?: string) {
+  return request<{ message: string }>('PUT', `/users/${id}/passcode`, role ? { passcode, role } : { passcode })
 }
 
 // ── katalog ──────────────────────────────────────────────────────────

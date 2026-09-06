@@ -73,7 +73,7 @@ export default function Users() {
                   <Td mono>{u.email}</Td>
                   <Td><Pill tone={u.role === 'admin' ? 'ok' : 'muted'}>{u.role === 'admin' ? 'Admin' : 'Kasir'}</Pill></Td>
                   <Td><Pill tone={u.active ? 'ok' : 'warn'}>{u.active ? 'Aktif' : 'Nonaktif'}</Pill></Td>
-                  <Td mono>{fmtDate(u.created_at)}</Td>
+                  <Td mono>{u.created_at ? fmtDate(u.created_at) : '—'}</Td>
                   <Td>
                     {u.role === 'cashier' && u.id !== s.id && (
                       <button className="text-[13px] text-muted hover:underline" onClick={() => toggle(u)}>
