@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Clock, Package, ReceiptText, TriangleAlert } from 'lucide-react'
-import { apiCloseShift, apiGetCashierShift, apiGetDashboard, apiListTransactions, type CashierShift, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
+import { apiCloseShift, apiGetCashierShift, apiGetDashboard, apiListTransactions, fetchAll, type CashierShift, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
 import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -39,7 +39,7 @@ export default function Dashboard() {
   const [err, setErr] = useState('')
   const [shift, setShift] = useState<CashierShift | null>(null)
   const [shiftBusy, setShiftBusy] = useState(false)
-  const [recentTrx, setRecentTrx] = useState<Trx[] | null>(null)
+  const [trxAll, setTrxAll] = useState<Trx[] | null>(null)
   // Kunci sesi pemilik data: cegah render data kasir sebagai admin (atau sebaliknya)
   // saat ganti akun — crash terjadi di render, sebelum effect sempat fetch ulang.
   const sessionKey = `${s.id}:${s.role}`
@@ -66,12 +66,19 @@ export default function Dashboard() {
     return () => { dead = true }
   }, [sessionKey])
 
-  // Transaksi terbaru dengan detail item (dashboard recent tidak membawa items).
+  // Transaksi dengan detail item. Kasir: semua transaksinya (dihitung ulang per
+  // shift di bawah). Admin: 5 terbaru untuk list.
   useEffect(() => {
     let dead = false
-    apiListTransactions({ limit: 5 })
-      .then((r) => { if (!dead) setRecentTrx(r.items) })
-      .catch(() => { if (!dead) setRecentTrx([]) })
+    if (s.role === 'cashier') {
+      fetchAll<Trx>((page) => apiListTransactions({ page, limit: 200 }))
+        .then((items) => { if (!dead) setTrxAll(items) })
+        .catch(() => { if (!dead) setTrxAll([]) })
+    } else {
+      apiListTransactions({ limit: 5 })
+        .then((r) => { if (!dead) setTrxAll(r.items) })
+        .catch(() => { if (!dead) setTrxAll([]) })
+    }
     return () => { dead = true }
   }, [sessionKey])
 
@@ -113,13 +120,24 @@ export default function Dashboard() {
   ]
 
   if (!isAdmin) {
-    const shiftSales = shift?.shift.sales ?? today.omzet
-    const shiftTrx = shift?.shift.trx_count ?? today.trx_count
-    const startedAt = shift?.shift.started_at ? fmtTime(shift.shift.started_at) : '—'
-    const openingCash = shift?.shift.opening_cash != null ? fmtRp(shift.shift.opening_cash) : '—'
-    const hourlyData = (shift?.hourly ?? []).map((h) => ({ hour: String(h.hour).padStart(2, '0'), omzet: h.omzet }))
-    const topProducts = shift?.top_products ?? []
+    // Semua angka kasir mengikuti shift aktif, bukan "hari ini" (reset tiap mulai shift).
+    if (!shift?.shift.started_at) return <DashboardSkeleton />
+    const st = shift.shift
+    const startedAtRaw = st.started_at as string
+    const startedMs = new Date(startedAtRaw).getTime()
+    const shiftTrxList = (trxAll ?? []).filter((t) => new Date(t.created_at).getTime() >= startedMs)
+    const shiftRecent = shiftTrxList.slice(0, 5)
+    const shiftItemsSold = trxAll === null ? null : shiftTrxList.reduce((n, t) => n + t.items.reduce((m, i) => m + i.qty, 0), 0)
+    const startedAt = fmtTime(startedAtRaw)
+    const openingCash = st.opening_cash != null ? fmtRp(st.opening_cash) : '—'
+    const hourlyData = (shift.hourly ?? []).map((h) => ({ hour: String(h.hour).padStart(2, '0'), omzet: h.omzet }))
+    const topProducts = shift.top_products ?? []
     const topMaxP = Math.max(...topProducts.map((p) => p.qty), 1)
+    const shiftKpis = [
+      { label: 'Omzet Shift', value: fmtRp(st.sales), icon: Banknote, tint: iconTint.blue },
+      { label: 'Transaksi Shift', value: String(st.trx_count), icon: ReceiptText, tint: iconTint.teal },
+      { label: 'Produk Terjual', value: shiftItemsSold === null ? '…' : String(shiftItemsSold), icon: Package, tint: iconTint.amber },
+    ]
 
     return (
       <div className="space-y-5">
@@ -127,9 +145,9 @@ export default function Dashboard() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Halo, {s.name}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {today.trx_count > 0
-                ? `${today.trx_count} transaksi hari ini dengan omzet ${fmtRp(today.omzet)}.`
-                : 'Belum ada transaksi hari ini.'}
+              {st.trx_count > 0
+                ? `${st.trx_count} transaksi shift ini dengan omzet ${fmtRp(st.sales)}.`
+                : 'Shift baru dimulai. Belum ada transaksi.'}
             </p>
           </div>
           <p className="text-sm text-muted-foreground">{fmtDate(new Date().toISOString())}</p>
@@ -149,11 +167,11 @@ export default function Dashboard() {
             <div className="flex items-center gap-8">
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Penjualan Shift</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{fmtRp(shiftSales)}</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{fmtRp(st.sales)}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Transaksi</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{shiftTrx}</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{st.trx_count}</p>
               </div>
             </div>
             <Button variant="outline" onClick={closeShift} disabled={shiftBusy}>
@@ -163,7 +181,7 @@ export default function Dashboard() {
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          {kpis.map((k) => (
+          {shiftKpis.map((k) => (
             <Card key={k.label}>
               <CardContent className="relative min-h-32 p-5">
                 <span className={`absolute right-5 top-5 grid size-9 place-items-center rounded-lg ${k.tint.bg}`}>
@@ -183,7 +201,7 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="text-base">Penjualan Hari Ini</CardTitle>
               <CardDescription>
-                {hourlyData.length > 0 ? `Total ${fmtRp(shiftSales)} · omzet per jam` : 'Omzet per jam akan muncul setelah shift berjalan'}
+                {hourlyData.length > 0 ? `Total ${fmtRp(st.sales)} · omzet per jam` : 'Omzet per jam akan muncul setelah shift berjalan'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -247,15 +265,15 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {recentTrx === null ? (
+            {trxAll === null ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Memuat…</p>
-            ) : recentTrx.length === 0 ? (
+            ) : shiftRecent.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">Belum ada transaksi. Mulai dari POS Kasir.</p>
+                <p className="text-sm text-muted-foreground">Belum ada transaksi di shift ini. Mulai dari POS Kasir.</p>
                 <Button className="mt-4" render={<Link to="/app/pos" />}>Buka POS</Button>
               </div>
             ) : (
-              <RecentList items={recentTrx} />
+              <RecentList items={shiftRecent} />
             )}
           </CardContent>
         </Card>
@@ -379,12 +397,12 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {recentTrx === null ? (
+            {trxAll === null ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Memuat…</p>
-            ) : recentTrx.length === 0 ? (
+            ) : trxAll.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi.</p>
             ) : (
-              <RecentList items={recentTrx} />
+              <RecentList items={trxAll} />
             )}
           </CardContent>
         </Card>
