@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Clock, Play, Square } from 'lucide-react'
 import {
   apiCloseShift, apiGetCashierShift, apiListShifts, apiStartShift,
@@ -26,6 +27,7 @@ function fmtDur(startedAt: string, closedAt: string | null): string {
 export default function Shift() {
   const db = useDB()
   const s = db.session!
+  const nav = useNavigate()
   const [shift, setShift] = useState<CashierShift | null>(null)
   const [logs, setLogs] = useState<ShiftLog[] | null>(null)
   const [err, setErr] = useState('')
@@ -48,6 +50,7 @@ export default function Shift() {
       setShift({ shift: st, hourly: [], top_products: [] })
       setOpeningCash('')
       loadLogs()
+      nav('/app', { replace: true })
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Gagal memulai shift.')
     } finally {
