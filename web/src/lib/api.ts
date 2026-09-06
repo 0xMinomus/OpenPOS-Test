@@ -296,6 +296,10 @@ export function apiSetUserActive(id: string, active: boolean) {
   return request<{ message: string }>('PATCH', `/users/${id}/active`, { active })
 }
 
+export function apiDeleteUser(id: string) {
+  return request<{ message: string }>('DELETE', `/users/${id}`)
+}
+
 export function apiSetPasscode(id: string, passcode: string, role?: string) {
   return request<{ message: string }>('PUT', `/users/${id}/passcode`, role ? { passcode, role } : { passcode })
 }

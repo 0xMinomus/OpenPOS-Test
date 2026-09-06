@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { apiCreateUser, apiListUsers, apiSetUserActive, setCachedAccounts, type User } from '../lib/api'
+import { apiCreateUser, apiDeleteUser, apiListUsers, apiSetUserActive, setCachedAccounts, type User } from '../lib/api'
 import { fmtDate, useDB } from '../lib/store'
 import { Button, Input, Modal, PageHead, Pill, Td, Th } from '../lib/ui'
 
@@ -13,6 +13,10 @@ export default function Users() {
   const [name, setName] = useState('')
   const [formErr, setFormErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [deleteFor, setDeleteFor] = useState<User | null>(null)
+  const [deleteTyped, setDeleteTyped] = useState('')
+  const [deleteErr, setDeleteErr] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   function load() {
     setErr('')
@@ -43,6 +47,21 @@ export default function Users() {
       load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal mengubah status.')
+    }
+  }
+
+  async function remove() {
+    if (!deleteFor) return
+    if (deleteTyped !== 'Konfirmasi') return setDeleteErr('Ketik "Konfirmasi" untuk menghapus.')
+    setDeleteErr(''); setDeleteBusy(true)
+    try {
+      await apiDeleteUser(deleteFor.id)
+      setDeleteFor(null); setDeleteTyped('')
+      load()
+    } catch (e) {
+      setDeleteErr(e instanceof Error ? e.message : 'Gagal menghapus akun.')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -78,9 +97,14 @@ export default function Users() {
                   <Td mono>{u.created_at ? fmtDate(u.created_at) : '—'}</Td>
                   <Td>
                     {u.role === 'cashier' && (
-                      <button className="text-[13px] text-muted hover:underline" onClick={() => toggle(u)}>
-                        {u.active ? 'Nonaktifkan' : 'Aktifkan'}
-                      </button>
+                      <div className="flex justify-end gap-3 text-[13px]">
+                        <button className="text-muted hover:underline" onClick={() => toggle(u)}>
+                          {u.active ? 'Nonaktifkan' : 'Aktifkan'}
+                        </button>
+                        <button className="text-ember hover:underline" onClick={() => { setDeleteFor(u); setDeleteTyped(''); setDeleteErr('') }}>
+                          Hapus
+                        </button>
+                      </div>
                     )}
                   </Td>
                 </tr>
@@ -100,6 +124,30 @@ export default function Users() {
           <Input label="Nama kasir" value={name} onChange={setName} placeholder="cth: Andi" />
           <p className="text-[13px] text-muted">Kasir tidak butuh email dan kata sandi. Setelah dibuat, ganti ke akun ini lewat menu profil di kiri bawah.</p>
           <Button className="w-full" onClick={create} disabled={busy}>{busy ? 'Membuat…' : 'Buat Akun Kasir'}</Button>
+        </div>
+      </Modal>
+
+      <Modal open={!!deleteFor} title={`Hapus Kasir · ${deleteFor?.name ?? ''}`} onClose={() => setDeleteFor(null)}>
+        <div className="space-y-4">
+          {deleteErr && <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{deleteErr}</p>}
+          <p className="text-sm text-muted">
+            Tindakan ini <strong className="text-ember">permanen</strong>. Riwayat transaksi kasir ini tetap tersimpan, tapi akunnya tidak bisa dipakai lagi untuk ganti akun.
+          </p>
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+            Ketik <span className="font-mono text-ember">Konfirmasi</span> untuk menghapus
+            <input
+              value={deleteTyped}
+              onChange={(e) => setDeleteTyped(e.target.value)}
+              placeholder="Konfirmasi"
+              className="rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] focus:border-jet focus:outline-none"
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setDeleteFor(null)}>Batal</Button>
+            <Button variant="danger" onClick={remove} disabled={deleteTyped !== 'Konfirmasi' || deleteBusy}>
+              {deleteBusy ? 'Menghapus…' : 'Hapus Kasir'}
+            </Button>
+          </div>
         </div>
       </Modal>
     </>
