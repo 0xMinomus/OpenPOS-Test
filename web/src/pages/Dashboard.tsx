@@ -81,12 +81,14 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label}>
-            <CardContent className="flex min-h-36 flex-col items-center justify-center p-5 text-center">
-              <span className={`grid size-9 place-items-center rounded-lg ${k.tint.bg}`}>
+            <CardContent className="relative min-h-36 p-5">
+              <span className={`absolute right-5 top-5 grid size-9 place-items-center rounded-lg ${k.tint.bg}`}>
                 <k.icon className={`size-4.5 ${k.tint.color}`} />
               </span>
-              <span className="mt-2.5 text-sm font-medium text-muted-foreground">{k.label}</span>
-              <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">{k.value}</p>
+              <div className="flex h-full flex-col justify-center pr-9">
+                <span className="text-sm font-medium text-muted-foreground">{k.label}</span>
+                <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">{k.value}</p>
+              </div>
             </CardContent>
           </Card>
         ))}
