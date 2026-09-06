@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Banknote, Clock, Package, ReceiptText, TriangleAlert } from 'lucide-react'
-import { apiCloseShift, apiGetCashierShift, apiGetDashboard, apiListTransactions, fetchAll, type CashierShift, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
-import { fmtDate, fmtRp, fmtShort, fmtTime, setShiftActive, useDB } from '../lib/store'
+import { Banknote, Package, ReceiptText, Store, TriangleAlert } from 'lucide-react'
+import { apiGetDashboard, apiListTransactions, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
+import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyTitle } from '@/components/ui/empty'
 import { TrxItems } from '../lib/ui'
@@ -37,9 +37,7 @@ export default function Dashboard() {
   const s = db.session!
   const [data, setData] = useState<DashboardAdmin | DashboardCashier | null>(null)
   const [err, setErr] = useState('')
-  const [shift, setShift] = useState<CashierShift | null>(null)
-  const [shiftBusy, setShiftBusy] = useState(false)
-  const [trxAll, setTrxAll] = useState<Trx[] | null>(null)
+  const [recentTrx, setRecentTrx] = useState<Trx[] | null>(null)
   // Kunci sesi pemilik data: cegah render data kasir sebagai admin (atau sebaliknya)
   // saat ganti akun — crash terjadi di render, sebelum effect sempat fetch ulang.
   const sessionKey = `${s.id}:${s.role}`
@@ -55,48 +53,14 @@ export default function Dashboard() {
     return () => { dead = true }
   }, [sessionKey])
 
-  // Data shift kasir (kontrak: docs/API-CONTRACT-CASHIER-SHIFT.md).
-  // Belum tersedia di backend → fallback ke today dari /dashboard.
-  useEffect(() => {
-    if (s.role === 'admin') return
-    let dead = false
-    apiGetCashierShift()
-      .then((d) => { if (!dead) setShift(d) })
-      .catch(() => {})
-    return () => { dead = true }
-  }, [sessionKey])
-
-  // Transaksi dengan detail item. Kasir: semua transaksinya (dihitung ulang per
-  // shift di bawah). Admin: 5 terbaru untuk list.
+  // Transaksi terbaru dengan detail item (dashboard recent tidak membawa items).
   useEffect(() => {
     let dead = false
-    if (s.role === 'cashier') {
-      fetchAll<Trx>((page) => apiListTransactions({ page, limit: 200 }))
-        .then((items) => { if (!dead) setTrxAll(items) })
-        .catch(() => { if (!dead) setTrxAll([]) })
-    } else {
-      apiListTransactions({ limit: 5 })
-        .then((r) => { if (!dead) setTrxAll(r.items) })
-        .catch(() => { if (!dead) setTrxAll([]) })
-    }
+    apiListTransactions({ limit: 5 })
+      .then((r) => { if (!dead) setRecentTrx(r.items) })
+      .catch(() => { if (!dead) setRecentTrx([]) })
     return () => { dead = true }
   }, [sessionKey])
-
-  async function closeShift() {
-    if (!confirm('Tutup shift sekarang?')) return
-    setShiftBusy(true)
-    try {
-      await apiCloseShift()
-      setShift(null)
-      setShiftActive(false)
-      setData(null)
-      apiGetDashboard().then((d) => { setData(d); setDataFor(sessionKey) }).catch(() => {})
-    } catch (x) {
-      setErr(x instanceof Error ? x.message : 'Gagal menutup shift.')
-    } finally {
-      setShiftBusy(false)
-    }
-  }
 
   if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
   if (!data || dataFor !== sessionKey) return <DashboardSkeleton />
@@ -121,68 +85,37 @@ export default function Dashboard() {
   ]
 
   if (!isAdmin) {
-    // Semua angka kasir mengikuti shift aktif, bukan "hari ini" (reset tiap mulai shift).
-    if (!shift?.shift.started_at) return <DashboardSkeleton />
-    const st = shift.shift
-    const startedAtRaw = st.started_at as string
-    const startedMs = new Date(startedAtRaw).getTime()
-    const shiftTrxList = (trxAll ?? []).filter((t) => new Date(t.created_at).getTime() >= startedMs)
-    const shiftRecent = shiftTrxList.slice(0, 5)
-    const shiftItemsSold = trxAll === null ? null : shiftTrxList.reduce((n, t) => n + t.items.reduce((m, i) => m + i.qty, 0), 0)
-    const startedAt = fmtTime(startedAtRaw)
-    const openingCash = st.opening_cash != null ? fmtRp(st.opening_cash) : '—'
-    const hourlyData = (shift.hourly ?? []).map((h) => ({ hour: String(h.hour).padStart(2, '0'), omzet: h.omzet }))
-    const topProducts = shift.top_products ?? []
-    const topMaxP = Math.max(...topProducts.map((p) => p.qty), 1)
-    const shiftKpis = [
-      { label: 'Omzet Shift', value: fmtRp(st.sales), icon: Banknote, tint: iconTint.blue },
-      { label: 'Transaksi Shift', value: String(st.trx_count), icon: ReceiptText, tint: iconTint.teal },
-      { label: 'Produk Terjual', value: shiftItemsSold === null ? '…' : String(shiftItemsSold), icon: Package, tint: iconTint.amber },
-    ]
-
     return (
       <div className="space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Halo, {s.name}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {st.trx_count > 0
-                ? `${st.trx_count} transaksi shift ini dengan omzet ${fmtRp(st.sales)}.`
-                : 'Shift baru dimulai. Belum ada transaksi.'}
+              {today.trx_count > 0
+                ? `${today.trx_count} transaksi hari ini dengan omzet ${fmtRp(today.omzet)}.`
+                : 'Belum ada transaksi hari ini.'}
             </p>
           </div>
           <p className="text-sm text-muted-foreground">{fmtDate(new Date().toISOString())}</p>
         </div>
 
         <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 p-5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
             <div className="flex items-center gap-3">
               <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[color-mix(in_oklch,var(--chart-omzet)_12%,transparent)]">
-                <Clock className="size-5 text-[var(--chart-omzet)]" />
+                <Store className="size-5 text-[var(--chart-omzet)]" />
               </div>
               <div>
-                <p className="text-sm font-medium">Shift sedang berjalan</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Mulai {startedAt} · Kas awal {openingCash}</p>
+                <p className="text-sm font-medium">Kasir siap</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Mulai transaksi baru untuk pelanggan.</p>
               </div>
             </div>
-            <div className="flex items-center gap-8">
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Penjualan Shift</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{fmtRp(st.sales)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Transaksi</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{st.trx_count}</p>
-              </div>
-            </div>
-            <Button variant="outline" onClick={closeShift} disabled={shiftBusy}>
-              {shiftBusy ? 'Menutup…' : 'Tutup Shift'}
-            </Button>
+            <Button size="lg" render={<Link to="/app/pos" />}>Buka POS</Button>
           </CardContent>
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          {shiftKpis.map((k) => (
+          {kpis.map((k) => (
             <Card key={k.label}>
               <CardContent className="relative min-h-32 p-5">
                 <span className={`absolute right-5 top-5 grid size-9 place-items-center rounded-lg ${k.tint.bg}`}>
@@ -197,64 +130,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Penjualan Hari Ini</CardTitle>
-              <CardDescription>
-                {hourlyData.length > 0 ? `Total ${fmtRp(st.sales)} · omzet per jam` : 'Omzet per jam akan muncul setelah shift berjalan'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {hourlyData.length === 0 ? (
-                <p className="py-16 text-center text-sm text-muted-foreground">Belum ada data penjualan per jam.</p>
-              ) : (
-                <ChartContainer config={salesConfig} className="h-56 w-full">
-                  <AreaChart data={hourlyData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-                    <defs>
-                      <linearGradient id="fillShiftHour" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--color-omzet)" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="var(--color-omzet)" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
-                    <XAxis dataKey="hour" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
-                    <YAxis hide domain={[0, 'auto']} />
-                    <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                    <Area dataKey="omzet" type="monotone" dot={false} fill="url(#fillShiftHour)" stroke="var(--color-omzet)" strokeWidth={2} />
-                  </AreaChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Produk Terlaris</CardTitle>
-              <CardDescription>Selama shift</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {topProducts.length === 0 ? (
-                <p className="py-14 text-center text-sm text-muted-foreground">Belum ada data.</p>
-              ) : (
-                <div className="space-y-4">
-                  {topProducts.slice(0, 5).map((p) => (
-                    <div key={p.product_id} className="space-y-1.5">
-                      <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="truncate font-medium">{p.name}</span>
-                        <span className="shrink-0 tabular-nums text-muted-foreground">{p.qty} pcs</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full" style={{ width: `${Math.round((p.qty / topMaxP) * 100)}%`, background: 'var(--chart-omzet)' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
@@ -266,15 +141,15 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {trxAll === null ? (
+            {recentTrx === null ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Memuat…</p>
-            ) : shiftRecent.length === 0 ? (
+            ) : recentTrx.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">Belum ada transaksi di shift ini. Mulai dari POS Kasir.</p>
+                <p className="text-sm text-muted-foreground">Belum ada transaksi. Mulai dari POS Kasir.</p>
                 <Button className="mt-4" render={<Link to="/app/pos" />}>Buka POS</Button>
               </div>
             ) : (
-              <RecentList items={shiftRecent} />
+              <RecentList items={recentTrx} />
             )}
           </CardContent>
         </Card>
@@ -398,12 +273,12 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {trxAll === null ? (
+            {recentTrx === null ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Memuat…</p>
-            ) : trxAll.length === 0 ? (
+            ) : recentTrx.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi.</p>
             ) : (
-              <RecentList items={trxAll} />
+              <RecentList items={recentTrx} />
             )}
           </CardContent>
         </Card>

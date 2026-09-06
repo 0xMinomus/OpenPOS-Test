@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import {
-  LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings, Clock,
+  LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings,
   Moon, Sun, LogOut, ChevronsUpDown, Check,
 } from 'lucide-react'
-import { ApiError, apiGetCashierShift, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
-import { setSession, setShiftActive, toSession, useDB, useTheme } from '../lib/store'
+import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
+import { setSession, toSession, useDB, useTheme } from '../lib/store'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
   SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -20,7 +20,6 @@ const MENU: { label: string; to: string; icon: React.ComponentType<{ className?:
   { label: 'Produk', to: '/app/produk', icon: Package, adminOnly: true },
   { label: 'Stok', to: '/app/stok', icon: Boxes, adminOnly: true },
   { label: 'Transaksi', to: '/app/transaksi', icon: ReceiptText },
-  { label: 'Shift', to: '/app/shift', icon: Clock },
   { label: 'Laporan', to: '/app/laporan', icon: BarChart3, adminOnly: true },
   { label: 'User Management', to: '/app/users', icon: Users, adminOnly: true },
   { label: 'Pengaturan', to: '/app/pengaturan', icon: Settings, adminOnly: true },
@@ -43,30 +42,12 @@ export default function AppShell() {
     return () => { dead = true }
   }, [s])
 
-  // Status shift kasir (sumber kebenaran global). Saat admin/kasir ganti akun,
-  // status di-refresh dari server; aksi mulai/tutup shift meng-update langsung.
-  useEffect(() => {
-    if (!s) return
-    if (s.role !== 'cashier') {
-      setShiftActive(true)
-      return
-    }
-    let dead = false
-    setShiftActive(null)
-    apiGetCashierShift()
-      .then((d) => { if (!dead) setShiftActive(!!d?.shift?.started_at) })
-      .catch(() => { if (!dead) setShiftActive(false) })
-    return () => { dead = true }
-  }, [s?.id, s?.role])
-
   if (!s) {
     if (hasToken() && !boot) return null
     return <Navigate to="/masuk" replace />
   }
 
   const menu = MENU.filter((m) => !m.adminOnly || s.role === 'admin')
-  const shiftLocked = s.role === 'cashier' && db.shiftActive === false
-  const lockedTo = new Set(['/app', '/app/pos', '/app/transaksi'])
 
   return (
     <SidebarProvider>
@@ -89,26 +70,12 @@ export default function AppShell() {
             <SidebarMenu>
               {menu.map((m) => {
                 const active = loc.pathname === m.to || (m.to !== '/app' && loc.pathname.startsWith(m.to))
-                const locked = shiftLocked && lockedTo.has(m.to)
                 return (
                   <SidebarMenuItem key={m.to}>
-                    {locked ? (
-                      <SidebarMenuButton
-                        isActive={false}
-                        disabled
-                        aria-disabled="true"
-                        title="Mulai shift terlebih dahulu"
-                        className="pointer-events-none cursor-not-allowed opacity-45"
-                      >
-                        <m.icon />
-                        <span>{m.label}</span>
-                      </SidebarMenuButton>
-                    ) : (
-                      <SidebarMenuButton isActive={active} render={<Link to={m.to} />}>
-                        <m.icon />
-                        <span>{m.label}</span>
-                      </SidebarMenuButton>
-                    )}
+                    <SidebarMenuButton isActive={active} render={<Link to={m.to} />}>
+                      <m.icon />
+                      <span>{m.label}</span>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
               })}

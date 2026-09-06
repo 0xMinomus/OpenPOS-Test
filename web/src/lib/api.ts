@@ -399,50 +399,6 @@ export function apiGetDashboard() {
   return request<DashboardAdmin | DashboardCashier>('GET', '/dashboard')
 }
 
-// ── shift kasir ───────────────────────────────────────────────────────
-// Kontrak: docs/API-CONTRACT-CASHIER-SHIFT.md (diajukan ke backend developer)
-
-export interface CashierShift {
-  shift: {
-    started_at: string | null
-    opening_cash: number | null
-    sales: number
-    trx_count: number
-  }
-  hourly: { hour: number; omzet: number }[]
-  top_products: { product_id: string; name: string; qty: number }[]
-}
-
-export function apiGetCashierShift() {
-  return request<CashierShift>('GET', '/cashier/shift')
-}
-
-export function apiStartShift(openingCash?: number) {
-  return request<{ shift: CashierShift['shift'] }>(
-    'POST',
-    '/cashier/shift/start',
-    openingCash != null ? { opening_cash: openingCash } : {},
-  ).then((d) => d.shift)
-}
-
-export function apiCloseShift() {
-  return request<{ message: string; summary?: { sales: number; trx_count: number } }>('POST', '/cashier/shift/close', {})
-}
-
-export interface ShiftLog {
-  id: string
-  cashier_name: string
-  started_at: string
-  closed_at: string | null
-  opening_cash: number | null
-  sales: number
-  trx_count: number
-}
-
-export function apiListShifts() {
-  return request<{ shifts: ShiftLog[] | null }>('GET', '/shifts').then((d) => d.shifts ?? [])
-}
-
 export function apiGetReport(period: string) {
   return request<ReportBundle>('GET', '/reports' + qs({ period }))
 }
