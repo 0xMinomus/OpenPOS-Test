@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ApiError, apiLogin } from '../lib/api'
+import { ApiError, apiGoogleLogin, apiLogin } from '../lib/api'
 import { setSession, toSession } from '../lib/store'
+import { GoogleButton } from '../lib/google'
 import Navbar from './Navbar'
 
 export default function Masuk() {
@@ -50,6 +51,22 @@ export default function Masuk() {
     }
   }
 
+  async function handleGoogle(credential: string) {
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiGoogleLogin(credential)
+      setSession(toSession(r.user))
+      // Akun yang baru dibuat detik ini → lengkapi nama toko + passcode.
+      // Akun lama (Google dipakai untuk masuk) → langsung ke dashboard.
+      const age = r.user.created_at ? Date.now() - new Date(r.user.created_at).getTime() : Infinity
+      nav(age < 2 * 60 * 1000 ? '/daftar?google=onboard' : '/app', { replace: true })
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="bg-bg text-fg">
       <Navbar />
@@ -92,17 +109,25 @@ export default function Masuk() {
               </div>
             </form>
           ) : (
-            <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-            <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
-              Email
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="text" autoComplete="username" placeholder="nama@tokosaya.com" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
-              Kata sandi
-              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder="••••••••" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
-            </label>
-            <button type="submit" disabled={busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Memproses…' : 'Masuk'}</button>
-            </form>
+            <div className="flex flex-col gap-4">
+              <GoogleButton onToken={handleGoogle} busy={busy} text="signin_with" />
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-dove" />
+                <span className="text-xs text-fog">atau</span>
+                <span className="h-px flex-1 bg-dove" />
+              </div>
+              <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+                Email
+                <input value={email} onChange={(e) => setEmail(e.target.value)} type="text" autoComplete="username" placeholder="nama@tokosaya.com" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
+              </label>
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+                Kata sandi
+                <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder="••••••••" className="rounded-md border border-border bg-paper px-3.5 py-3 text-[15px] focus:border-jet focus:outline-none" />
+              </label>
+              <button type="submit" disabled={busy} className="mt-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Memproses…' : 'Masuk'}</button>
+              </form>
+            </div>
           )}
 
           <p className="mt-6 border-t border-dove pt-5 text-center text-sm text-muted">

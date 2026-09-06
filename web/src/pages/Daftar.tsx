@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { apiGetSettings, apiGoogleLogin, apiRegister, apiSendOtp, apiSetPasscode, apiUpdateSettings, apiVerifyOtp, ApiError, type User } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
+import { apiGetSettings, apiGoogleLogin, apiRegister, apiSendOtp, apiSetPasscode, apiUpdateSettings, apiVerifyOtp, apiMe, ApiError, type User } from '../lib/api'
 import { setSession, toSession } from '../lib/store'
+import { GoogleButton } from '../lib/google'
 import Navbar from './Navbar'
 
 const STEPS = [
@@ -11,74 +12,9 @@ const STEPS = [
   { n: 4, label: 'Selesai' },
 ]
 
-declare global {
-  interface Window { google?: any }
-}
-
-function loadGsi(): Promise<void> {
-  if (window.google?.accounts?.id) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    if (document.querySelector('script[data-gsi]')) {
-      const iv = setInterval(() => {
-        if (window.google?.accounts?.id) { clearInterval(iv); resolve() }
-      }, 100)
-      setTimeout(() => { clearInterval(iv); reject(new Error('Gagal memuat login Google.')) }, 10000)
-      return
-    }
-    const s = document.createElement('script')
-    s.src = 'https://accounts.google.com/gsi/client'
-    s.async = true
-    s.defer = true
-    s.dataset.gsi = '1'
-    s.onload = () => resolve()
-    s.onerror = () => reject(new Error('Gagal memuat login Google.'))
-    document.head.appendChild(s)
-  })
-}
-
-function GoogleButton({ onToken, busy }: { onToken: (credential: string) => void; busy: boolean }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [loadErr, setLoadErr] = useState('')
-  const cbRef = useRef(onToken)
-  cbRef.current = onToken
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
-
-  useEffect(() => {
-    if (!clientId) return
-    let dead = false
-    loadGsi()
-      .then(() => {
-        if (dead || !ref.current) return
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (resp: { credential?: string }) => { if (resp?.credential) cbRef.current(resp.credential) },
-        })
-        window.google.accounts.id.renderButton(ref.current, {
-          type: 'standard', theme: 'outline', size: 'large', width: 320, text: 'signup_with', locale: 'id',
-        })
-      })
-      .catch(() => { if (!dead) setLoadErr('Gagal memuat login Google. Periksa koneksi lalu muat ulang.') })
-    return () => { dead = true }
-  }, [clientId])
-
-  if (!clientId) {
-    return (
-      <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">
-        Login Google belum dikonfigurasi (VITE_GOOGLE_CLIENT_ID kosong). Silakan daftar dengan email.
-      </p>
-    )
-  }
-  return (
-    <div className="flex flex-col items-center gap-2">
-      {busy && <p className="text-[13px] text-muted">Memproses login Google…</p>}
-      <div ref={ref} aria-label="Daftar dengan Google" className="flex justify-center" />
-      {loadErr && <p className="text-[13px] text-ember">{loadErr}</p>}
-    </div>
-  )
-}
-
 export default function Daftar() {
   const nav = useNavigate()
+  const [params] = useSearchParams()
   const [mode, setMode] = useState<'choice' | 'email' | 'google-onboard'>('choice')
   const [googleUser, setGoogleUser] = useState<User | null>(null)
   const [step, setStep] = useState(1)
@@ -94,6 +30,22 @@ export default function Daftar() {
   const [code, setCode] = useState('')
   const [otpMsg, setOtpMsg] = useState('')
   const [cooldown, setCooldown] = useState(0)
+
+  // Datang dari halaman Masuk setelah Google login akun baru:
+  // sesi + token sudah tersimpan, tinggal lengkapi nama toko + passcode.
+  useEffect(() => {
+    if (params.get('google') !== 'onboard' || googleUser) return
+    apiMe()
+      .then((r) => {
+        setSession(toSession(r.user))
+        setGoogleUser(r.user)
+        setStore(r.user.store_name)
+        setMode('google-onboard')
+        setStep(3)
+      })
+      .catch(() => nav('/masuk', { replace: true }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -258,7 +210,7 @@ export default function Daftar() {
 
           {mode === 'choice' && (
             <div className="flex flex-col gap-4">
-              <GoogleButton onToken={handleGoogle} busy={busy} />
+              <GoogleButton onToken={handleGoogle} busy={busy} text="signup_with" />
               <div className="flex items-center gap-3" aria-hidden="true">
                 <span className="h-px flex-1 bg-dove" />
                 <span className="text-xs text-fog">atau</span>
