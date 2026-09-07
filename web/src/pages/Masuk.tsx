@@ -68,8 +68,8 @@ export default function Masuk() {
   }
 
   return (
-    <div className="bg-bg text-fg">
-      <Navbar />
+    <div className="landing-light bg-bg text-fg">
+      <Navbar logoTone="light" />
       <main className="relative grid min-h-[calc(100vh-116px)] place-items-center overflow-hidden px-8 py-12">
         <div
           className="pointer-events-none absolute -top-35 -right-30 h-140 w-140 rounded-full blur-6xl"
