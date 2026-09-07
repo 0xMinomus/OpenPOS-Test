@@ -177,11 +177,6 @@ export default function Daftar() {
     <div className="landing-light bg-bg text-fg">
       <Navbar logoTone="light" />
       <main className="relative grid min-h-[calc(100vh-116px)] place-items-center overflow-hidden px-8 py-12">
-        <div
-          className="pointer-events-none absolute -top-35 -left-30 h-140 w-140 rounded-full blur-6xl"
-          style={{ background: 'radial-gradient(circle at 32% 32%, #ffa888 0%, #ff8868 55%, transparent 70%)' }}
-          aria-hidden="true"
-        />
         <section className="auth-card w-full max-w-110 rounded-2xl bg-cream p-10">
           {mode !== 'choice' && (
             <div className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Langkah pendaftaran">
