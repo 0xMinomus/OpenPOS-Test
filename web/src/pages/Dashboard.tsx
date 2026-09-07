@@ -198,7 +198,7 @@ export default function Dashboard() {
             <CardContent>
               <ChartContainer config={salesConfig} className="h-56 w-full">
                 <BarChart data={sales7} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                  <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
+                  <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                   <XAxis dataKey="day" interval={0} tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12 }} />
                   <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} className="font-mono text-xs" />
                   <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />

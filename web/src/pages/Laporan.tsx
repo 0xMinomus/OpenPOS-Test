@@ -177,7 +177,7 @@ export default function Laporan() {
                   ) : (
                     <ChartContainer config={omzetConfig} className="h-64 w-full">
                       <BarChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                        <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
+                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval="preserveStartEnd" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
                         <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
@@ -337,7 +337,7 @@ export default function Laporan() {
                   ) : (
                     <ChartContainer config={profitConfig} className="h-56 w-full">
                       <BarChart data={topProfitTrx.map((t) => ({ label: t.id, profit: t.profit }))} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                        <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
+                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
                         <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
@@ -389,7 +389,7 @@ export default function Laporan() {
                   ) : (
                     <ChartContainer config={stockConfig} className="h-56 w-full">
                       <BarChart data={stockTop.map((s) => ({ label: s.name.length > 16 ? s.name.slice(0, 16) + '…' : s.name, nilai: s.stock_value }))} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                        <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border" />
+                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
                         <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
