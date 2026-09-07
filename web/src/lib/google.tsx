@@ -32,6 +32,7 @@ function loadGsi(): Promise<void> {
 export function GoogleButton({ onToken, busy, text }: { onToken: (credential: string) => void; busy: boolean; text: 'signin_with' | 'signup_with' }) {
   const ref = useRef<HTMLDivElement>(null)
   const [loadErr, setLoadErr] = useState('')
+  const [ready, setReady] = useState(false)
   const cbRef = useRef(onToken)
   cbRef.current = onToken
   const clientId = getGoogleClientId()
@@ -47,8 +48,10 @@ export function GoogleButton({ onToken, busy, text }: { onToken: (credential: st
           callback: (resp: { credential?: string }) => { if (resp?.credential) cbRef.current(resp.credential) },
         })
         window.google.accounts.id.renderButton(ref.current, {
-          type: 'standard', theme: 'outline', size: 'large', width: 320, text, locale: 'id',
+          type: 'standard', theme: 'outline', size: 'large', shape: 'pill',
+          width: Math.round(ref.current.clientWidth) || 320, text, locale: 'id',
         })
+        if (!dead) setReady(true)
       })
       .catch(() => { if (!dead) setLoadErr('Gagal memuat login Google. Periksa koneksi lalu muat ulang.') })
     return () => { dead = true }
@@ -62,10 +65,13 @@ export function GoogleButton({ onToken, busy, text }: { onToken: (credential: st
     )
   }
   return (
-    <div className="flex flex-col items-center gap-2">
-      {busy && <p className="text-[13px] text-muted">Memproses login Google…</p>}
-      <div ref={ref} aria-label="Login dengan Google" className="flex justify-center" />
-      {loadErr && <p className="text-[13px] text-ember">{loadErr}</p>}
+    <div className="w-full">
+      {busy && <p className="mb-2 text-center text-[13px] text-muted">Memproses login Google…</p>}
+      <div className="relative w-full" aria-busy={!ready} aria-label="Login dengan Google">
+        {!ready && <div className="absolute inset-0 animate-pulse rounded-full border border-dove bg-surface" aria-hidden="true" />}
+        <div ref={ref} className="flex h-12 items-center justify-center" />
+      </div>
+      {loadErr && <p className="mt-2 text-center text-[13px] text-ember">{loadErr}</p>}
     </div>
   )
 }
