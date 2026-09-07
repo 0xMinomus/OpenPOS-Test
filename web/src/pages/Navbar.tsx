@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router'
+import { Logo } from '../lib/ui'
 
 const SECTIONS = [
   { id: 'fitur', label: 'Fitur' },
@@ -6,7 +7,7 @@ const SECTIONS = [
   { id: 'tentang', label: 'Tentang' },
 ]
 
-export default function Navbar({ dark }: { dark?: boolean }) {
+export default function Navbar({ dark, logoTone = 'auto' }: { dark?: boolean; logoTone?: 'auto' | 'light' | 'dark' }) {
   const nav = useNavigate()
   const loc = useLocation()
 
@@ -32,7 +33,7 @@ export default function Navbar({ dark }: { dark?: boolean }) {
     <header className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur-xl">
       <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 md:gap-5 md:px-8">
         <Link to="/" onClick={goHome} className="flex items-center justify-self-start">
-          <img src="/logo.png" alt="OpenPOS" className="h-6 w-auto sm:h-7" />
+          <Logo tone={logoTone} className="h-6 w-auto sm:h-7" />
         </Link>
         {!dark && (
           <nav className="hidden gap-8 text-sm text-muted md:flex" aria-label="Navigasi utama">

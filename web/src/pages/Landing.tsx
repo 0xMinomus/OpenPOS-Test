@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { fmtRp } from '../lib/store'
+import { Logo } from '../lib/ui'
 import Navbar from './Navbar'
 
 interface DemoProduct {
@@ -121,7 +122,7 @@ export default function Landing() {
 
   return (
     <div className="landing-light bg-bg text-fg">
-      <Navbar />
+      <Navbar logoTone="light" />
       <main>
         <section id="beranda" className="overflow-hidden pt-[clamp(36px,5vw,92px)] pb-10">
           <div className="container mx-auto max-w-6xl px-5 md:px-8 text-center">
@@ -426,7 +427,7 @@ function Footer() {
       <div className="container mx-auto grid max-w-6xl items-start gap-8 px-5 md:px-8 md:grid-cols-[2fr_1fr_1fr] md:gap-14">
         <div>
           <Link to="/" className="mb-3 inline-block">
-            <img src="/logo.png" alt="OpenPOS" className="h-7 w-auto" />
+            <Logo tone="light" className="h-7 w-auto" />
           </Link>
           <p className="max-w-xs leading-relaxed">
             Sistem kasir digital untuk UMKM Indonesia. Kelola produk, stok, dan penjualan dari satu dashboard sederhana.

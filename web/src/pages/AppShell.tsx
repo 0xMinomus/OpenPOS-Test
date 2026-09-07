@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
 import { setSession, toSession, useDB, useTheme } from '../lib/store'
+import { Logo } from '../lib/ui'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
   SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -56,7 +57,7 @@ export default function AppShell() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" render={<Link to="/app" />}>
-                  <img src="/logo.png" alt="OpenPOS" className="h-8 w-auto shrink-0" />
+                  <Logo className="h-8 w-auto shrink-0" />
                   <span className="grid flex-1 text-left leading-tight">
                     <span className="truncate font-mono text-xs text-muted-foreground">{s.store}</span>
                   </span>
