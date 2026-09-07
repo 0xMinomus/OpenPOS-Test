@@ -100,7 +100,7 @@ export default function Transaksi() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl bg-cream p-2">
-        {!loading || trx.length > 0 ? (
+        {loading || trx.length > 0 ? (
           <table className="w-full border-collapse">
             <thead>
               <tr>
