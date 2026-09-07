@@ -132,6 +132,13 @@ function UserMenu() {
       .catch(() => {})
   }, [s.role, s.id])
 
+  // Ikut cache terbaru (tambah/hapus kasir di halaman Users) tanpa reload.
+  useEffect(() => {
+    const sync = () => setAccounts(getCachedAccounts())
+    window.addEventListener('op:accounts-changed', sync)
+    return () => window.removeEventListener('op:accounts-changed', sync)
+  }, [])
+
   function resetMenu() {
     setOpen(false)
     setPending(null)

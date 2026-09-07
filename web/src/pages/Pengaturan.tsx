@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { apiGetSettings, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings, type StoreSettings, type User } from '../lib/api'
-import { setSession, useDB } from '../lib/store'
+import { getSession, setSession, useDB } from '../lib/store'
 import { Button, Input, PageHead, Pill } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -45,7 +45,11 @@ export default function Pengaturan() {
     if (!form) return
     setMsg(''); setErr(''); setBusy(true)
     try {
-      setForm(await apiUpdateSettings(form))
+      const saved = await apiUpdateSettings(form)
+      setForm(saved)
+      // Nama toko tampil di sidebar — sinkronkan sesi tanpa reload.
+      const cur = getSession()
+      if (cur && cur.store !== saved.storeName) setSession({ ...cur, store: saved.storeName })
       setMsg('Pengaturan disimpan.')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menyimpan pengaturan.')

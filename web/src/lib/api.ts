@@ -272,6 +272,8 @@ export function setCachedAccounts(users: User[]) {
   } catch {
     // abaikan — cache hanya akselerator menu ganti akun
   }
+  // Sinkronkan menu ganti akun di sidebar tanpa reload halaman.
+  window.dispatchEvent(new Event('op:accounts-changed'))
 }
 
 // ── verifikasi email OTP ─────────────────────────────────────────────
