@@ -140,7 +140,7 @@ export default function Landing() {
                 Masuk
               </Link>
             </div>
-            <div className="hero-reveal mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs tracking-wide text-steel sm:mt-9">
+            <div className="hero-reveal relative z-10 mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs tracking-wide text-jet sm:mt-9">
               <span className="inline-flex items-center gap-2">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                 Gratis tanpa kartu kredit
