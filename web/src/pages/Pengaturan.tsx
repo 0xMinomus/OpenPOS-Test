@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { apiGetSettings, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings, type StoreSettings, type User } from '../lib/api'
-import { setSession, useDB, useTheme } from '../lib/store'
+import { setSession, useDB } from '../lib/store'
 import { Button, Input, PageHead, Pill } from '../lib/ui'
 
 const TABS = [
@@ -35,7 +35,6 @@ function loadPcSet(): Record<string, boolean> {
 export default function Pengaturan() {
   const nav = useNavigate()
   const { session } = useDB()
-  const [theme, setTheme] = useTheme()
   const [tab, setTab] = useState<TabId>('akun')
   const [form, setForm] = useState<StoreSettings | null>(null)
   const [users, setUsers] = useState<User[]>([])
@@ -138,10 +137,9 @@ export default function Pengaturan() {
         ))}
       </div>
 
-      <div className="max-w-xl space-y-6">
+      <div className="max-w-2xl space-y-6">
         {tab === 'akun' && (
-          <>
-            <section className="rounded-2xl bg-cream p-6">
+          <section className="rounded-2xl bg-cream p-6">
               <h2 className="mb-4 font-mono text-xs uppercase tracking-wider text-fog">Akun saya</h2>
               <div className="flex items-center gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-jet font-mono text-lg text-paper">
@@ -162,25 +160,6 @@ export default function Pengaturan() {
                 <Button variant="danger" onClick={keluar} disabled={busy}>Keluar</Button>
               </div>
             </section>
-
-            <section className="rounded-2xl bg-cream p-6">
-              <h2 className="mb-4 font-mono text-xs uppercase tracking-wider text-fog">Tampilan</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition ${theme === 'light' ? 'border-jet bg-paper text-fg' : 'border-dove text-muted hover:border-jet'}`}
-                >
-                  Terang
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition ${theme === 'dark' ? 'border-jet bg-paper text-fg' : 'border-dove text-muted hover:border-jet'}`}
-                >
-                  Gelap
-                </button>
-              </div>
-            </section>
-          </>
         )}
 
         {tab === 'toko' && (
