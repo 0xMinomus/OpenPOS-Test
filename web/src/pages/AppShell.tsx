@@ -151,7 +151,7 @@ function UserMenu() {
     setErr('')
     setBusy(true)
     try {
-      const r = await apiSwitchAccount(u.id)
+      const r = await apiSwitchAccount(u.id, undefined, u.role)
       setSession(toSession(r.user))
       resetMenu()
       nav('/app')
@@ -172,7 +172,7 @@ function UserMenu() {
     setErr('')
     setBusy(true)
     try {
-      const r = await apiSwitchAccount(pending.id, passcode)
+      const r = await apiSwitchAccount(pending.id, passcode, pending.role)
       setSession(toSession(r.user))
       resetMenu()
       nav('/app')

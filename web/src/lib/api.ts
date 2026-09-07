@@ -96,6 +96,7 @@ export interface User {
   active: boolean
   store_id: string
   store_name: string
+  has_passcode: boolean
   created_at?: string
 }
 
@@ -236,11 +237,11 @@ export function apiMe() {
 // ── ganti akun cepat (admin ⇄ kasir, dalam toko yang sama) ────────────
 // Kontrak: README backend §"Alur Pembagian Sesi Akun".
 
-export function apiSwitchAccount(targetUserId: string, passcode?: string) {
+export function apiSwitchAccount(targetUserId: string, passcode?: string, role?: Role) {
   return request<AuthResp>(
     'POST',
     '/auth/switch',
-    passcode ? { target_user_id: targetUserId, passcode } : { target_user_id: targetUserId },
+    { target_user_id: targetUserId, ...(passcode ? { passcode } : {}), ...(role ? { role } : {}) },
   ).then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
 }
 

@@ -12,7 +12,7 @@ export default function PilihAkun() {
   const [users, setUsers] = useState<User[] | null>(null)
   const [err, setErr] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [pending, setPending] = useState<User | null>(null)
+  const [pending, setPending] = useState<{ u: User; role: 'admin' | 'cashier' } | null>(null)
   const [pin, setPin] = useState('')
 
   useEffect(() => {
@@ -41,25 +41,28 @@ export default function PilihAkun() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function enterAdmin() {
-    nav('/app', { replace: true })
-  }
-
-  async function pickCashier(u: User, code?: string) {
+  async function pickAccount(u: User, role: 'admin' | 'cashier', code?: string) {
     setErr(''); setBusyId(u.id)
     try {
-      const r = await apiSwitchAccount(u.id, code || undefined)
+      const r = await apiSwitchAccount(u.id, code || undefined, role)
       setSession(toSession(r.user))
       nav('/app', { replace: true })
     } catch (x) {
       if (x instanceof ApiError && x.code === 'passcode_required') {
-        setPending(u); setPin('')
+        setPending({ u, role }); setPin('')
       } else {
         setErr(x instanceof Error ? x.message : 'Gagal ganti akun.')
       }
     } finally {
       setBusyId(null)
     }
+  }
+
+  // has_passcode dari server: akun ber-PIN langsung ke form, sisanya masuk langsung.
+  function tapAccount(u: User, role: 'admin' | 'cashier') {
+    setErr('')
+    if (u.has_passcode) { setPending({ u, role }); setPin('') }
+    else pickAccount(u, role)
   }
 
   async function keluar() {
@@ -69,6 +72,7 @@ export default function PilihAkun() {
   }
 
   const cashiers = (users ?? []).filter((u) => u.role === 'cashier')
+  const adminUser = (users ?? []).find((u) => u.role === 'admin') ?? null
 
   return (
     <div className="landing-light bg-bg text-fg">
@@ -90,8 +94,9 @@ export default function PilihAkun() {
           ) : (
             <div className="space-y-2.5">
               <button
-                onClick={enterAdmin}
-                className="flex w-full items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet"
+                onClick={() => adminUser && tapAccount(adminUser, 'admin')}
+                disabled={busyId === adminUser?.id}
+                className="flex w-full items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet disabled:opacity-50"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-jet text-paper">
                   <UserRound className="size-5" />
@@ -100,14 +105,16 @@ export default function PilihAkun() {
                   <span className="block truncate text-[15px] font-medium text-fg">{session?.name ?? 'Admin'}</span>
                   <span className="block truncate text-[13px] text-muted">{session?.email ?? ''}</span>
                 </span>
-                <span className="rounded-full bg-success-bg px-2.5 py-0.5 text-[11px] font-medium text-sprout">Admin</span>
+                {busyId === adminUser?.id
+                  ? <span className="text-[13px] font-medium text-jet">…</span>
+                  : <span className="rounded-full bg-success-bg px-2.5 py-0.5 text-[11px] font-medium text-sprout">Admin</span>}
               </button>
 
               {cashiers.map((u) => (
                 <button
                   key={u.id}
                   disabled={!u.active || busyId === u.id}
-                  onClick={() => pickCashier(u)}
+                  onClick={() => tapAccount(u, 'cashier')}
                   className="flex w-full items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-dove"
                 >
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-steel">
@@ -127,12 +134,12 @@ export default function PilihAkun() {
 
           {pending && (
             <div className="mt-4 rounded-xl border border-dove p-4">
-              <p className="text-sm text-muted">Akun <strong className="text-fg">{pending.name}</strong> dilindungi passcode.</p>
+              <p className="text-sm text-muted">Akun <strong className="text-fg">{pending.u.name}</strong> dilindungi passcode.</p>
               <div className="mt-3 flex gap-2">
                 <input
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && pin.length === 5) pickCashier(pending, pin) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && pin.length === 5) pickAccount(pending.u, pending.role, pin) }}
                   inputMode="numeric"
                   autoFocus
                   placeholder="•••••"
@@ -140,11 +147,11 @@ export default function PilihAkun() {
                   className="min-w-0 flex-1 rounded-md border border-border bg-paper px-3 py-2.5 text-center font-mono text-lg tracking-[0.5em] focus:border-jet focus:outline-none"
                 />
                 <button
-                  onClick={() => pickCashier(pending, pin)}
-                  disabled={pin.length !== 5 || busyId === pending.id}
+                  onClick={() => pickAccount(pending.u, pending.role, pin)}
+                  disabled={pin.length !== 5 || busyId === pending.u.id}
                   className="rounded-full bg-jet px-5 py-2.5 text-sm font-medium text-paper disabled:opacity-40"
                 >
-                  {busyId === pending.id ? '…' : 'Masuk'}
+                  {busyId === pending.u.id ? '…' : 'Masuk'}
                 </button>
                 <button onClick={() => { setPending(null); setPin('') }} className="px-2 text-sm text-muted hover:underline">
                   Batal

@@ -64,7 +64,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 ## 4. Auth & Google Login
 
 - **Daftar email** (`Daftar.tsx`, 4 langkah): Akun (nama/email/sandi) → **OTP** (kode 6 digit; `POST /auth/otp/send` panggil di langkah 1; 409 = email terdaftar → tetap di langkah 1, pesan "Email sudah terdaftar. Silakan masuk."; `sendOtp()` harus `throw` supaya tidak lanjut step) → Nama Toko → Passcode admin 5 digit → register → dashboard.
-- **Pilih akun** (`/pilih-akun`, `PilihAkun.tsx`): setelah login email/Google, bila toko punya kasir aktif → pilih Admin (nama+email) atau Kasir (nama; Nonaktif = tak bisa diklik; passcode diminta inline bila perlu). Tanpa kasir aktif → langsung `/app`. Helper `apiHasActiveCashiers()` (fail-open ke `/app`).
+- **Pilih akun** (`/pilih-akun`, `PilihAkun.tsx`): setelah login email/Google, bila toko punya kasir aktif → pilih Admin (nama+email) atau Kasir (nama; Nonaktif = tak bisa diklik; akun ber-`has_passcode` server langsung ke form PIN, sisanya masuk langsung; kartu Admin verifikasi via switch-to-self). Tanpa kasir aktif → langsung `/app`. Helper `apiHasActiveCashiers()` (fail-open ke `/app`). Switch selalu kirim `role` (hint anti-tabrakan ID admin vs kasir).
 - **Google** (`POST /auth/google {id_token, storeName?}`): user baru (created_at < 2 menit) → onboarding nama toko + passcode di `/daftar?google=onboard`; akun lama → langsung `/app`.
 - Env yang harus ada: **`VITE_GOOGLE_CLIENT_ID`** di Vercel (wajib prefix `VITE_`, tanpa prefix TIDAK terbaca Vite). Google Cloud Console harus punya origin frontend di Authorized JavaScript origins.
 - Register/OTP wajib: `POST /auth/register` tolak email belum verified OTP.
@@ -81,7 +81,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 - **Transaksi** — list server-side (filter q/method/date), kolom **Produk** (`TrxItems`), detail, refund (admin), export CSV. Field waktu = **`created_at`** (backend GORM — JANGAN pakai `time`).
 - **Laporan** — tab Penjualan/Produk/Profit/Stok + 5 periode + Export CSV; KPI + bar chart omzet harian (agregat frontend dari `transactions[].date`), donut metode, status, top produk, profit trx, nilai stok.
 - **Users** — tambah kasir (cukup nama), aktif/nonaktif, **hapus kasir** (modal minta ketik "Konfirmasi" → `DELETE /users/{id}`). Passcode via Pengaturan.
-- **Pengaturan** — tab Akun/Toko/Struk/Pajak/Passcode (Akun: profil sesi + keluar + tema; timezone select WIB/WITA/WIT; passcode per akun tombol Ganti/Pasang + badge Aktif •••••/Mati, status cache per-perangkat `op_pc_set`; section dummy Informasi dihapus).
+- **Pengaturan** — tab Akun/Toko/Struk/Pajak/Passcode (Akun: profil sesi + keluar + tema; timezone select WIB/WITA/WIT; passcode per akun tombol Ganti/Pasang + badge Aktif •••••/Mati dari `has_passcode` server; section dummy Informasi dihapus).
 - **Tema** — default light; dark hanya kalau user memilih (`op_theme`).
 - **SISTEM SHIFT = DIBUANG** (di-arsip). Jangan pasang ulang kecuali diminta. Arsip: `docs/archive/API-CONTRACT-CASHIER-SHIFT.md` + history git.
 

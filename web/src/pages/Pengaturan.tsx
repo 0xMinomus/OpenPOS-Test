@@ -21,25 +21,12 @@ const TIMEZONES = [
   { value: 'Asia/Jayapura', label: 'WIT — Jayapura (UTC+9)' },
 ]
 
-const PC_SET_KEY = 'op_pc_set'
-
-// ponytail: status passcode hanya cache per-perangkat (backend tidak expos flag),
-// upgrade path: tambah field has_passcode di GET /users lalu ganti badge pakai itu.
-function loadPcSet(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(PC_SET_KEY) ?? '{}') as Record<string, boolean>
-  } catch {
-    return {}
-  }
-}
-
 export default function Pengaturan() {
   const nav = useNavigate()
   const { session } = useDB()
   const [tab, setTab] = useState<TabId>('akun')
   const [form, setForm] = useState<StoreSettings | null>(null)
   const [users, setUsers] = useState<User[]>([])
-  const [pcSet, setPcSet] = useState<Record<string, boolean>>(loadPcSet)
   const [editingPc, setEditingPc] = useState<string | null>(null)
   const [pcVal, setPcVal] = useState('')
   const [msg, setMsg] = useState('')
@@ -53,20 +40,6 @@ export default function Pengaturan() {
   }, [])
 
   const set = (k: keyof StoreSettings) => (v: string) => setForm((f) => (f ? { ...f, [k]: v } : f))
-
-  function markPc(id: string, on: boolean) {
-    setPcSet((prev) => {
-      const next = { ...prev }
-      if (on) next[id] = true
-      else delete next[id]
-      try {
-        localStorage.setItem(PC_SET_KEY, JSON.stringify(next))
-      } catch {
-        // abaikan — cache hanya penanda badge
-      }
-      return next
-    })
-  }
 
   async function save() {
     if (!form) return
@@ -86,7 +59,7 @@ export default function Pengaturan() {
     setMsg(''); setErr(''); setPcBusy(true)
     try {
       await apiSetPasscode(u.id, pcVal, u.role)
-      markPc(u.id, true)
+      setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, has_passcode: true } : x)))
       setEditingPc(null); setPcVal('')
       setMsg(`Passcode ${u.name} diperbarui.`)
     } catch (e) {
@@ -100,7 +73,7 @@ export default function Pengaturan() {
     setMsg(''); setErr(''); setPcBusy(true)
     try {
       await apiSetPasscode(u.id, '', u.role)
-      markPc(u.id, false)
+      setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, has_passcode: false } : x)))
       setEditingPc(null); setPcVal('')
       setMsg(`Passcode ${u.name} dinonaktifkan.`)
     } catch (e) {
@@ -240,10 +213,10 @@ export default function Pengaturan() {
         {tab === 'passcode' && (
           <section className="rounded-2xl bg-cream p-6">
             <h2 className="mb-1 font-mono text-xs uppercase tracking-wider text-fog">Passcode akun</h2>
-            <p className="mb-4 text-[13px] text-muted">Passcode 5 angka diminta saat login & ganti akun. Status tercatat di perangkat ini.</p>
+            <p className="mb-4 text-[13px] text-muted">Passcode 5 angka diminta saat login & ganti akun.</p>
             <div className="space-y-3">
               {users.map((u) => {
-                const known = !!pcSet[u.id]
+                const known = u.has_passcode
                 const editing = editingPc === u.id
                 return (
                   <div key={`${u.role}-${u.id}`} className="rounded-lg border border-dove bg-paper px-3.5 py-2.5">
