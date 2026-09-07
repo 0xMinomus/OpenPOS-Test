@@ -64,6 +64,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 ## 4. Auth & Google Login
 
 - **Daftar email** (`Daftar.tsx`, 4 langkah): Akun (nama/email/sandi) → **OTP** (kode 6 digit; `POST /auth/otp/send` panggil di langkah 1; 409 = email terdaftar → tetap di langkah 1, pesan "Email sudah terdaftar. Silakan masuk."; `sendOtp()` harus `throw` supaya tidak lanjut step) → Nama Toko → Passcode admin 5 digit → register → dashboard.
+- **Pilih akun** (`/pilih-akun`, `PilihAkun.tsx`): setelah login email/Google, bila toko punya kasir aktif → pilih Admin (nama+email) atau Kasir (nama; Nonaktif = tak bisa diklik; passcode diminta inline bila perlu). Tanpa kasir aktif → langsung `/app`. Helper `apiHasActiveCashiers()` (fail-open ke `/app`).
 - **Google** (`POST /auth/google {id_token, storeName?}`): user baru (created_at < 2 menit) → onboarding nama toko + passcode di `/daftar?google=onboard`; akun lama → langsung `/app`.
 - Env yang harus ada: **`VITE_GOOGLE_CLIENT_ID`** di Vercel (wajib prefix `VITE_`, tanpa prefix TIDAK terbaca Vite). Google Cloud Console harus punya origin frontend di Authorized JavaScript origins.
 - Register/OTP wajib: `POST /auth/register` tolak email belum verified OTP.

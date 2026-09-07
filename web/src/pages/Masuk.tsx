@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ApiError, apiGoogleLogin, apiLogin } from '../lib/api'
+import { ApiError, apiGoogleLogin, apiHasActiveCashiers, apiLogin } from '../lib/api'
 import { setSession, toSession } from '../lib/store'
 import { GoogleButton } from '../lib/google'
 import Navbar from './Navbar'
@@ -23,7 +23,7 @@ export default function Masuk() {
     try {
       const r = await apiLogin(em, password)
       setSession(toSession(r.user))
-      nav('/app', { replace: true })
+      nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
     } catch (x) {
       if (x instanceof ApiError && x.code === 'passcode_required') {
         setNeedPasscode(true)
@@ -42,7 +42,7 @@ export default function Masuk() {
     try {
       const r = await apiLogin(email.trim().toLowerCase(), password, passcode)
       setSession(toSession(r.user))
-      nav('/app', { replace: true })
+      nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Passcode salah. Coba lagi.')
       setPasscode('')
@@ -59,7 +59,11 @@ export default function Masuk() {
       // Akun yang baru dibuat detik ini → lengkapi nama toko + passcode.
       // Akun lama (Google dipakai untuk masuk) → langsung ke dashboard.
       const age = r.user.created_at ? Date.now() - new Date(r.user.created_at).getTime() : Infinity
-      nav(age < 2 * 60 * 1000 ? '/daftar?google=onboard' : '/app', { replace: true })
+      if (age < 2 * 60 * 1000) {
+        nav('/daftar?google=onboard', { replace: true })
+      } else {
+        nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
+      }
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
     } finally {

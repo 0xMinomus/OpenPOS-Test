@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { apiGetSettings, apiGoogleLogin, apiRegister, apiSendOtp, apiSetPasscode, apiUpdateSettings, apiVerifyOtp, apiMe, ApiError, type User } from '../lib/api'
+import { apiGetSettings, apiGoogleLogin, apiHasActiveCashiers, apiRegister, apiSendOtp, apiSetPasscode, apiUpdateSettings, apiVerifyOtp, apiMe, ApiError, type User } from '../lib/api'
 import { setSession, toSession } from '../lib/store'
 import { GoogleButton } from '../lib/google'
 import Navbar from './Navbar'
@@ -138,7 +138,7 @@ export default function Daftar() {
         setMode('google-onboard')
         setStep(3)
       } else {
-        nav('/app', { replace: true })
+        nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
       }
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')

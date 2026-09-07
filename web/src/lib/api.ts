@@ -244,6 +244,16 @@ export function apiSwitchAccount(targetUserId: string, passcode?: string) {
   ).then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
 }
 
+// Landing pasca-login: true bila ada kasir aktif untuk dipilih.
+export async function apiHasActiveCashiers(): Promise<boolean> {
+  try {
+    const users = await apiListUsers()
+    return users.some((u) => u.role === 'cashier' && u.active)
+  } catch {
+    return false
+  }
+}
+
 const ACCOUNTS_KEY = 'op_accounts'
 
 export function getCachedAccounts(): User[] {

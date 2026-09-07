@@ -4,6 +4,7 @@ import ErrorBoundary from './lib/ErrorBoundary'
 import Landing from './pages/Landing'
 import Masuk from './pages/Masuk'
 import Daftar from './pages/Daftar'
+import PilihAkun from './pages/PilihAkun'
 import AppShell from './pages/AppShell'
 import Dashboard from './pages/Dashboard'
 import Pos from './pages/Pos'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/masuk" element={<Masuk />} />
         <Route path="/daftar" element={<Daftar />} />
+        <Route path="/pilih-akun" element={<PilihAkun />} />
         <Route path="/app" element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="pos" element={<Pos />} />
