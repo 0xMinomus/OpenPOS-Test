@@ -40,6 +40,12 @@ export function GoogleButton({ onToken, busy, text }: { onToken: (credential: st
   useEffect(() => {
     if (!clientId) return
     let dead = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let mo: MutationObserver | undefined
+    const markReady = (delay: number) => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { if (!dead) setReady(true) }, delay)
+    }
     loadGsi()
       .then(() => {
         if (dead || !ref.current) return
@@ -47,14 +53,26 @@ export function GoogleButton({ onToken, busy, text }: { onToken: (credential: st
           client_id: clientId,
           callback: (resp: { credential?: string }) => { if (resp?.credential) cbRef.current(resp.credential) },
         })
-        window.google.accounts.id.renderButton(ref.current, {
-          type: 'standard', theme: 'outline', size: 'large', shape: 'pill',
-          width: Math.round(ref.current.clientWidth) || 320, text, locale: 'id',
+        // Overlay dipertahankan sampai iframe tombol selesai muat + font
+        // di dalamnya stabil — renderButton kembali langsung padahal
+        // iframe masih memuat font secara async.
+        const box = ref.current
+        mo = new MutationObserver(() => {
+          const frame = box.querySelector('iframe')
+          if (!frame) return
+          mo?.disconnect()
+          frame.addEventListener('load', () => markReady(900), { once: true })
+          markReady(5000)
         })
-        if (!dead) setReady(true)
+        mo.observe(box, { childList: true })
+        window.google.accounts.id.renderButton(box, {
+          type: 'standard', theme: 'outline', size: 'large', shape: 'pill',
+          width: Math.round(box.clientWidth) || 320, text, locale: 'id',
+        })
+        markReady(8000)
       })
       .catch(() => { if (!dead) setLoadErr('Gagal memuat login Google. Periksa koneksi lalu muat ulang.') })
-    return () => { dead = true }
+    return () => { dead = true; if (timer) clearTimeout(timer); mo?.disconnect() }
   }, [clientId, text])
 
   if (!clientId) {
