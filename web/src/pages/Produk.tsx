@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
+import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
 import { exportCSV, fmtRp } from '../lib/store'
 import { Button, Empty, Input, Modal, PageHead, Pill, Td, Th } from '../lib/ui'
 
@@ -23,6 +23,7 @@ export default function Produk() {
   const [cats, setCats] = useState<Category[]>([])
   const [err, setErr] = useState('')
   const [editing, setEditing] = useState<Draft | null>(null)
+  const [deleteFor, setDeleteFor] = useState<Product | null>(null)
   const [catName, setCatName] = useState('')
   const [importRows, setImportRows] = useState<{ ok: boolean; row: string[]; msg: string }[] | null>(null)
   const [importDone, setImportDone] = useState<{ ok: number; fail: number } | null>(null)
@@ -63,6 +64,17 @@ export default function Produk() {
       loadProducts()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal mengubah status.')
+    }
+  }
+
+  async function removeProduct() {
+    if (!deleteFor) return
+    try {
+      await apiDeleteProduct(deleteFor.id)
+      setDeleteFor(null)
+      loadProducts()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal menghapus produk.')
     }
   }
 
@@ -187,6 +199,7 @@ export default function Produk() {
                         <div className="flex justify-end gap-2 text-[13px]">
                           <button className="font-medium text-jet hover:underline" onClick={() => setEditing({ id: p.id, name: p.name, sku: p.sku, barcode: p.barcode, categoryId: p.category_id ?? '', buyPrice: String(p.buy_price), sellPrice: String(p.sell_price), stock: String(p.stock), unit: p.unit })}>Ubah</button>
                           <button className="text-muted hover:underline" onClick={() => toggleActive(p)}>{p.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          <button className="text-ember hover:underline" onClick={() => setDeleteFor(p)}>Hapus</button>
                         </div>
                       </Td>
                     </tr>
@@ -230,6 +243,18 @@ export default function Produk() {
             onCancel={() => setEditing(null)}
           />
         )}
+      </Modal>
+
+      <Modal open={!!deleteFor} title={`Hapus Produk · ${deleteFor?.name ?? ''}`} onClose={() => setDeleteFor(null)}>
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Tindakan ini <strong className="text-ember">permanen</strong>. Produk tidak bisa dikembalikan setelah dihapus.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setDeleteFor(null)}>Batal</Button>
+            <Button variant="danger" onClick={removeProduct}>Hapus Produk</Button>
+          </div>
+        </div>
       </Modal>
 
       <Modal open={!!importRows} title="Preview Import" onClose={() => setImportRows(null)} wide>

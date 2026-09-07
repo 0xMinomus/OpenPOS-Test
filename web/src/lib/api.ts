@@ -355,6 +355,10 @@ export function apiSetProductActive(id: string, active: boolean) {
   return request<{ message: string }>('PATCH', `/products/${id}/active`, { active })
 }
 
+export function apiDeleteProduct(id: string) {
+  return request<{ message: string }>('DELETE', `/products/${id}`)
+}
+
 // ── stok ─────────────────────────────────────────────────────────────
 
 export function apiListMovements(f: { type?: string; productId?: string; page?: number; limit?: number } = {}) {
