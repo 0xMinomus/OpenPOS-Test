@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Banknote, BarChart3, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, type ReportBundle } from '../lib/api'
 import { exportCSV, fmtRp } from '../lib/store'
-import { Button, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
+import { Button, PageHead, SkeletonRows, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -90,6 +90,20 @@ export default function Laporan() {
   }, [data])
 
   const topProducts = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty).slice(0, 5) : []), [data])
+  const cashierStats = useMemo(() => {
+    if (!data) return []
+    const map = new Map<string, { omzet: number; trx: number }>()
+    for (const t of data.transactions) {
+      const e = map.get(t.cashier) ?? { omzet: 0, trx: 0 }
+      e.omzet += t.total
+      e.trx += 1
+      map.set(t.cashier, e)
+    }
+    return [...map.entries()]
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.omzet - a.omzet)
+      .slice(0, 5)
+  }, [data])
   const topProfitTrx = useMemo(() => (data ? [...data.transactions].sort((a, b) => b.profit - a.profit).slice(0, 5) : []), [data])
   const stockTop = useMemo(() => (data ? [...data.stock].sort((a, b) => b.stock_value - a.stock_value).slice(0, 8) : []), [data])
 
@@ -219,17 +233,25 @@ export default function Laporan() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-                <ChartCard title="Status Transaksi" sub="Distribusi status">
-                  {data.by_status.length === 0 ? (
+                <ChartCard title="Performa Kasir" sub="Omzet per kasir periode ini">
+                  {cashierStats.length === 0 ? (
                     <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                   ) : (
-                    <div className="space-y-3">
-                      {data.by_status.map((st) => (
-                        <div key={st.status} className="flex items-center justify-between gap-3 text-sm">
-                          <Pill tone={st.status === 'completed' ? 'ok' : st.status === 'refunded' ? 'warn' : 'muted'}>{st.status}</Pill>
-                          <span className="font-medium tabular-nums">{st.count}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {cashierStats.map((c) => {
+                        const max = cashierStats[0].omzet || 1
+                        return (
+                          <div key={c.name} className="space-y-1.5">
+                            <div className="flex items-baseline justify-between gap-3 text-sm">
+                              <span className="truncate font-medium">{c.name}</span>
+                              <span className="shrink-0 tabular-nums text-muted-foreground">{c.trx} trx · {fmtRp(c.omzet)}</span>
+                            </div>
+                            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                              <div className="h-full rounded-full" style={{ width: `${Math.round((c.omzet / max) * 100)}%`, background: 'var(--chart-1)' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </ChartCard>
