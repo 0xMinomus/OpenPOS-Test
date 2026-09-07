@@ -80,7 +80,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 - **Transaksi** — list server-side (filter q/method/date), kolom **Produk** (`TrxItems`), detail, refund (admin), export CSV. Field waktu = **`created_at`** (backend GORM — JANGAN pakai `time`).
 - **Laporan** — tab Penjualan/Produk/Profit/Stok + 5 periode + Export CSV; KPI + bar chart omzet harian (agregat frontend dari `transactions[].date`), donut metode, status, top produk, profit trx, nilai stok.
 - **Users** — tambah kasir (cukup nama), aktif/nonaktif, **hapus kasir** (modal minta ketik "Konfirmasi" → `DELETE /users/{id}`). Passcode via Pengaturan.
-- **Pengaturan** — profil toko, struk, pajak, timezone, passcode per akun (`PUT /users/{id}/passcode {passcode, role}` — role untuk disambiguasi ID admin vs kasir).
+- **Pengaturan** — tab Akun/Toko/Struk/Pajak/Passcode (Akun: profil sesi + keluar + tema; timezone select WIB/WITA/WIT; passcode per akun tombol Ganti/Pasang + badge Aktif •••••/Mati, status cache per-perangkat `op_pc_set`; section dummy Informasi dihapus).
 - **Tema** — default light; dark hanya kalau user memilih (`op_theme`).
 - **SISTEM SHIFT = DIBUANG** (di-arsip). Jangan pasang ulang kecuali diminta. Arsip: `docs/archive/API-CONTRACT-CASHIER-SHIFT.md` + history git.
 
