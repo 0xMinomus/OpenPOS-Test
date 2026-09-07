@@ -9,6 +9,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyTitle } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
 import { TrxItems } from '../lib/ui'
 
 const DAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
@@ -62,11 +63,11 @@ export default function Dashboard() {
     return () => { dead = true }
   }, [sessionKey])
 
+  const isAdmin = s.role === 'admin'
   if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
-  if (!data || dataFor !== sessionKey) return <DashboardSkeleton />
+  if (!data || dataFor !== sessionKey) return <DashboardSkeleton admin={isAdmin} />
 
   const today = data.today
-  const isAdmin = s.role === 'admin'
   const admin = data as DashboardAdmin
   const sales7 = isAdmin ? admin.sales7.map((d, i) => ({ day: DAYS[i], omzet: d.omzet })) : []
   const payData = isAdmin
@@ -142,7 +143,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {recentTrx === null ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Memuat…</p>
+              <RecentSkeleton rows={3} />
             ) : recentTrx.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">Belum ada transaksi. Mulai dari POS Kasir.</p>
@@ -274,7 +275,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {recentTrx === null ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">Memuat…</p>
+              <RecentSkeleton rows={3} />
             ) : recentTrx.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Belum ada transaksi.</p>
             ) : (
@@ -299,22 +300,146 @@ export default function Dashboard() {
   )
 }
 
-function DashboardSkeleton() {
+function DashboardSkeleton({ admin }: { admin: boolean }) {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Memuat dashboard">
-      <div className="space-y-2">
-        <div className="h-8 w-56 animate-pulse rounded-md bg-muted" />
-        <div className="h-4 w-72 animate-pulse rounded-md bg-muted" />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-4 w-24" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted" />
+
+      {!admin && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-11 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+            <Skeleton className="h-12 w-32 rounded-full" />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className={`grid gap-4 ${admin ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        {(admin ? [0, 1, 2, 3] : [0, 1, 2]).map((i) => (
+          <Card key={i}>
+            <CardContent className={`relative p-5 ${admin ? 'min-h-36' : 'min-h-32'}`}>
+              <Skeleton className="absolute right-5 top-5 size-9 rounded-lg" />
+              <div className="flex h-full flex-col justify-center space-y-2 pr-9">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-9 w-32" />
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
-        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
-      </div>
+
+      {admin && (
+        <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-44" />
+              <Skeleton className="h-4 w-28" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex h-56 items-end gap-3">
+                {[42, 68, 52, 84, 60, 76, 48].map((h, i) => (
+                  <Skeleton key={i} className="flex-1 rounded-b-none rounded-t-md" style={{ height: `${h}%` }} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-20" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg border border-border/60 px-3.5 py-3">
+                    <span className="flex items-center gap-2.5">
+                      <Skeleton className="size-2.5 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </span>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {admin ? (
+        <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-20" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-4 w-14" />
+                    </div>
+                    <Skeleton className="h-2.5 w-full rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <RecentCardSkeleton />
+        </div>
+      ) : (
+        <RecentCardSkeleton />
+      )}
+    </div>
+  )
+}
+
+function RecentCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <Skeleton className="h-8 w-24 rounded-md" />
+      </CardHeader>
+      <CardContent>
+        <RecentSkeleton rows={5} />
+      </CardContent>
+    </Card>
+  )
+}
+
+function RecentSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="space-y-2" aria-hidden="true">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3.5 py-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <div className="flex shrink-0 items-center gap-2.5">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-5 w-14 rounded-full" />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

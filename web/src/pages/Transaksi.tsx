@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
-import { Button, Modal, PageHead, StatusPill, Td, Th, TrxItems } from '../lib/ui'
+import { Button, Modal, PageHead, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 
 const PAGE = 20
 const METHODS = ['Semua', 'Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
@@ -100,17 +100,16 @@ export default function Transaksi() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl bg-cream p-2">
-        {loading ? (
-          <p className="py-14 text-center text-sm text-fog">Memuat…</p>
-        ) : trx.length === 0 ? (
-          <p className="py-14 text-center text-sm text-fog">Tidak ada transaksi ditemukan.</p>
-        ) : (
+        {!loading || trx.length > 0 ? (
           <table className="w-full border-collapse">
             <thead>
               <tr>
                 <Th>ID</Th><Th>Waktu</Th><Th>Kasir</Th><Th>Metode</Th><Th>Produk</Th><Th right>Total</Th><Th>Status</Th><Th />
               </tr>
             </thead>
+            {loading ? (
+              <SkeletonRows cols={8} rows={10} />
+            ) : (
             <tbody>
               {trx.map((t) => (
                 <tr key={t.id}>
@@ -134,7 +133,10 @@ export default function Transaksi() {
                 </tr>
               ))}
             </tbody>
+            )}
           </table>
+        ) : (
+          <p className="py-14 text-center text-sm text-fog">Tidak ada transaksi ditemukan.</p>
         )}
       </div>
 

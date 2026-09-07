@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiCheckout, apiGetSettings, apiListProducts, fetchAll, type PayMethod, type Product, type StoreSettings, type Trx } from '../lib/api'
 import { fmtRp } from '../lib/store'
 import { Button, Modal } from '../lib/ui'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const METHODS: PayMethod[] = ['Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
 
@@ -126,7 +127,22 @@ export default function Pos() {
           </div>
           {err && <p className="mb-3 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
           {!products ? (
-            <p className="py-10 text-center text-sm text-fog">Memuat katalog…</p>
+            <div aria-busy="true" aria-label="Memuat katalog">
+              <div className="mb-4 flex flex-wrap gap-2" aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-6 w-16 rounded-full" />
+                ))}
+              </div>
+              <div className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="space-y-2 rounded-xl border border-dove p-3.5">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/3" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
               {filtered.map((p) => (

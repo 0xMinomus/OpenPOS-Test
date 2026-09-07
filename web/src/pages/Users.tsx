@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { apiCreateUser, apiDeleteUser, apiListUsers, apiSetUserActive, setCachedAccounts, type User } from '../lib/api'
 import { fmtDate, useDB } from '../lib/store'
-import { Button, Input, Modal, PageHead, Pill, Td, Th } from '../lib/ui'
+import { Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 
 export default function Users() {
   const db = useDB()
@@ -76,17 +76,17 @@ export default function Users() {
       {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
 
       <div className="overflow-x-auto rounded-2xl bg-cream p-2">
-        {!data ? (
-          <p className="py-14 text-center text-sm text-fog">Memuat…</p>
-        ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <Th>Nama</Th><Th>Role</Th><Th>Status</Th><Th>Bergabung</Th><Th />
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((u) => (
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <Th>Nama</Th><Th>Role</Th><Th>Status</Th><Th>Bergabung</Th><Th />
+            </tr>
+          </thead>
+          {!data ? (
+            <SkeletonRows cols={5} rows={6} />
+          ) : (
+          <tbody>
+            {data.map((u) => (
                 <tr key={`${u.role}-${u.id}`}>
                   <Td>
                     <span className="font-medium text-fg">{u.name}</span>
@@ -110,8 +110,8 @@ export default function Users() {
                 </tr>
               ))}
             </tbody>
+          )}
           </table>
-        )}
       </div>
 
       <p className="mt-4 text-[13px] text-muted">

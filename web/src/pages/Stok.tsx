@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiAdjustStock, apiListMovements, apiListProducts, fetchAll, type Movement, type Product } from '../lib/api'
 import { fmtDate, fmtTime } from '../lib/store'
-import { Button, Input, Modal, PageHead, Pill, Td, Th } from '../lib/ui'
+import { Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 
 const TYPE_LABEL: Record<Movement['type'], string> = {
   sale: 'Penjualan', refund: 'Refund', adjust: 'Penyesuaian', initial: 'Stok awal',
@@ -49,17 +49,17 @@ export default function Stok() {
         <div>
           <h2 className="mb-3 font-mono text-xs uppercase tracking-wider text-fog">Status stok</h2>
           <div className="overflow-x-auto rounded-2xl bg-cream p-2">
-            {!products ? (
-              <p className="py-14 text-center text-sm text-fog">Memuat…</p>
-            ) : (
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <Th>Produk</Th><Th right>Stok</Th><Th>Status</Th><Th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.filter((p) => p.active).map((p) => (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <Th>Produk</Th><Th right>Stok</Th><Th>Status</Th><Th />
+                </tr>
+              </thead>
+              {!products ? (
+                <SkeletonRows cols={4} />
+              ) : (
+              <tbody>
+                {products.filter((p) => p.active).map((p) => (
                     <tr key={p.id}>
                       <Td><span className="font-medium text-fg">{p.name}</span></Td>
                       <Td right><span className={p.stock <= 5 ? 'font-medium text-ember' : ''}>{p.stock} {p.unit}</span></Td>
@@ -72,25 +72,24 @@ export default function Stok() {
                     </tr>
                   ))}
                 </tbody>
+              )}
               </table>
-            )}
           </div>
         </div>
 
         <div>
           <h2 className="mb-3 font-mono text-xs uppercase tracking-wider text-fog">Riwayat pergerakan</h2>
           <div className="max-h-[70vh] overflow-y-auto rounded-2xl bg-cream p-2">
-            {!movements ? (
-              <p className="py-10 text-center text-sm text-fog">Memuat…</p>
-            ) : movements.length === 0 ? (
-              <p className="py-10 text-center text-sm text-fog">Belum ada pergerakan stok.</p>
-            ) : (
+            {!movements || movements.length > 0 ? (
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
                     <Th>Waktu</Th><Th>Produk</Th><Th>Jenis</Th><Th right>Qty</Th><Th>Alasan</Th><Th>Aktor</Th>
                   </tr>
                 </thead>
+                {!movements ? (
+                  <SkeletonRows cols={6} />
+                ) : (
                 <tbody>
                   {movements.map((m) => (
                     <tr key={m.id}>
@@ -103,7 +102,10 @@ export default function Stok() {
                     </tr>
                   ))}
                 </tbody>
+                )}
               </table>
+            ) : (
+              <p className="py-10 text-center text-sm text-fog">Belum ada pergerakan stok.</p>
             )}
           </div>
         </div>

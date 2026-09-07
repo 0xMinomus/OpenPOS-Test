@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { apiGetSettings, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings, type StoreSettings, type User } from '../lib/api'
 import { setSession, useDB } from '../lib/store'
 import { Button, Input, PageHead, Pill } from '../lib/ui'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const TABS = [
   { id: 'akun', label: 'Akun' },
@@ -116,7 +117,30 @@ export default function Pengaturan() {
     nav('/masuk', { replace: true })
   }
 
-  if (!form) return <p className="py-14 text-center text-sm text-fog">Memuat…</p>
+  if (!form) return (
+    <>
+      <PageHead title="Pengaturan" sub="Kelola akun, toko, struk, pajak, dan passcode." />
+      <div className="mb-5 flex gap-2" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-9 w-20 rounded-full" />
+        ))}
+      </div>
+      <div className="max-w-2xl rounded-2xl bg-cream p-6" aria-busy="true" aria-label="Memuat pengaturan">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-11 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <Skeleton className="h-5 w-14 rounded-full" />
+        </div>
+        <div className="mt-5 flex gap-2">
+          <Skeleton className="h-12 w-32 rounded-full" />
+          <Skeleton className="h-12 w-24 rounded-full" />
+        </div>
+      </div>
+    </>
+  )
 
   return (
     <>

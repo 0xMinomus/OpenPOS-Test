@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { TrxItem } from './api'
 
 export function TrxItems({ items, className }: { items: TrxItem[]; className?: string }) {
@@ -159,5 +160,23 @@ export function Td({ children, mono, right }: { children: ReactNode; mono?: bool
     <td className={`border-b border-dove px-2.5 py-2.5 text-[13px] text-muted ${mono ? 'font-mono text-xs text-fg' : ''} ${right ? 'text-right tabular-nums' : ''}`}>
       {children}
     </td>
+  )
+}
+
+// Baris skeleton dalam tabel asli (pakai setelah <thead> saat data null)
+// agar kolom & padding sama persis dengan isi sebenarnya.
+export function SkeletonRows({ cols, rows = 8 }: { cols: number; rows?: number }) {
+  return (
+    <tbody aria-hidden="true">
+      {Array.from({ length: rows }).map((_, r) => (
+        <tr key={r}>
+          {Array.from({ length: cols }).map((_, c) => (
+            <td key={c} className="border-b border-dove px-2.5 py-2.5">
+              <Skeleton className="h-4 w-full max-w-36" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
   )
 }

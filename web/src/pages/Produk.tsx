@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
 import { exportCSV, fmtRp } from '../lib/store'
-import { Button, Empty, Input, Modal, PageHead, Pill, Td, Th } from '../lib/ui'
+import { Button, Empty, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface Draft {
   id?: string
@@ -21,6 +22,7 @@ export default function Produk() {
   const [q, setQ] = useState('')
   const [products, setProducts] = useState<Product[] | null>(null)
   const [cats, setCats] = useState<Category[]>([])
+  const [catsReady, setCatsReady] = useState(false)
   const [err, setErr] = useState('')
   const [editing, setEditing] = useState<Draft | null>(null)
   const [deleteFor, setDeleteFor] = useState<Product | null>(null)
@@ -36,7 +38,7 @@ export default function Produk() {
   }
   useEffect(() => { loadProducts() }, [q])
   useEffect(() => {
-    apiListCategories().then(setCats).catch(() => {})
+    apiListCategories().then((c) => { setCats(c); setCatsReady(true) }).catch(() => setCatsReady(true))
   }, [])
 
   async function save(d: Draft) {
@@ -174,17 +176,16 @@ export default function Produk() {
             className="mb-4 w-full rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm focus:border-jet focus:outline-none"
           />
           <div className="overflow-x-auto rounded-2xl bg-cream p-2">
-            {!products ? (
-              <p className="py-14 text-center text-sm text-fog">Memuat…</p>
-            ) : products.length === 0 ? (
-              <Empty title="Belum ada produk" sub="Tambah produk pertama untuk mulai berjualan." action={<Button onClick={() => setEditing({ ...emptyDraft })}>+ Tambah Produk</Button>} />
-            ) : (
+            {!products || products.length > 0 ? (
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
                     <Th>Nama</Th><Th>SKU</Th><Th>Kategori</Th><Th right>Beli</Th><Th right>Jual</Th><Th right>Stok</Th><Th>Status</Th><Th />
                   </tr>
                 </thead>
+                {!products ? (
+                  <SkeletonRows cols={8} />
+                ) : (
                 <tbody>
                   {products.map((p) => (
                     <tr key={p.id}>
@@ -205,7 +206,10 @@ export default function Produk() {
                     </tr>
                   ))}
                 </tbody>
+                )}
               </table>
+            ) : (
+              <Empty title="Belum ada produk" sub="Tambah produk pertama untuk mulai berjualan." action={<Button onClick={() => setEditing({ ...emptyDraft })}>+ Tambah Produk</Button>} />
             )}
           </div>
         </div>
@@ -213,12 +217,19 @@ export default function Produk() {
         <aside className="rounded-2xl bg-cream p-5 self-start">
           <h2 className="font-mono text-xs uppercase tracking-wider text-fog">Kategori</h2>
           <div className="mt-3 space-y-1.5">
-            {cats.filter((c) => c.active).map((c) => (
+            {!catsReady ? (
+              <div className="space-y-1.5" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : (
+            cats.filter((c) => c.active).map((c) => (
               <div key={c.id} className="flex items-center justify-between rounded-lg border border-dove bg-paper px-3 py-2 text-sm">
                 <span>{c.name}</span>
                 <button onClick={() => deleteCat(c)} className="text-xs text-fog hover:text-ember">hapus</button>
               </div>
-            ))}
+            )))}
             {cats.filter((c) => !c.active).length > 0 && (
               <p className="pt-1 text-xs text-fog">{cats.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
             )}

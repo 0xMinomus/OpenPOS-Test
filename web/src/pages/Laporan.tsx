@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Banknote, BarChart3, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, type ReportBundle } from '../lib/api'
 import { exportCSV, fmtRp } from '../lib/store'
-import { Button, PageHead, Pill, Td, Th } from '../lib/ui'
+import { Button, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
@@ -157,7 +158,7 @@ export default function Laporan() {
       </div>
 
       {!data ? (
-        <p className="py-14 text-center text-sm text-fog">Memuat…</p>
+        <LaporanSkeleton />
       ) : (
         <>
           {tab === 'sales' && (
@@ -427,5 +428,97 @@ export default function Laporan() {
         </>
       )}
     </>
+  )
+}
+
+function LaporanSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-label="Memuat laporan">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="relative min-h-32 p-5">
+              <Skeleton className="absolute right-5 top-5 size-9 rounded-lg" />
+              <div className="flex h-full flex-col justify-center space-y-2 pr-9">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-9 w-28" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-64 items-end gap-3" aria-hidden="true">
+              {[38, 62, 48, 78, 55, 70, 44, 66].map((h, i) => (
+                <Skeleton key={i} className="flex-1 rounded-b-none rounded-t-md" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="mx-auto size-36 rounded-full" />
+            <div className="mt-4 space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <Skeleton className="size-2.5 rounded-full" />
+                    <Skeleton className="h-4 w-20" />
+                  </span>
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-28" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center justify-between gap-3">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-8" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-44" />
+          </CardHeader>
+          <CardContent>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr><Th>Tanggal</Th><Th>ID</Th><Th>Kasir</Th><Th>Metode</Th><Th right>Total</Th></tr>
+              </thead>
+              <SkeletonRows cols={5} rows={5} />
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
