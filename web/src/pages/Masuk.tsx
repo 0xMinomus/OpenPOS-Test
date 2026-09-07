@@ -71,7 +71,7 @@ export default function Masuk() {
     <div className="landing-light bg-bg text-fg">
       <Navbar logoTone="light" />
       <main className="relative grid min-h-[calc(100vh-116px)] place-items-center overflow-hidden px-8 py-12">
-        <section className="auth-card w-full max-w-105 rounded-2xl bg-cream p-10">
+        <section className="auth-card w-full max-w-105 rounded-2xl border border-dove bg-paper p-10 shadow-xl">
           <p className="font-mono text-xs uppercase tracking-widest text-steel">Masuk · kasir</p>
           <h1 className="mt-3 text-[clamp(32px,4vw,44px)] font-normal leading-[1.1] tracking-[-0.025em]">Selamat datang kembali</h1>
           <p className="mt-2 mb-7 text-[15px] text-muted">Masuk ke toko Anda untuk mulai berjualan.</p>

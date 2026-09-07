@@ -177,7 +177,7 @@ export default function Daftar() {
     <div className="landing-light bg-bg text-fg">
       <Navbar logoTone="light" />
       <main className="relative grid min-h-[calc(100vh-116px)] place-items-center overflow-hidden px-8 py-12">
-        <section className="auth-card w-full max-w-110 rounded-2xl bg-cream p-10">
+        <section className="auth-card w-full max-w-110 rounded-2xl border border-dove bg-paper p-10 shadow-xl">
           {mode !== 'choice' && (
             <div className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Langkah pendaftaran">
               {STEPS.map((s, i) => (
