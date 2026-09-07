@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import {
   LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings,
-  Moon, Sun, LogOut, ChevronsUpDown, Check,
+  Moon, Sun, LogOut, ChevronsUpDown, Check, UserRound,
 } from 'lucide-react'
 import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
 import { setSession, toSession, useDB, useTheme } from '../lib/store'
@@ -193,7 +193,7 @@ function UserMenu() {
         className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
       >
         <Avatar className="size-8 rounded-lg">
-          <AvatarFallback className="rounded-lg font-mono">{s.name.charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="rounded-lg"><UserRound className="size-5" /></AvatarFallback>
         </Avatar>
         <span className="grid flex-1 text-left text-sm leading-tight">
           <span className="truncate font-medium">{s.name}</span>
@@ -256,7 +256,7 @@ function UserMenu() {
                         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm disabled:opacity-50 ${active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'}`}
                       >
                         <Avatar className="size-7 rounded-md">
-                          <AvatarFallback className="rounded-md font-mono text-xs">{a.name.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback className="rounded-md"><UserRound className="size-4" /></AvatarFallback>
                         </Avatar>
                         <span className="grid flex-1 leading-tight">
                           <span className="truncate font-medium">{a.name}</span>
