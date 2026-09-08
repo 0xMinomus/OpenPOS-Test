@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Banknote, BarChart3, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, type ReportBundle } from '../lib/api'
-import { exportCSV, fmtRp } from '../lib/store'
+import { exportCSV, fmtRp, fmtShort } from '../lib/store'
 import { Button, PageHead, SkeletonRows, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, XAxis, YAxis } from 'recharts'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
 
@@ -192,10 +192,12 @@ export default function Laporan() {
                     <ChartContainer config={omzetConfig} className="h-64 w-full">
                       <BarChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
                         <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
-                        <XAxis dataKey="label" interval="preserveStartEnd" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+                        <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                        <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                        <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                          {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
+                        </Bar>
                       </BarChart>
                     </ChartContainer>
                   )}
@@ -362,8 +364,10 @@ export default function Laporan() {
                         <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                        <Bar dataKey="profit" fill="var(--color-profit)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                        <Bar dataKey="profit" fill="var(--color-profit)" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                          <LabelList dataKey="profit" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
+                        </Bar>
                       </BarChart>
                     </ChartContainer>
                   )}
@@ -414,8 +418,10 @@ export default function Laporan() {
                         <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                        <Bar dataKey="nilai" fill="var(--color-nilai)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                        <Bar dataKey="nilai" fill="var(--color-nilai)" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                          <LabelList dataKey="nilai" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
+                        </Bar>
                       </BarChart>
                     </ChartContainer>
                   )}
