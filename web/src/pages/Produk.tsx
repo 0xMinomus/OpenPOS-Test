@@ -39,6 +39,7 @@ export default function Produk() {
   const [deleteFor, setDeleteFor] = useState<Product | null>(null)
   const [catName, setCatName] = useState('')
   const [catOpen, setCatOpen] = useState(false)
+  const [catBusy, setCatBusy] = useState(false)
   const [importRows, setImportRows] = useState<{ ok: boolean; row: string[]; msg: string }[] | null>(null)
   const [importDone, setImportDone] = useState<{ ok: number; fail: number } | null>(null)
 
@@ -117,14 +118,38 @@ export default function Produk() {
     }
   }
 
-  async function deleteCat(c: Category) {
+  async function removeCategory(c: Category) {
+    if (catBusy) return
+    const n = counts.m.get(c.id) ?? 0
+    if (!confirm(`Hapus kategori "${c.name}"?${n > 0 ? ` ${n} produk di dalamnya jadi Tanpa Kategori.` : ''}`)) return
+    setErr(''); setCatBusy(true)
     try {
-      const r = await apiDeleteCategory(c.id)
-      catq.reload()
+      // Pindah semua produk ke Tanpa Kategori dulu supaya DELETE
+      // menghapus permanen (backend soft-delete bila masih dipakai).
+      const all = await fetchAll<Product>((page) => apiListProducts({ page, limit: 200 }))
+      let fail = 0
+      for (const p of all.filter((x) => x.category_id === c.id)) {
+        try {
+          await apiUpdateProduct(p.id, {
+            name: p.name, sku: p.sku, barcode: p.barcode, categoryId: null,
+            buyPrice: p.buy_price, sellPrice: p.sell_price, unit: p.unit,
+          })
+        } catch {
+          fail++
+        }
+      }
+      if (fail > 0) {
+        setErr(`${fail} produk gagal dipindah. Kategori tidak dihapus.`)
+        return
+      }
+      await apiDeleteCategory(c.id)
       if (c.id === catFilter) setCatFilter('')
-      if (r.soft_deleted) alert(`Kategori "${c.name}" masih dipakai produk, jadi hanya dinonaktifkan. Histori tetap aman.`)
+      catq.reload()
+      loadProducts()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menghapus kategori.')
+    } finally {
+      setCatBusy(false)
     }
   }
 
@@ -232,13 +257,6 @@ export default function Produk() {
                   >
                     <span className="min-w-0 flex-1 truncate text-left">{c.name}</span>
                     <CountBadge n={counts.m.get(c.id) ?? 0} active={catFilter === c.id} />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteCat(c) }}
-                      aria-label={`Hapus kategori ${c.name}`}
-                      className="shrink-0 text-xs text-fog hover:text-ember"
-                    >
-                      hapus
-                    </button>
                   </div>
                 ))}
                 {counts.none > 0 && (
@@ -251,9 +269,6 @@ export default function Produk() {
                   </button>
                 )}
               </>
-            )}
-            {cats.filter((c) => !c.active).length > 0 && (
-              <p className="pt-1 text-xs text-fog">{cats.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
             )}
           </div>
         </aside>
@@ -283,7 +298,7 @@ export default function Produk() {
                     <tr key={p.id} className="transition-colors hover:bg-muted/50">
                       <Td><span className="font-medium text-fg">{p.name}</span></Td>
                       <Td mono>{p.sku}</Td>
-                      <Td>{p.category_name ?? '—'}</Td>
+                      <Td>{p.category_name ?? 'Tanpa kategori'}</Td>
                       <Td right>{fmtRp(p.buy_price)}</Td>
                       <Td right><span className="font-medium text-fg">{fmtRp(p.sell_price)}</span></Td>
                       <Td right><StockCell stock={p.stock} unit={p.unit} /></Td>
@@ -309,17 +324,39 @@ export default function Produk() {
         </div>
       </div>
 
-      <Modal open={catOpen} title="Tambah Kategori" onClose={() => setCatOpen(false)}>
+      <Modal open={catOpen} title="Kelola Kategori" onClose={() => setCatOpen(false)}>
         <form
-          className="space-y-4"
+          className="flex gap-2"
           onSubmit={(e) => { e.preventDefault(); addCat() }}
         >
-          <Input label="Nama kategori" value={catName} onChange={setCatName} placeholder="cth: Minuman" required />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setCatOpen(false)}>Batal</Button>
-            <Button type="submit">Simpan</Button>
+          <Input label="Nama kategori baru" value={catName} onChange={setCatName} placeholder="cth: Minuman" />
+          <div className="flex items-end">
+            <Button type="submit" disabled={catBusy}>Simpan</Button>
           </div>
         </form>
+        <div className="mt-5 border-t border-dove pt-4">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-fog">Daftar kategori</h3>
+          <div className="mt-2 max-h-64 space-y-1.5 overflow-y-auto">
+            {activeCats.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-dove bg-paper px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                <CountBadge n={counts.m.get(c.id) ?? 0} active={false} />
+                <button
+                  disabled={catBusy}
+                  onClick={() => removeCategory(c)}
+                  aria-label={`Hapus kategori ${c.name}`}
+                  className="shrink-0 text-[13px] text-ember hover:underline disabled:opacity-40"
+                >
+                  {catBusy ? '…' : 'Hapus'}
+                </button>
+              </div>
+            ))}
+            {activeCats.length === 0 && <p className="text-sm text-fog">Belum ada kategori.</p>}
+          </div>
+          {cats.filter((c) => !c.active).length > 0 && (
+            <p className="pt-2 text-xs text-fog">{cats.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
+          )}
+        </div>
       </Modal>
 
       <Modal open={!!editing} title={editing?.id ? 'Ubah Produk' : 'Tambah Produk'} onClose={() => setEditing(null)} wide>
