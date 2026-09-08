@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
+import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
 import { Button, Modal, PageHead, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 
@@ -13,10 +14,15 @@ export default function Transaksi() {
   const [method, setMethod] = useState('Semua')
   const [date, setDate] = useState('')
   const [page, setPage] = useState(0)
-  const [trx, setTrx] = useState<Trx[]>([])
-  const [total, setTotal] = useState(0)
+  const list = useCache(
+    `trx:${s.id}:${s.role}:${q.trim()}:${method}:${date}:${page}`,
+    () => apiListTransactions({ q: q.trim() || undefined, method: method === 'Semua' ? undefined : method, date: date || undefined, page: page + 1, limit: PAGE }),
+    'Gagal memuat transaksi.',
+  )
+  const trx = list.data?.items ?? []
+  const total = list.data?.total ?? 0
+  const loading = list.loading
   const [err, setErr] = useState('')
-  const [loading, setLoading] = useState(true)
   const [detail, setDetail] = useState<Trx | null>(null)
   const [refundFor, setRefundFor] = useState<Trx | null>(null)
   const [refundItems, setRefundItems] = useState<{ productId: string; qty: number }[]>([])
@@ -24,13 +30,8 @@ export default function Transaksi() {
   const [busy, setBusy] = useState(false)
 
   function load() {
-    setLoading(true); setErr('')
-    apiListTransactions({ q: q.trim() || undefined, method: method === 'Semua' ? undefined : method, date: date || undefined, page: page + 1, limit: PAGE })
-      .then((r) => { setTrx(r.items); setTotal(r.total) })
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat transaksi.'))
-      .finally(() => setLoading(false))
+    list.reload()
   }
-  useEffect(() => { load() }, [q, method, date, page, s.id, s.role])
 
   const pages = Math.max(1, Math.ceil(total / PAGE))
 
@@ -77,7 +78,7 @@ export default function Transaksi() {
         right={<Button variant="ghost" onClick={exportList}>Export CSV</Button>}
       />
 
-      {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
+      {(err || list.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || list.err}</p>}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input

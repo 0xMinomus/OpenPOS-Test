@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Package, ReceiptText, Store, TriangleAlert } from 'lucide-react'
-import { apiGetDashboard, apiListTransactions, type DashboardAdmin, type DashboardCashier, type Trx } from '../lib/api'
+import { apiGetDashboard, apiListTransactions, type DashboardAdmin, type Trx } from '../lib/api'
+import { useCache } from '../lib/cache'
 import { fmtDate, fmtRp, fmtShort, fmtTime, useDB } from '../lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,36 +36,17 @@ const iconTint = {
 export default function Dashboard() {
   const db = useDB()
   const s = db.session!
-  const [data, setData] = useState<DashboardAdmin | DashboardCashier | null>(null)
-  const [err, setErr] = useState('')
-  const [recentTrx, setRecentTrx] = useState<Trx[] | null>(null)
-  // Kunci sesi pemilik data: cegah render data kasir sebagai admin (atau sebaliknya)
-  // saat ganti akun — crash terjadi di render, sebelum effect sempat fetch ulang.
+  // Kunci sesi pemilik data: key cache memisahkan admin vs kasir.
   const sessionKey = `${s.id}:${s.role}`
-  const [dataFor, setDataFor] = useState(sessionKey)
-
-  useEffect(() => {
-    let dead = false
-    setData(null)
-    setErr('')
-    apiGetDashboard()
-      .then((d) => { if (!dead) { setData(d); setDataFor(sessionKey) } })
-      .catch((e) => { if (!dead) setErr(e instanceof Error ? e.message : 'Gagal memuat dashboard.') })
-    return () => { dead = true }
-  }, [sessionKey])
-
-  // Transaksi terbaru dengan detail item (dashboard recent tidak membawa items).
-  useEffect(() => {
-    let dead = false
-    apiListTransactions({ limit: 5 })
-      .then((r) => { if (!dead) setRecentTrx(r.items) })
-      .catch(() => { if (!dead) setRecentTrx([]) })
-    return () => { dead = true }
-  }, [sessionKey])
+  const dash = useCache(`dash:${sessionKey}`, apiGetDashboard, 'Gagal memuat dashboard.')
+  const recent = useCache(`recent5:${sessionKey}`, () => apiListTransactions({ limit: 5 }))
+  const data = dash.data
+  const err = dash.err
+  const recentTrx = recent.data ? recent.data.items : recent.err ? [] : null
 
   const isAdmin = s.role === 'admin'
-  if (err) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
-  if (!data || dataFor !== sessionKey) return <DashboardSkeleton admin={isAdmin} />
+  if (err && !data) return <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
+  if (!data || data.role !== s.role) return <DashboardSkeleton admin={isAdmin} />
 
   const today = data.today
   const admin = data as DashboardAdmin

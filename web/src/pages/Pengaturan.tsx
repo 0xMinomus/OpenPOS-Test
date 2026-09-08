@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { apiGetSettings, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings, type StoreSettings, type User } from '../lib/api'
+import { useCache } from '../lib/cache'
 import { getSession, setSession, useDB } from '../lib/store'
 import { Button, Input, PageHead, Pill } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -26,7 +27,8 @@ export default function Pengaturan() {
   const { session } = useDB()
   const [tab, setTab] = useState<TabId>('akun')
   const [form, setForm] = useState<StoreSettings | null>(null)
-  const [users, setUsers] = useState<User[]>([])
+  const accountList = useCache<User[]>(`users:${session?.id}`, () => apiListUsers())
+  const users = accountList.data ?? []
   const [editingPc, setEditingPc] = useState<string | null>(null)
   const [pcVal, setPcVal] = useState('')
   const [msg, setMsg] = useState('')
@@ -36,7 +38,6 @@ export default function Pengaturan() {
 
   useEffect(() => {
     apiGetSettings().then(setForm).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat pengaturan.'))
-    apiListUsers().then(setUsers).catch(() => {})
   }, [])
 
   const set = (k: keyof StoreSettings) => (v: string) => setForm((f) => (f ? { ...f, [k]: v } : f))
@@ -63,7 +64,7 @@ export default function Pengaturan() {
     setMsg(''); setErr(''); setPcBusy(true)
     try {
       await apiSetPasscode(u.id, pcVal, u.role)
-      setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, has_passcode: true } : x)))
+      accountList.mutate(users.map((x) => (x.id === u.id ? { ...x, has_passcode: true } : x)))
       setEditingPc(null); setPcVal('')
       setMsg(`Passcode ${u.name} diperbarui.`)
     } catch (e) {
@@ -77,7 +78,7 @@ export default function Pengaturan() {
     setMsg(''); setErr(''); setPcBusy(true)
     try {
       await apiSetPasscode(u.id, '', u.role)
-      setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, has_passcode: false } : x)))
+      accountList.mutate(users.map((x) => (x.id === u.id ? { ...x, has_passcode: false } : x)))
       setEditingPc(null); setPcVal('')
       setMsg(`Passcode ${u.name} dinonaktifkan.`)
     } catch (e) {

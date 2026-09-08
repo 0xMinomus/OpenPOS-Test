@@ -51,6 +51,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 
 ### File frontend penting (`web/src/`)
 - `lib/api.ts` — semua helper API + tipe server (`snake_case`) + `request()` (auto-refresh) + `fetchAll()` + `useFetch()`.
+- `lib/cache.ts` — `useCache(key, fn)` stale-while-revalidate (TTL 60 dtk, key wajib identitas sesi); semua halaman data memakainya agar navigasi balik instan.
 - `lib/store.ts` — sesi (`useDB()`, `setSession`, `toSession`), theme, format (`fmtRp/fmtShort/fmtDate/fmtTime`), `exportCSV`.
 - `lib/ui.tsx` — komponen internal (Button, Input, Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis).
 - `lib/google.tsx` — `GoogleButton` (Google Identity Services / GIS), `getGoogleClientId`.

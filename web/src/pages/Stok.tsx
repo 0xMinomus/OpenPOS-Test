@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { apiAdjustStock, apiListMovements, apiListProducts, fetchAll, type Movement, type Product } from '../lib/api'
-import { fmtDate, fmtTime } from '../lib/store'
+import { useCache } from '../lib/cache'
+import { fmtDate, fmtTime, useDB } from '../lib/store'
 import { Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 
 const TYPE_LABEL: Record<Movement['type'], string> = {
@@ -8,8 +9,11 @@ const TYPE_LABEL: Record<Movement['type'], string> = {
 }
 
 export default function Stok() {
-  const [products, setProducts] = useState<Product[] | null>(null)
-  const [movements, setMovements] = useState<Movement[] | null>(null)
+  const { session } = useDB()
+  const prod = useCache<Product[]>(`stock-products:${session?.id}`, () => fetchAll<Product>((page) => apiListProducts({ page, limit: 200 })), 'Gagal memuat stok.')
+  const products = prod.data
+  const mov = useCache<Movement[]>(`movements:${session?.id}`, () => apiListMovements({ limit: 50 }).then((r) => r.items))
+  const movements = mov.data
   const [err, setErr] = useState('')
   const [adjustFor, setAdjustFor] = useState<Product | null>(null)
   const [qty, setQty] = useState('')
@@ -18,12 +22,9 @@ export default function Stok() {
   const [busy, setBusy] = useState(false)
 
   function load() {
-    setErr('')
-    fetchAll<Product>((page) => apiListProducts({ page, limit: 200 }))
-      .then(setProducts).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat stok.'))
-    apiListMovements({ limit: 50 }).then((r) => setMovements(r.items)).catch(() => {})
+    prod.reload()
+    mov.reload()
   }
-  useEffect(() => { load() }, [])
 
   async function submit() {
     const n = Number(qty)
@@ -44,7 +45,7 @@ export default function Stok() {
   return (
     <>
       <PageHead title="Stok" sub="Status stok saat ini dan riwayat pergerakan barang." />
-      {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
+      {(err || prod.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || prod.err}</p>}
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
           <h2 className="mb-3 font-mono text-xs uppercase tracking-wider text-fog">Status stok</h2>

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
-import { exportCSV, fmtRp } from '../lib/store'
+import { useCache } from '../lib/cache'
+import { exportCSV, fmtRp, useDB } from '../lib/store'
 import { Button, Empty, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -19,10 +20,14 @@ interface Draft {
 const emptyDraft: Draft = { name: '', sku: '', barcode: '', categoryId: '', buyPrice: '', sellPrice: '', stock: '', unit: 'pcs' }
 
 export default function Produk() {
+  const { session } = useDB()
+  const who = `${session?.id}:${session?.role}`
   const [q, setQ] = useState('')
-  const [products, setProducts] = useState<Product[] | null>(null)
-  const [cats, setCats] = useState<Category[]>([])
-  const [catsReady, setCatsReady] = useState(false)
+  const prod = useCache<Product[]>(`products:${who}:${q.trim()}`, () => fetchAll<Product>((page) => apiListProducts({ q: q.trim() || undefined, page, limit: 200 })), 'Gagal memuat produk.')
+  const products = prod.data
+  const catq = useCache<Category[]>(`cats:${who}`, () => apiListCategories())
+  const cats = catq.data ?? []
+  const catsReady = !catq.loading
   const [err, setErr] = useState('')
   const [editing, setEditing] = useState<Draft | null>(null)
   const [deleteFor, setDeleteFor] = useState<Product | null>(null)
@@ -31,15 +36,8 @@ export default function Produk() {
   const [importDone, setImportDone] = useState<{ ok: number; fail: number } | null>(null)
 
   function loadProducts() {
-    setErr('')
-    fetchAll<Product>((page) => apiListProducts({ q: q.trim() || undefined, page, limit: 200 }))
-      .then(setProducts)
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat produk.'))
+    prod.reload()
   }
-  useEffect(() => { loadProducts() }, [q])
-  useEffect(() => {
-    apiListCategories().then((c) => { setCats(c); setCatsReady(true) }).catch(() => setCatsReady(true))
-  }, [])
 
   async function save(d: Draft) {
     setErr('')
@@ -85,7 +83,7 @@ export default function Produk() {
     if (!n) return
     try {
       await apiCreateCategory(n)
-      setCats(await apiListCategories())
+      catq.reload()
       setCatName('')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menambah kategori.')
@@ -95,7 +93,7 @@ export default function Produk() {
   async function deleteCat(c: Category) {
     try {
       const r = await apiDeleteCategory(c.id)
-      setCats(await apiListCategories())
+      catq.reload()
       if (r.soft_deleted) alert(`Kategori "${c.name}" masih dipakai produk, jadi hanya dinonaktifkan. Histori tetap aman.`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menghapus kategori.')
@@ -167,7 +165,7 @@ export default function Produk() {
         }
       />
 
-      {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
+      {(err || prod.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || prod.err}</p>}
 
       <div className="mb-5 grid gap-4 lg:grid-cols-[1fr_260px]">
         <div>

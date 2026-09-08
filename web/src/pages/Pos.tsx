@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { apiCheckout, apiGetSettings, apiListProducts, fetchAll, type PayMethod, type Product, type StoreSettings, type Trx } from '../lib/api'
-import { fmtRp } from '../lib/store'
+import { useCache } from '../lib/cache'
+import { fmtRp, useDB } from '../lib/store'
 import { Button, Modal } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -9,10 +10,13 @@ const METHODS: PayMethod[] = ['Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card
 interface CartLine { product: Product; qty: number }
 
 export default function Pos() {
+  const { session } = useDB()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('Semua')
-  const [products, setProducts] = useState<Product[] | null>(null)
-  const [settings, setSettings] = useState<StoreSettings | null>(null)
+  const prod = useCache<Product[]>(`pos-products:${session?.id}`, () => fetchAll<Product>((page) => apiListProducts({ active: true, page, limit: 200 })))
+  const products = prod.data
+  const setq = useCache<StoreSettings>(`settings:${session?.id}`, () => apiGetSettings())
+  const settings = setq.data
   const [cart, setCart] = useState<CartLine[]>([])
   const [discount, setDiscount] = useState(0)
   const [method, setMethod] = useState<PayMethod>('Cash')
@@ -24,10 +28,8 @@ export default function Pos() {
   const [receipt, setReceipt] = useState<Trx | null>(null)
 
   function load() {
-    fetchAll<Product>((page) => apiListProducts({ active: true, page, limit: 200 })).then(setProducts).catch(() => {})
+    prod.reload()
   }
-  useEffect(() => { load() }, [])
-  useEffect(() => { apiGetSettings().then(setSettings).catch(() => {}) }, [])
 
   const cats = useMemo(() => [...new Set((products ?? []).map((p) => p.category_id).filter((x): x is string => !!x))], [products])
   const catName = (id: string | null) => (products ?? []).find((p) => p.category_id === id)?.category_name ?? '—'

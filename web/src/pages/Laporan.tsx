@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Banknote, BarChart3, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, type ReportBundle } from '../lib/api'
+import { useCache } from '../lib/cache'
 import { exportCSV, fmtRp, fmtShort } from '../lib/store'
 import { Button, PageHead, SkeletonRows, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -69,13 +70,9 @@ function ChartCard({ title, sub, children }: { title: string; sub: string; child
 export default function Laporan() {
   const [period, setPeriod] = useState<Period>('today')
   const [tab, setTab] = useState<'sales' | 'products' | 'profit' | 'stock'>('sales')
-  const [data, setData] = useState<ReportBundle | null>(null)
-  const [err, setErr] = useState('')
-
-  useEffect(() => {
-    setData(null); setErr('')
-    apiGetReport(period).then(setData).catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat laporan.'))
-  }, [period])
+  const rep = useCache<ReportBundle>(`report:${period}`, () => apiGetReport(period), 'Gagal memuat laporan.')
+  const data = rep.data
+  const err = rep.err
 
   const daily = useMemo(() => {
     if (!data) return []
@@ -132,7 +129,7 @@ export default function Laporan() {
     }
   }
 
-  if (err) return (
+  if (err && !data) return (
     <>
       <PageHead title="Laporan" sub="Ringkasan performa toko Anda." right={<Button variant="ghost" onClick={exportTab}>Export CSV</Button>} />
       <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { apiCreateUser, apiDeleteUser, apiListUsers, apiSetUserActive, setCachedAccounts, type User } from '../lib/api'
+import { useCache } from '../lib/cache'
 import { fmtDate, useDB } from '../lib/store'
 import { Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 
 export default function Users() {
   const db = useDB()
   const s = db.session!
-  const [data, setData] = useState<User[] | null>(null)
+  const list = useCache<User[]>(`users:${s.id}`, () => apiListUsers(), 'Gagal memuat pengguna.')
+  const data = list.data
   const [err, setErr] = useState('')
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -19,12 +21,9 @@ export default function Users() {
   const [deleteBusy, setDeleteBusy] = useState(false)
 
   function load() {
-    setErr('')
-    apiListUsers()
-      .then((users) => { setData(users); setCachedAccounts(users) })
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Gagal memuat pengguna.'))
+    list.reload()
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { if (list.data) setCachedAccounts(list.data) }, [list.data])
 
   async function create() {
     setFormErr('')
@@ -73,7 +72,7 @@ export default function Users() {
         right={<Button onClick={() => setOpen(true)}>+ Tambah Kasir</Button>}
       />
 
-      {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>}
+      {(err || list.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || list.err}</p>}
 
       <div className="overflow-x-auto rounded-2xl bg-cream p-2">
         <table className="w-full border-collapse">
