@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiAdjustStock, apiListMovements, apiListProducts, fetchAll, type Movement, type Product } from '../../lib/local-api'
 import { useCache } from '../../lib/cache'
 import { fmtDate, fmtTime, useDB } from '../../lib/store'
-import { Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../../lib/ui'
+import { NumInput, Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../../lib/ui'
 
 const TYPE_LABEL: Record<Movement['type'], string> = {
   sale: 'Penjualan', refund: 'Refund', adjust: 'Penyesuaian', initial: 'Stok awal',
@@ -130,7 +130,7 @@ export default function Stok() {
                 − Kurangi
               </button>
             </div>
-            <Input label="Jumlah" type="number" value={qty} onChange={setQty} placeholder="0" />
+            <NumInput label="Jumlah" value={qty} onValue={setQty} placeholder="0" />
             <Input label="Alasan (wajib)" value={reason} onChange={setReason} placeholder="cth: barang rusak, stok fisik berbeda" />
             <Button className="w-full" onClick={submit} disabled={!Number(qty) || !reason.trim() || busy}>{busy ? 'Menyimpan…' : 'Simpan Penyesuaian'}</Button>
           </div>

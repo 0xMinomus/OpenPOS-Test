@@ -91,6 +91,60 @@ export function Input({
   )
 }
 
+// Input angka dengan pengelompokan ribuan otomatis (1000 → 1.000).
+// Titik/koma yang diketik manual diabaikan sebagai pemisah ribuan; nilai
+// mentah (hanya digit, desimal pakai titik) diteruskan via onValue.
+// allowDecimal = dukung desimal (mis. pajak 11,5%) — tampil pakai koma.
+export function NumInput({
+  label, value, onValue, placeholder, required, disabled, hint, allowDecimal, autoFocus, className,
+}: {
+  label?: string
+  value: string | number
+  onValue: (raw: string) => void
+  placeholder?: string
+  required?: boolean
+  disabled?: boolean
+  hint?: string
+  allowDecimal?: boolean
+  autoFocus?: boolean
+  className?: string
+}) {
+  const raw = String(value ?? '')
+  const parts = raw.split('.')
+  const intDigits = (parts[0] ?? '').replace(/\D/g, '')
+  const fracDigits = (parts[1] ?? '').replace(/\D/g, '').slice(0, 2)
+  const display = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (allowDecimal && fracDigits ? `,${fracDigits}` : '')
+
+  function handle(e: React.ChangeEvent<HTMLInputElement>) {
+    let v = e.target.value.replace(/[^\d.,]/g, '')
+    if (!allowDecimal) {
+      onValue(v.replace(/\D/g, ''))
+      return
+    }
+    v = v.replace(/,/g, '.')
+    const seg = v.split('.')
+    if (seg.length > 2) v = seg[0] + '.' + seg.slice(1).join('')
+    onValue(v)
+  }
+
+  return (
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+      {label}
+      <input
+        inputMode={allowDecimal ? 'decimal' : 'numeric'}
+        value={display}
+        placeholder={placeholder}
+        required={required}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        onChange={handle}
+        className={`w-full rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] text-fg placeholder:text-fog focus:border-jet focus:outline-none disabled:opacity-50 ${className ?? ''}`}
+      />
+      {hint && <span className="text-xs font-normal text-fog">{hint}</span>}
+    </label>
+  )
+}
+
 export function Modal({
   open, title, onClose, children, wide,
 }: {

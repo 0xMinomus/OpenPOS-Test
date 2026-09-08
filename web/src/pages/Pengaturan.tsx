@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { apiGetSettings, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings, type StoreSettings, type User } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { getSession, setSession, useDB } from '../lib/store'
-import { Button, Input, PageHead, Pill } from '../lib/ui'
+import { NumInput, Button, Input, PageHead, Pill } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const TABS = [
@@ -209,7 +209,7 @@ export default function Pengaturan() {
                 <input type="checkbox" checked={form.taxEnabled} onChange={(e) => setForm({ ...form, taxEnabled: e.target.checked })} className="h-4 w-4 accent-jet" />
                 Aktifkan pajak transaksi
               </label>
-              {form.taxEnabled && <Input label="Persentase pajak (%)" type="number" value={form.taxPct} onChange={set('taxPct')} />}
+              {form.taxEnabled && <NumInput allowDecimal label="Persentase pajak (%)" value={form.taxPct} onValue={(r) => setForm((f) => (f ? { ...f, taxPct: r === '' ? 0 : Number(r.replace(',', '.')) } : f))} />}
               <Button onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
             </div>
           </section>

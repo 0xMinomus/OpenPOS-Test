@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
-import { Button, Modal, PageHead, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
+import { NumInput, Button, Modal, PageHead, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 
 const PAGE = 20
 const METHODS = ['Semua', 'Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
@@ -171,9 +171,9 @@ export default function Transaksi() {
                       <Td>{i.name}</Td>
                       <Td right>{i.qty}</Td>
                       <Td right>
-                        <input
-                          type="number" min="0" max={i.qty} value={refundItems.find((r) => r.productId === i.product_id)?.qty ?? 0}
-                          onChange={(e) => setRefundItems((rs) => rs.map((r) => r.productId === i.product_id ? { ...r, qty: Math.min(i.qty, Math.max(0, Number(e.target.value))) } : r))}
+                        <NumInput
+                          value={refundItems.find((r) => r.productId === i.product_id)?.qty ?? 0}
+                          onValue={(r) => setRefundItems((rs) => rs.map((x) => x.productId === i.product_id ? { ...x, qty: Math.min(i.qty, Math.max(0, Number(r || 0))) } : x))}
                           className="w-16 rounded border border-dove bg-paper px-2 py-1 text-right font-mono tabular-nums focus:border-jet focus:outline-none"
                         />
                       </Td>

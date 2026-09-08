@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGetSettings, apiUpdateSettings, type StoreSettings } from '../../lib/local-api'
 import { useLocalDB, saveSettings } from '../../lib/localdb'
 import { getSession, setSession } from '../../lib/store'
-import { Button, Input, PageHead } from '../../lib/ui'
+import { NumInput, Button, Input, PageHead } from '../../lib/ui'
 
 const TABS = [
   { id: 'akun', label: 'Akun' },
@@ -138,7 +138,7 @@ export default function OfflinePengaturan() {
                 <input type="checkbox" checked={form.taxEnabled} onChange={(e) => setForm({ ...form, taxEnabled: e.target.checked })} className="h-4 w-4 accent-jet" />
                 Aktifkan pajak transaksi
               </label>
-              {form.taxEnabled && <Input label="Persentase pajak (%)" type="number" value={form.taxPct} onChange={set('taxPct')} />}
+              {form.taxEnabled && <NumInput allowDecimal label="Persentase pajak (%)" value={form.taxPct} onValue={(r) => setForm((f) => (f ? { ...f, taxPct: r === '' ? 0 : Number(r.replace(',', '.')) } : f))} />}
               <Button onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
             </div>
           </section>

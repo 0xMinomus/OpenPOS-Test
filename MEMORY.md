@@ -54,7 +54,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 - `lib/cache.ts` — `useCache(key, fn)` stale-while-revalidate (TTL 60 dtk, key wajib identitas sesi); semua halaman data memakainya agar navigasi balik instan.
 - **Aplikasi native offline (Electron)** — lihat `docs/NATIVE-OFFLINE-APP.md` (dokumen khusus). Ringkas: `lib/localdb.ts` (data `localStorage` `op_offline_db`) + `lib/local-api.ts` (adapter signature `api.ts`, baca via `getLocalDB()` — jangan `useLocalDB` di fungsi non-hook). Halaman `pages/offline/*` = salinan cloud (impor data diganti `../../lib/local-api`). Entry `offline.html` + `offline-main.tsx` (HashRouter, base `./`, `dist-offline/`). Onboarding nama pemilik+toko di `OfflineShell`. Shell `web/electron/`. Build: `npm run electron:build` → `release-out/`. `/unduh` → link GitHub Releases. Kendala mesin Andika: app "Orca" mengunci dir build → EPERM (tutup Orca / build ke temp).
 - `lib/store.ts` — sesi (`useDB()`, `setSession`, `toSession`), theme, format (`fmtRp/fmtShort/fmtDate/fmtTime`), `exportCSV`.
-- `lib/ui.tsx` — komponen internal (Button, Input, Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis).
+- `lib/ui.tsx` — komponen internal (Button, Input, **NumInput** (angka: autospacing ribuan 1000→1.000, titik/koma manual diabaikan, `allowDecimal` untuk pajak), Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis).
 - `lib/google.tsx` — `GoogleButton` (Google Identity Services / GIS), `getGoogleClientId`.
 - `lib/ErrorBoundary.tsx` — tampil pesan error, bukan blank.
 - `pages/` — Landing, Masuk, Daftar, AppShell, Dashboard, Pos, Produk, Stok, Transaksi, Laporan, Users, Pengaturan.
@@ -156,7 +156,7 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - **Dua produk**: web cloud (backend) + desktop Windows offline (Electron, `localStorage`).
 - Offline 1:1 dengan webapp (halaman disalin + adapter `local-api.ts`); fitur akun
   kasir/RBAC/passcode TIDAK ada di offline (single owner, onboarding nama+toko).
-- **Rilis**: v0.1.0 (awal) → v0.2.0 (1:1) → **v0.2.1** (installer one-click, ukuran dikecilkan: app.asar 110→2 MB via dep→devDependencies, locale id/en, installer ±99 MB; fix crash boot `null.id` — sesi offline kini di-set sinkron sebelum render di `offline-main.tsx` + dibersihkan saat reset). Versi di `web/package.json`.
+- **Rilis**: v0.1.0 (awal) → v0.2.0 (1:1) → v0.2.1 (one-click, ukuran dikecilkan) → **v0.2.2** (input angka autospacing `NumInput` di semua field cloud+offline; installer kembali wizard pilih lokasi). Versi di `web/package.json`.
 - Installer di `web/release-out/` (gitignored), didistribusikan via GitHub Releases;
   `/unduh` menunjuk daftar rilis.
 - Dokumentasi lengkap: `docs/NATIVE-OFFLINE-APP.md`. Verifikasi: `npm run electron:smoke`.

@@ -5,7 +5,7 @@ import { Download, FolderPlus, Plus, Search, Upload } from 'lucide-react'
 import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../../lib/local-api'
 import { useCache } from '../../lib/cache'
 import { exportCSV, fmtRp, useDB } from '../../lib/store'
-import { Button, Empty, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../../lib/ui'
+import { NumInput, Button, Empty, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface Draft {
@@ -466,9 +466,9 @@ function FormProduk({ draft, cats, onSave, onCancel }: { draft: Draft; cats: { i
         </select>
       </label>
       <Input label="Satuan" value={d.unit} onChange={set('unit')} />
-      <Input label="Harga beli (Rp)" type="number" value={d.buyPrice} onChange={set('buyPrice')} />
-      <Input label="Harga jual (Rp)" type="number" value={d.sellPrice} onChange={set('sellPrice')} required />
-      {!d.id && <Input label="Stok awal" type="number" value={d.stock} onChange={set('stock')} />}
+      <NumInput label="Harga beli (Rp)" value={d.buyPrice} onValue={set('buyPrice')} />
+      <NumInput label="Harga jual (Rp)" value={d.sellPrice} onValue={set('sellPrice')} required />
+      {!d.id && <NumInput label="Stok awal" value={d.stock} onValue={set('stock')} />}
       <div className="mt-2 flex justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="ghost" onClick={onCancel}>Batal</Button>
         <Button type="submit">Simpan</Button>

@@ -3,7 +3,7 @@ import { apiCheckout, apiGetSettings, apiListProducts, fetchAll, type PayMethod,
 import { useCache } from '../lib/cache'
 import { fmtRp, useDB } from '../lib/store'
 import { Receipt } from '../lib/receipt'
-import { Button, Modal } from '../lib/ui'
+import { NumInput, Button, Modal } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const METHODS: PayMethod[] = ['Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
@@ -192,8 +192,9 @@ export default function Pos() {
             <div className="flex justify-between"><span className="text-muted">Subtotal</span><span className="font-mono tabular-nums">{fmtRp(subtotal)}</span></div>
             <div className="flex items-center justify-between">
               <span className="text-muted">Diskon</span>
-              <input
-                type="number" min="0" max={subtotal} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
+              <NumInput
+                value={discount}
+                onValue={(r) => setDiscount(Math.min(subtotal, Math.max(0, Number(r || 0))))}
                 className="w-24 rounded border border-dove bg-paper px-2 py-0.5 text-right font-mono text-[13px] tabular-nums focus:border-jet focus:outline-none"
               />
             </div>
@@ -237,9 +238,11 @@ export default function Pos() {
               {!exactCash && (
                 <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
                   Jumlah dibayar
-                  <input
-                    type="number" min="0" value={paid} onChange={(e) => setPaid(e.target.value)}
-                    placeholder="0" autoFocus
+                  <NumInput
+                    value={paid}
+                    onValue={setPaid}
+                    placeholder="0"
+                    autoFocus
                     className="rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] focus:border-jet focus:outline-none"
                   />
                 </label>
