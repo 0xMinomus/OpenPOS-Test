@@ -69,7 +69,22 @@ export default function Dashboard() {
 
   const today = data.today
   const admin = data as DashboardAdmin
-  const sales7 = isAdmin ? admin.sales7.map((d, i) => ({ day: DAYS[i], omzet: d.omzet })) : []
+  // sales7 backend = 7 hari berjalan (bukan Senin–Minggu): petakan tanggal
+  // asli ke bucket minggu ini agar label hari selalu benar + reset tiap Senin.
+  const sales7 = (() => {
+    if (!isAdmin) return []
+    const out = DAYS.map((day) => ({ day, omzet: 0 }))
+    const now = new Date()
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7))
+    for (const d of admin.sales7) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d.date)
+      if (!m) continue
+      const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+      const idx = Math.round((dt.getTime() - monday.getTime()) / 86400000)
+      if (idx >= 0 && idx < 7) out[idx].omzet += d.omzet
+    }
+    return out
+  })()
   const payData = isAdmin
     ? (Object.entries(payConfig) as [keyof typeof payConfig, (typeof payConfig)[keyof typeof payConfig]][])
         .map(([name, cfg]) => ({ name, total: admin.methods.find((m) => m.method === name)?.total ?? 0, fill: cfg.color }))
@@ -192,8 +207,8 @@ export default function Dashboard() {
         <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Penjualan 7 hari terakhir</CardTitle>
-              <CardDescription>Omzet per hari</CardDescription>
+              <CardTitle className="text-base">Penjualan minggu ini</CardTitle>
+              <CardDescription>Senin–Minggu · reset tiap Senin</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={salesConfig} className="h-56 w-full">
