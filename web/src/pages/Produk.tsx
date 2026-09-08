@@ -353,9 +353,6 @@ export default function Produk() {
             ))}
             {activeCats.length === 0 && <p className="text-sm text-fog">Belum ada kategori.</p>}
           </div>
-          {cats.filter((c) => !c.active).length > 0 && (
-            <p className="pt-2 text-xs text-fog">{cats.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
-          )}
         </div>
       </Modal>
 
