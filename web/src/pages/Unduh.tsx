@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { Download, MonitorDown, HardDrive, Archive, ArrowRight, ShieldCheck } from 'lucide-react'
 import Navbar from './Navbar'
 
-const WINDOWS_DOWNLOAD_URL = 'https://github.com/0xMinomus/OpenPOS-Test/releases'
+const REPO = '0xMinomus/OpenPOS-Test'
+const RELEASES_URL = `https://github.com/${REPO}/releases`
 
 const FEATURES = [
   {
@@ -23,12 +25,33 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { n: '1', t: 'Unduh installer', d: 'Ambil file .exe dari halaman rilis.' },
+  { n: '1', t: 'Unduh installer', d: 'Klik tombol, versi terbaru langsung terunduh.' },
   { n: '2', t: 'Pasang & buat akun', d: 'Install, isi nama pemilik dan nama toko.' },
   { n: '3', t: 'Mulai jualan', d: 'Tambah produk, layani pelanggan, cetak struk.' },
 ]
 
 export default function Unduh() {
+  const [busy, setBusy] = useState(false)
+  const [dlErr, setDlErr] = useState('')
+
+  async function downloadLatest() {
+    if (busy) return
+    setBusy(true)
+    setDlErr('')
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
+      if (!res.ok) throw new Error(String(res.status))
+      const rel = await res.json()
+      const asset = (rel.assets ?? []).find((a: { name: string }) => /\.exe$/i.test(a.name))
+      if (!asset?.browser_download_url) throw new Error('no-asset')
+      window.location.href = asset.browser_download_url
+    } catch {
+      setDlErr('Gagal mengambil versi terbaru.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="landing-light bg-bg text-fg">
       <style>{`
@@ -54,16 +77,24 @@ export default function Unduh() {
               transaksi tetap jalan walau koneksi mati. Pindah komputer? Cukup pindahkan satu file backup.
             </p>
             <div className="ud-reveal ud-4 mt-8 flex flex-wrap items-center justify-center gap-4">
-              <a
-                href={WINDOWS_DOWNLOAD_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="group inline-flex items-center gap-2 rounded-full bg-jet px-7 py-3.5 text-[15px] font-medium text-paper transition hover:opacity-85 active:translate-y-px"
+              <button
+                onClick={downloadLatest}
+                disabled={busy}
+                className="group inline-flex items-center gap-2 rounded-full bg-jet px-7 py-3.5 text-[15px] font-medium text-paper transition hover:opacity-85 active:translate-y-px disabled:opacity-60"
               >
                 <Download className="size-4 transition-transform group-hover:translate-y-0.5" />
-                Unduh untuk Windows
-              </a>
-              <span className="text-[13px] text-muted">Installer .exe · Windows 10/11 64-bit · ±124 MB</span>
+                {busy ? 'Menyiapkan…' : 'Unduh untuk Windows'}
+              </button>
+              <span className="text-[13px] text-muted">Installer .exe · Windows 10/11 64-bit · versi terbaru otomatis</span>
+              {dlErr && (
+                <p className="w-full text-center text-[13px] text-ember">
+                  {dlErr}{' '}
+                  <a href={RELEASES_URL} target="_blank" rel="noreferrer" className="font-medium text-jet hover:underline">
+                    Buka halaman rilis
+                  </a>
+                  .
+                </p>
+              )}
             </div>
           </div>
         </section>
