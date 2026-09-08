@@ -1,8 +1,9 @@
 {
   "name": "web",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -10,7 +11,39 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:smoke": "electron electron/main.cjs --smoke",
+    "build:offline": "vite build --config vite.offline.config.ts",
+    "electron:build": "npm run build && npm run build:offline && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.openpos.offline",
+    "productName": "OpenPOS",
+    "directories": {
+      "output": "release-out"
+    },
+    "files": [
+      "dist-offline/**",
+      "electron/**",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "OpenPOS"
+    }
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -33,9 +66,10 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
     "oxlint": "^1.79.0",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite": "^8.2.2"
   }
 }

@@ -1,2 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="vite-plugin-pwa/client" />
+
+interface Window {
+  offline?: { isElectron: boolean; close: () => void }
+}

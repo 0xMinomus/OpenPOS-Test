@@ -24,7 +24,11 @@ export default function OfflineShell() {
               <p className="font-mono text-[11px] text-fog">Mode offline · data di perangkat</p>
             </div>
           </div>
-          <Link to="/" className="text-[13px] font-medium text-jet hover:underline">Keluar</Link>
+          {window.offline?.isElectron ? (
+            <button onClick={() => window.offline?.close()} className="text-[13px] font-medium text-jet hover:underline">Tutup Aplikasi</button>
+          ) : (
+            <Link to="/" className="text-[13px] font-medium text-jet hover:underline">Keluar</Link>
+          )}
         </div>
         <nav className="mx-auto flex max-w-5xl gap-1 px-4 pb-2" aria-label="Menu offline">
           {TABS.map((t) => {
