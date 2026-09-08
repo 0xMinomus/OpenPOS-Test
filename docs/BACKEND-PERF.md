@@ -5,6 +5,16 @@ kadang lebih). Hasil ukur: `GET /api/v1/health` (tanpa DB) saja 550–830 ms
 dari Indonesia. Penyebab utama: fungsi serverless jalan di region default
 Vercel (US East), jauh dari pengguna.
 
+## Status verifikasi (8 Sep 2026, dari sisi frontend)
+
+`vercel.json` sudah berisi `regions: ["sin1"]` + cron — tapi **belum berefek**:
+header respons produksi masih `X-Vercel-Id: sin1::iad1::...` (edge Singapore,
+fungsi tetap US East) dan `/health` tetap 550–780 ms dari Indonesia.
+Kemungkinan: belum redeploy produksi setelah ubah config, atau config
+`regions` diabaikan pada skema `builds` lawas. Tolong redeploy lalu cek
+ulang: segmen tengah `X-Vercel-Id` harus `sin1`, dan `/health` idealnya
+< 200 ms dari Indonesia.
+
 ## 1. Pindahkan region ke Singapore (efek terbesar)
 
 Di `vercel.json` tambah:
