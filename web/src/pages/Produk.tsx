@@ -1,7 +1,7 @@
 // Produk — Operate surface. Katalog + filter kategori + CRUD + CSV.
 // Token font/warna milik sistem (tidak ada token baru di file ini).
 import { useMemo, useRef, useState } from 'react'
-import { Download, Plus, Search, Upload } from 'lucide-react'
+import { Download, FolderPlus, Plus, Search, Upload } from 'lucide-react'
 import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtRp, useDB } from '../lib/store'
@@ -38,6 +38,7 @@ export default function Produk() {
   const [editing, setEditing] = useState<Draft | null>(null)
   const [deleteFor, setDeleteFor] = useState<Product | null>(null)
   const [catName, setCatName] = useState('')
+  const [catOpen, setCatOpen] = useState(false)
   const [importRows, setImportRows] = useState<{ ok: boolean; row: string[]; msg: string }[] | null>(null)
   const [importDone, setImportDone] = useState<{ ok: number; fail: number } | null>(null)
 
@@ -110,6 +111,7 @@ export default function Produk() {
       await apiCreateCategory(n)
       catq.reload()
       setCatName('')
+      setCatOpen(false)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal menambah kategori.')
     }
@@ -191,6 +193,7 @@ export default function Produk() {
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={exportList}><Download className="size-4" />Export</Button>
             <Button variant="ghost" onClick={() => fileRef.current?.click()}><Upload className="size-4" />Import</Button>
+            <Button variant="ghost" onClick={() => { setCatName(''); setErr(''); setCatOpen(true) }}><FolderPlus className="size-4" />Kategori</Button>
             <Button onClick={() => setEditing({ ...emptyDraft })}><Plus className="size-4" />Tambah Produk</Button>
             <input ref={fileRef} type="file" accept=".csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportFile(f); e.target.value = '' }} />
           </div>
@@ -253,14 +256,6 @@ export default function Produk() {
               <p className="pt-1 text-xs text-fog">{cats.filter((c) => !c.active).length} kategori dinonaktifkan (historis)</p>
             )}
           </div>
-          <div className="mt-4 flex gap-2">
-            <input
-              value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Nama kategori baru"
-              className="min-w-0 flex-1 rounded-md border border-border bg-paper px-3 py-2 text-sm focus:border-jet focus:outline-none"
-              onKeyDown={(e) => { if (e.key === 'Enter') addCat() }}
-            />
-            <Button onClick={addCat}>Tambah</Button>
-          </div>
         </aside>
 
         <div className="min-w-0">
@@ -313,6 +308,19 @@ export default function Produk() {
           </div>
         </div>
       </div>
+
+      <Modal open={catOpen} title="Tambah Kategori" onClose={() => setCatOpen(false)}>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => { e.preventDefault(); addCat() }}
+        >
+          <Input label="Nama kategori" value={catName} onChange={setCatName} placeholder="cth: Minuman" required />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setCatOpen(false)}>Batal</Button>
+            <Button type="submit">Simpan</Button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal open={!!editing} title={editing?.id ? 'Ubah Produk' : 'Tambah Produk'} onClose={() => setEditing(null)} wide>
         {editing && (
