@@ -2,8 +2,7 @@ import { Link } from 'react-router'
 import { Download, MonitorDown, HardDrive, Archive, Check } from 'lucide-react'
 import Navbar from './Navbar'
 
-// Ganti dengan URL rilis installer setelah .exe di-upload ke GitHub Releases.
-const WINDOWS_DOWNLOAD_URL = 'https://github.com/0xMinomus/OpenPOS-Test/releases'
+const WINDOWS_DOWNLOAD_URL = 'https://github.com/0xMinomus/OpenPOS-Test/releases/tag/v0.1.0'
 
 export default function Unduh() {
   return (
