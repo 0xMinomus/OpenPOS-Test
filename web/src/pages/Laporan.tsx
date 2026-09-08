@@ -421,6 +421,7 @@ export default function Laporan() {
                         <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
                         <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
+                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
                         <Bar dataKey="nilai" fill="var(--color-nilai)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                           <LabelList dataKey="nilai" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
                         </Bar>
