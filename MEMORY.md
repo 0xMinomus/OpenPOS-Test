@@ -77,7 +77,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 - **Landing** — selalu light (class `.landing-light` menimpa token tema); demo POS + grafik random; tombol window di card demo sudah dihapus; tanpa menu Shift.
 - **Dashboard** — admin: KPI (Omzet/Transaksi/Produk/Stok menipis, tanpa tren), chart "Penjualan" (label tanggal asli `3 Sep` dari `sales7[].date`), donut metode + legenda %, tabel Transaksi Terbaru (invoice `#TRX-00046` dari `id`; `seq` tak dikirim list), ranking Produk Terlaris + revenue. donut metode bayar, produk terlaris, list "Transaksi Terbaru" (produk + qty via `TrxItems`). Kasir: sapaan, kartu "Kasir siap" + Buka POS, 3 KPI hari ini, "Transaksi Saya".
 - **POS Kasir** — katalog server, keranjang stok efektif, diskon/pajak dari settings, 5 metode bayar, **Uang Pas** (checkbox di metode Cash → paid=total, tanpa input), checkout ke server, struk redesigned (`#receipt`; print CSS di `index.css` — jangan `inset:0`/width:auto supaya tidak melebar A4).
-- **Produk** — CRUD server, search server-side, import/export CSV, kategori (soft-delete `soft_deleted`).
+- **Produk** — CRUD server, search server-side, filter kategori client + badge jumlah, import/export CSV, kategori (soft-delete `soft_deleted`).
 - **Stok** — status + penyesuaian (alasan wajib, cegah negatif) + riwayat movement.
 - **Transaksi** — list server-side (filter q/method/date), kolom **Produk** (`TrxItems`), detail, refund (admin), export CSV. Field waktu = **`created_at`** (backend GORM — JANGAN pakai `time`).
 - **Laporan** — tab Penjualan/Produk/Profit/Stok + 5 periode + Export CSV; KPI + bar chart omzet harian (agregat frontend dari `transactions[].date`), donut metode, status, top produk, profit trx, nilai stok.
