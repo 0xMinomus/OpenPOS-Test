@@ -1,5 +1,6 @@
 // Dashboard — Operate surface. Compact POS overview: KPI → analytics → activity.
 // Same Card/Button/Badge/Chart/Td/Th tokens as the rest of the app; no new identity.
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, Package, ReceiptText, Store, TriangleAlert } from 'lucide-react'
 import { apiGetDashboard, apiListTransactions, type DashboardAdmin, type Trx } from '../lib/api'
@@ -44,6 +45,12 @@ function dayLabel(iso: string): string {
 export default function Dashboard() {
   const db = useDB()
   const s = db.session!
+  // Animasi chart hidup hanya saat mount; refresh data tak me-restartnya.
+  const [animate, setAnimate] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setAnimate(false), 900)
+    return () => clearTimeout(t)
+  }, [])
   // Kunci sesi pemilik data: key cache memisahkan admin vs kasir.
   const sessionKey = `${s.id}:${s.role}`
   const dash = useCache(`dash:${sessionKey}`, apiGetDashboard, 'Gagal memuat dashboard.')
@@ -177,7 +184,7 @@ export default function Dashboard() {
                 <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={16} tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} className="font-mono text-xs" />
                 <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={38} isAnimationActive={false}>
+                <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={38} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                   <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
                 </Bar>
               </BarChart>
@@ -198,7 +205,7 @@ export default function Dashboard() {
                 <ChartContainer config={{}} className="relative mx-auto h-44 w-full">
                   <PieChart>
                     <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} hideLabel />} />
-                    <Pie data={payData} dataKey="total" nameKey="name" innerRadius={52} outerRadius={74} paddingAngle={3} strokeWidth={0} isAnimationActive={false}>
+                    <Pie data={payData} dataKey="total" nameKey="name" innerRadius={52} outerRadius={74} paddingAngle={3} strokeWidth={0} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                       {payData.map((d) => (
                         <Cell key={d.name} fill={d.fill} />
                       ))}
