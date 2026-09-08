@@ -52,6 +52,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 ### File frontend penting (`web/src/`)
 - `lib/api.ts` — semua helper API + tipe server (`snake_case`) + `request()` (auto-refresh) + `fetchAll()` + `useFetch()`.
 - `lib/cache.ts` — `useCache(key, fn)` stale-while-revalidate (TTL 60 dtk, key wajib identitas sesi); semua halaman data memakainya agar navigasi balik instan.
+- `lib/localdb.ts` — data layer OFFLINE (localStorage `op_offline_db`, satu blok JSON + hook `useLocalDB`): produk/kategori/transaksi/settings/seq, backup export/import JSON. Route `/app-offline/*` (tanpa login, data lokal penuh). PWA: `vite-plugin-pwa`, manifest + SW precache, halaman `/unduh` (install prompt via `beforeinstallprompt`). Struk dipakai bersama via `lib/receipt.tsx` (cloud POS + offline POS).
 - `lib/store.ts` — sesi (`useDB()`, `setSession`, `toSession`), theme, format (`fmtRp/fmtShort/fmtDate/fmtTime`), `exportCSV`.
 - `lib/ui.tsx` — komponen internal (Button, Input, Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis).
 - `lib/google.tsx` — `GoogleButton` (Google Identity Services / GIS), `getGoogleClientId`.

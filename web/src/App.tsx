@@ -14,6 +14,12 @@ import Transaksi from './pages/Transaksi'
 import Laporan from './pages/Laporan'
 import Users from './pages/Users'
 import Pengaturan from './pages/Pengaturan'
+import Unduh from './pages/Unduh'
+import OfflineShell from './pages/offline/OfflineShell'
+import OfflinePos from './pages/offline/OfflinePos'
+import OfflineProduk from './pages/offline/OfflineProduk'
+import OfflineTransaksi from './pages/offline/OfflineTransaksi'
+import OfflineBackup from './pages/offline/OfflineBackup'
 
 export default function App() {
   return (
@@ -24,6 +30,14 @@ export default function App() {
         <Route path="/masuk" element={<Masuk />} />
         <Route path="/daftar" element={<Daftar />} />
         <Route path="/pilih-akun" element={<PilihAkun />} />
+        <Route path="/unduh" element={<Unduh />} />
+        <Route path="/app-offline" element={<OfflineShell />}>
+          <Route index element={<OfflinePos />} />
+          <Route path="kasir" element={<OfflinePos />} />
+          <Route path="produk" element={<OfflineProduk />} />
+          <Route path="transaksi" element={<OfflineTransaksi />} />
+          <Route path="backup" element={<OfflineBackup />} />
+        </Route>
         <Route path="/app" element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="pos" element={<Pos />} />

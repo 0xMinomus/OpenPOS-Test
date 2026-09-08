@@ -139,6 +139,9 @@ export default function Landing() {
               <Link to="/masuk" className="rounded-full border border-dove bg-transparent px-6 py-3 text-[15px] font-medium text-jet transition hover:border-jet hover:bg-fg/6 active:translate-y-px sm:px-7.5 sm:py-3.5 sm:text-base">
                 Masuk
               </Link>
+              <Link to="/unduh" className="rounded-full border border-dove bg-transparent px-6 py-3 text-[15px] font-medium text-jet transition hover:border-jet hover:bg-fg/6 active:translate-y-px sm:px-7.5 sm:py-3.5 sm:text-base">
+                Unduh Offline
+              </Link>
             </div>
             <div className="hero-reveal relative z-10 mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs tracking-wide text-jet sm:mt-9">
               <span className="inline-flex items-center gap-2">

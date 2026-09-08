@@ -5,6 +5,7 @@ const SECTIONS = [
   { id: 'fitur', label: 'Fitur' },
   { id: 'cara-kerja', label: 'Cara Kerja' },
   { id: 'tentang', label: 'Tentang' },
+  { id: 'unduh', label: 'Unduh', to: '/unduh' },
 ]
 
 export default function Navbar({ dark, logoTone = 'auto' }: { dark?: boolean; logoTone?: 'auto' | 'light' | 'dark' }) {
@@ -38,7 +39,9 @@ export default function Navbar({ dark, logoTone = 'auto' }: { dark?: boolean; lo
         {!dark && (
           <nav className="hidden gap-8 text-sm text-muted md:flex" aria-label="Navigasi utama">
             {SECTIONS.map((s) => (
-              <button key={s.id} onClick={() => goSection(s.id)} className="hover:text-jet">{s.label}</button>
+              s.to
+                ? <Link key={s.id} to={s.to} className="hover:text-jet">{s.label}</Link>
+                : <button key={s.id} onClick={() => goSection(s.id)} className="hover:text-jet">{s.label}</button>
             ))}
           </nav>
         )}
