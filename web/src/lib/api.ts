@@ -138,7 +138,7 @@ export interface TrxItem {
 
 export interface Trx {
   id: string
-  seq: number
+  seq?: number
   cashier_name: string
   items: TrxItem[]
   subtotal: number
