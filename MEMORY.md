@@ -52,7 +52,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 ### File frontend penting (`web/src/`)
 - `lib/api.ts` — semua helper API + tipe server (`snake_case`) + `request()` (auto-refresh) + `fetchAll()` + `useFetch()`.
 - `lib/cache.ts` — `useCache(key, fn)` stale-while-revalidate (TTL 60 dtk, key wajib identitas sesi); semua halaman data memakainya agar navigasi balik instan.
-- `lib/localdb.ts` + `lib/local-api.ts` — aplikasi DESKTOP Windows (Electron) 1:1 dengan webapp, full offline. Data di `localStorage` `op_offline_db`; `local-api.ts` menyamakan signature `api.ts` (halaman webapp disalin ke `pages/offline/*` hampir tanpa ubah: Dashboard, POS, Produk, Stok, Transaksi+refund, Laporan, Pengaturan, Backup). Onboarding pertama (nama pemilik + nama toko) di `OfflineShell` sebelum dashboard; sesi sintetis via `setSession({id:'local',...,role:'admin'})`. Entry `offline.html` + `src/offline-main.tsx` (HashRouter, base `./`, build `dist-offline/` via `vite.offline.config.ts`), shell `web/electron/`. Build: `npm run electron:build` → `web/release-out/OpenPOS Setup X.Y.Z.exe`. `/unduh` = tombol unduh Windows (link GitHub Releases). Catatan mesin ini: app "Orca" (StablyAI) memonitor Documents & mengunci dir build → build EPERM bila Orca hidup (tutup Orca atau build ke luar Documents via `--config.directories.output=<temp>`). Struk bersama via `lib/receipt.tsx`.
+- **Aplikasi native offline (Electron)** — lihat `docs/NATIVE-OFFLINE-APP.md` (dokumen khusus). Ringkas: `lib/localdb.ts` (data `localStorage` `op_offline_db`) + `lib/local-api.ts` (adapter signature `api.ts`, baca via `getLocalDB()` — jangan `useLocalDB` di fungsi non-hook). Halaman `pages/offline/*` = salinan cloud (impor data diganti `../../lib/local-api`). Entry `offline.html` + `offline-main.tsx` (HashRouter, base `./`, `dist-offline/`). Onboarding nama pemilik+toko di `OfflineShell`. Shell `web/electron/`. Build: `npm run electron:build` → `release-out/`. `/unduh` → link GitHub Releases. Kendala mesin Andika: app "Orca" mengunci dir build → EPERM (tutup Orca / build ke temp).
 - `lib/store.ts` — sesi (`useDB()`, `setSession`, `toSession`), theme, format (`fmtRp/fmtShort/fmtDate/fmtTime`), `exportCSV`.
 - `lib/ui.tsx` — komponen internal (Button, Input, Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis).
 - `lib/google.tsx` — `GoogleButton` (Google Identity Services / GIS), `getGoogleClientId`.
@@ -148,3 +148,15 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - Komunikasi AI sesi ini: caveman/ponytail (tersingkat). Kode tetap normal.
 - Push tiap perubahan, commit jelas (feat:/fix:/style:/docs:/revert:).
 - Jangan sentuh backend repo (hanya frontend `OpenPOS-Test`).
+
+---
+
+## 12. Aplikasi Native Offline (Electron) — status
+
+- **Dua produk**: web cloud (backend) + desktop Windows offline (Electron, `localStorage`).
+- Offline 1:1 dengan webapp (halaman disalin + adapter `local-api.ts`); fitur akun
+  kasir/RBAC/passcode TIDAK ada di offline (single owner, onboarding nama+toko).
+- **Rilis**: v0.1.0 (awal) → **v0.2.0** (1:1, rilis saat ini). Versi di `web/package.json`.
+- Installer di `web/release-out/` (gitignored), didistribusikan via GitHub Releases;
+  `/unduh` menunjuk daftar rilis.
+- Dokumentasi lengkap: `docs/NATIVE-OFFLINE-APP.md`. Verifikasi: `npm run electron:smoke`.
