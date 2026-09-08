@@ -5,9 +5,13 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import './index.css'
 import ErrorBoundary from './lib/ErrorBoundary'
 import OfflineShell from './pages/offline/OfflineShell'
+import Dashboard from './pages/offline/Dashboard'
 import OfflinePos from './pages/offline/OfflinePos'
 import OfflineProduk from './pages/offline/OfflineProduk'
+import Stok from './pages/offline/Stok'
 import OfflineTransaksi from './pages/offline/OfflineTransaksi'
+import Laporan from './pages/offline/Laporan'
+import Pengaturan from './pages/offline/Pengaturan'
 import OfflineBackup from './pages/offline/OfflineBackup'
 
 createRoot(document.getElementById('root')!).render(
@@ -17,10 +21,13 @@ createRoot(document.getElementById('root')!).render(
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<OfflineShell />}>
-              <Route index element={<OfflinePos />} />
-              <Route path="kasir" element={<OfflinePos />} />
+              <Route index element={<Dashboard />} />
+              <Route path="pos" element={<OfflinePos />} />
               <Route path="produk" element={<OfflineProduk />} />
+              <Route path="stok" element={<Stok />} />
               <Route path="transaksi" element={<OfflineTransaksi />} />
+              <Route path="laporan" element={<Laporan />} />
+              <Route path="pengaturan" element={<Pengaturan />} />
               <Route path="backup" element={<OfflineBackup />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

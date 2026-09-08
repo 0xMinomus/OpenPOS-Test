@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { Download, MonitorDown, HardDrive, Archive, Check } from 'lucide-react'
 import Navbar from './Navbar'
 
-const WINDOWS_DOWNLOAD_URL = 'https://github.com/0xMinomus/OpenPOS-Test/releases/tag/v0.1.0'
+const WINDOWS_DOWNLOAD_URL = 'https://github.com/0xMinomus/OpenPOS-Test/releases'
 
 export default function Unduh() {
   return (
