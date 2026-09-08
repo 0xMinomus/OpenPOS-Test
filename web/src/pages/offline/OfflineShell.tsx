@@ -24,7 +24,13 @@ export default function OfflineShell() {
   const loc = useLocation()
 
   useEffect(() => {
-    if (hasAccount() && (!session || session.id !== 'local')) {
+    if (!hasAccount()) {
+      if (session) setSession(null)
+      return
+    }
+    const need = !session || session.id !== 'local'
+      || session.name !== db.settings.ownerName || session.store !== db.settings.storeName
+    if (need) {
       setSession({
         id: 'local', email: '', name: db.settings.ownerName, role: 'admin', store: db.settings.storeName,
       })
@@ -94,9 +100,15 @@ export default function OfflineShell() {
 
 function Onboarding() {
   const db = useLocalDB()
-  const [ownerName, setOwnerName] = useState('')
-  const [storeName, setStoreName] = useState('')
+  const [ownerName, setOwnerName] = useState(() => db.settings.ownerName)
+  const [storeName, setStoreName] = useState(() => db.settings.storeName)
   const [err, setErr] = useState('')
+
+  useEffect(() => {
+    // WebView2 kadang tak memberi fokus pada jendela baru/ulang — paksa fokus
+    // agar input langsung bisa diketik tanpa klik ulang.
+    window.focus()
+  }, [])
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -123,7 +135,7 @@ function Onboarding() {
             <Button type="submit" className="w-full">Masuk</Button>
           </form>
         </div>
-        <p className="mt-4 text-center text-[13px] text-muted-foreground">OpenPOS Offline · tanpa internet, data di perangkat.</p>
+        <p className="mt-4 text-center text-[13px] text-muted-foreground">OpenPOS · tanpa internet, data di perangkat.</p>
       </div>
     </div>
   )

@@ -156,7 +156,7 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - **Dua produk**: web cloud (backend) + desktop Windows offline (Electron, `localStorage`).
 - Offline 1:1 dengan webapp (halaman disalin + adapter `local-api.ts`); fitur akun
   kasir/RBAC/passcode TIDAK ada di offline (single owner, onboarding nama+toko).
-- **Rilis**: v0.1.0 (awal) → **v0.2.0** (1:1, rilis saat ini). Versi di `web/package.json`.
+- **Rilis**: v0.1.0 (awal) → v0.2.0 (1:1) → **v0.2.1** (installer one-click, ukuran dikecilkan: app.asar 110→2 MB via dep→devDependencies, locale id/en, installer ±99 MB; fix crash boot `null.id` — sesi offline kini di-set sinkron sebelum render di `offline-main.tsx` + dibersihkan saat reset). Versi di `web/package.json`.
 - Installer di `web/release-out/` (gitignored), didistribusikan via GitHub Releases;
   `/unduh` menunjuk daftar rilis.
 - Dokumentasi lengkap: `docs/NATIVE-OFFLINE-APP.md`. Verifikasi: `npm run electron:smoke`.

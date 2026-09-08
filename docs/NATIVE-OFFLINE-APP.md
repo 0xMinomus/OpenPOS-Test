@@ -12,7 +12,9 @@
 - **100% offline**: semua data di `localStorage` perangkat, tanpa backend.
 - **1:1 dengan webapp cloud** (UI, layout, dan fungsi sama persis), hanya sumber data
   yang diganti dari REST API → `lib/local-api.ts` (adapter lokal).
-- Versi saat ini: **0.2.0** (`web/release-out/OpenPOS Setup 0.2.0.exe`).
+- Versi saat ini: **0.2.1** (`web/release-out/OpenPOS Setup 0.2.1.exe`, installer ±99 MB, terpasang ±320 MB).
+- Installer **one-click** (tanpa pertanyaan wizard), hanya locale `id`+`en-US`, `npmRebuild: false`,
+  semua dep di `devDependencies` (Vite sudah bundel — node_modules TIDAK ikut terpaket; app.asar ±2 MB).
 
 ### Bedanya dengan webapp cloud (sengaja)
 | Aspek | Cloud (web) | Native (offline) |

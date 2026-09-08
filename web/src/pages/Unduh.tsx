@@ -45,7 +45,7 @@ export default function Unduh() {
       <main>
         <section className="overflow-hidden pt-[clamp(40px,5vw,88px)] pb-12">
           <div className="container mx-auto max-w-4xl px-5 text-center md:px-8">
-            <p className="ud-reveal ud-1 font-mono text-xs uppercase tracking-widest text-steel">Unduh · OpenPOS Offline</p>
+            <p className="ud-reveal ud-1 font-mono text-xs uppercase tracking-widest text-steel">Unduh · OpenPOS Desktop</p>
             <h1 className="ud-reveal ud-2 mx-auto mt-4 max-w-3xl text-[clamp(32px,6vw,56px)] font-normal leading-[1.05] tracking-[-0.025em]">
               Kasir Windows yang jalan tanpa internet.
             </h1>
