@@ -1,70 +1,112 @@
 import { Link } from 'react-router'
-import { Download, MonitorDown, HardDrive, Archive, Check } from 'lucide-react'
+import { Download, MonitorDown, HardDrive, Archive, ArrowRight, ShieldCheck } from 'lucide-react'
 import Navbar from './Navbar'
 
 const WINDOWS_DOWNLOAD_URL = 'https://github.com/0xMinomus/OpenPOS-Test/releases'
 
+const FEATURES = [
+  {
+    icon: MonitorDown,
+    title: 'Aplikasi desktop asli',
+    sub: 'Terpasang seperti program biasa. Buka dari desktop, tanpa browser.',
+  },
+  {
+    icon: HardDrive,
+    title: 'Data aman di perangkat',
+    sub: 'Produk dan transaksi tersimpan lokal di komputer kasir Anda.',
+  },
+  {
+    icon: Archive,
+    title: 'Backup satu file',
+    sub: 'Pindah perangkat tinggal ekspor JSON, lalu pulihkan di komputer baru.',
+  },
+]
+
+const STEPS = [
+  { n: '1', t: 'Unduh installer', d: 'Ambil file .exe dari halaman rilis.' },
+  { n: '2', t: 'Pasang & buat akun', d: 'Install, isi nama pemilik dan nama toko.' },
+  { n: '3', t: 'Mulai jualan', d: 'Tambah produk, layani pelanggan, cetak struk.' },
+]
+
 export default function Unduh() {
   return (
     <div className="landing-light bg-bg text-fg">
+      <style>{`
+        @keyframes ud-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+        .ud-reveal { opacity: 0; animation: ud-rise 0.6s cubic-bezier(0.2, 0, 0, 1) both; }
+        .ud-1 { animation-delay: 0.05s; }
+        .ud-2 { animation-delay: 0.15s; }
+        .ud-3 { animation-delay: 0.25s; }
+        .ud-4 { animation-delay: 0.35s; }
+        .ud-5 { animation-delay: 0.45s; }
+        @media (prefers-reduced-motion: reduce) { .ud-reveal { animation: none; opacity: 1; } }
+      `}</style>
       <Navbar logoTone="light" />
-      <main className="container mx-auto max-w-4xl px-5 py-14 md:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-steel">Unduh · OpenPOS Offline</p>
-        <h1 className="mt-3 text-[clamp(32px,5vw,48px)] font-normal leading-[1.08] tracking-[-0.025em]">
-          Kasir native untuk Windows,<br />jalan tanpa internet.
-        </h1>
-        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">
-          Pasang OpenPOS sebagai aplikasi desktop di komputer kasir Anda. Bekerja penuh offline — produk,
-          transaksi, dan struk tersimpan di perangkat. Pindah komputer? Backup satu file JSON, pulihkan di
-          perangkat baru.
-        </p>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <a
-            href={WINDOWS_DOWNLOAD_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-jet px-7 py-3.5 text-[15px] font-medium text-paper transition hover:opacity-85"
-          >
-            <Download className="size-4" />Unduh untuk Windows
-          </a>
-          <p className="text-[13px] text-muted">Installer .exe · Windows 10/11 (64-bit)</p>
-        </div>
-
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-dove bg-cream p-6">
-            <MonitorDown className="size-6 text-jet" />
-            <h2 className="mt-3 font-medium">Aplikasi Desktop</h2>
-            <p className="mt-1 text-[13px] text-muted">Terpasang seperti program biasa, buka dari desktop tanpa browser.</p>
+      <main>
+        <section className="overflow-hidden pt-[clamp(40px,5vw,88px)] pb-12">
+          <div className="container mx-auto max-w-4xl px-5 text-center md:px-8">
+            <p className="ud-reveal ud-1 font-mono text-xs uppercase tracking-widest text-steel">Unduh · OpenPOS Offline</p>
+            <h1 className="ud-reveal ud-2 mx-auto mt-4 max-w-3xl text-[clamp(32px,6vw,56px)] font-normal leading-[1.05] tracking-[-0.025em]">
+              Kasir Windows yang jalan tanpa internet.
+            </h1>
+            <p className="ud-reveal ud-3 mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+              Pasang OpenPOS di komputer kasir Anda. Semua data tersimpan di perangkat,
+              transaksi tetap jalan walau koneksi mati. Pindah komputer? Cukup pindahkan satu file backup.
+            </p>
+            <div className="ud-reveal ud-4 mt-8 flex flex-wrap items-center justify-center gap-4">
+              <a
+                href={WINDOWS_DOWNLOAD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex items-center gap-2 rounded-full bg-jet px-7 py-3.5 text-[15px] font-medium text-paper transition hover:opacity-85 active:translate-y-px"
+              >
+                <Download className="size-4 transition-transform group-hover:translate-y-0.5" />
+                Unduh untuk Windows
+              </a>
+              <span className="text-[13px] text-muted">Installer .exe · Windows 10/11 64-bit · ±124 MB</span>
+            </div>
           </div>
-          <div className="rounded-2xl border border-dove bg-cream p-6">
-            <HardDrive className="size-6 text-jet" />
-            <h2 className="mt-3 font-medium">Data di Perangkat</h2>
-            <p className="mt-1 text-[13px] text-muted">Semua tersimpan lokal di komputer Anda, bukan di server.</p>
-          </div>
-          <div className="rounded-2xl border border-dove bg-cream p-6">
-            <Archive className="size-6 text-jet" />
-            <h2 className="mt-3 font-medium">Backup JSON</h2>
-            <p className="mt-1 text-[13px] text-muted">Ekspor ke file, pulihkan di komputer lain kapan saja.</p>
-          </div>
-        </div>
+        </section>
 
-        <div className="mt-12 rounded-2xl border border-dove bg-cream p-6">
-          <h2 className="font-medium">Cara pindah perangkat</h2>
-          <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-muted">
-            <li>Di komputer lama: buka aplikasi → menu <strong className="text-fg">Backup</strong> → <strong className="text-fg">Unduh Backup</strong>.</li>
-            <li>Kirim file JSON-nya (flashdisk, WhatsApp, Google Drive).</li>
-            <li>Di komputer baru: pasang aplikasi → menu <strong className="text-fg">Backup</strong> → <strong className="text-fg">Restore</strong> → pilih file.</li>
-          </ol>
-        </div>
+        <section className="container mx-auto max-w-5xl px-5 pb-16 md:px-8">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {FEATURES.map((f, i) => (
+              <div key={f.title} className={`ud-reveal ud-${i + 2} rounded-2xl border border-dove bg-cream p-6`}>
+                <span className="grid size-10 place-items-center rounded-xl bg-jet text-paper">
+                  <f.icon className="size-5" />
+                </span>
+                <h2 className="mt-4 font-medium">{f.title}</h2>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{f.sub}</p>
+              </div>
+            ))}
+          </div>
 
-        <div className="mt-10 flex flex-wrap items-center gap-2 rounded-2xl border border-dove bg-cream p-6">
-          <Check className="size-5 text-sprout" />
-          <p className="text-sm text-muted">
-            Butuh data tersinkron antar perangkat? Coba{' '}
-            <Link to="/daftar" className="font-medium text-jet hover:underline">OpenPOS Cloud</Link> — berjalan di browser, data di server.
-          </p>
-        </div>
+          <div className="ud-reveal ud-4 mt-12 rounded-2xl border border-dove bg-cream p-6 md:p-8">
+            <h2 className="font-medium">Mulai dalam tiga langkah</h2>
+            <div className="mt-5 grid gap-6 sm:grid-cols-3">
+              {STEPS.map((s) => (
+                <div key={s.n} className="flex gap-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface font-mono text-sm text-jet ring-1 ring-dove">{s.n}</span>
+                  <div>
+                    <p className="text-sm font-medium">{s.t}</p>
+                    <p className="mt-0.5 text-[13px] text-muted">{s.d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ud-reveal ud-5 mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-dove bg-cream p-6">
+            <ShieldCheck className="size-6 shrink-0 text-sprout" />
+            <p className="flex-1 text-sm text-muted">
+              Butuh data tersinkron antar perangkat otomatis? Coba{' '}
+              <Link to="/daftar" className="inline-flex items-center gap-1 font-medium text-jet hover:underline">
+                OpenPOS Cloud <ArrowRight className="size-3.5" />
+              </Link>
+              {' '}yang berjalan di browser.
+            </p>
+          </div>
+        </section>
       </main>
     </div>
   )
