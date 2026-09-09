@@ -1,7 +1,7 @@
 // Stok — inventory monitoring workspace: ringkasan → cari/filter → tab stok/riwayat → tindakan.
 // Token font/warna milik sistem (tidak ada token baru di file ini).
 import { useEffect, useMemo, useState } from 'react'
-import { CircleCheck, MoreHorizontal, OctagonX, Package, Search, TriangleAlert } from 'lucide-react'
+import { Check, ChevronDown, CircleCheck, OctagonX, Package, Search, TriangleAlert } from 'lucide-react'
 import { apiAdjustStock, apiListCategories, apiListMovements, apiListProducts, fetchAll, type Category, type Movement, type Product } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { fmtDate, fmtTime, useDB } from '../lib/store'
@@ -103,6 +103,8 @@ export default function Stok() {
     { label: 'Stok Habis', value: counts.habis, icon: OctagonX, tint: 'text-[var(--t-ember)] bg-[color-mix(in_oklch,var(--t-ember)_12%,transparent)]' },
   ]
 
+  const catLabel = !catFilter ? 'Semua kategori' : catFilter === NONE ? 'Tanpa kategori' : cats.find((c) => c.id === catFilter)?.name ?? 'Semua kategori'
+
   return (
     <>
       <PageHead title="Stok" sub="Pantau ketersediaan dan pergerakan stok barang." />
@@ -141,17 +143,16 @@ export default function Stok() {
 
       <div className="mt-5 flex gap-2">
         {([
-          { id: 'stock', label: 'Stok Saat Ini', n: filtered.length },
-          { id: 'movement', label: 'Riwayat Pergerakan', n: movements?.length ?? 0 },
+          { id: 'stock', label: 'Stok Saat Ini' },
+          { id: 'movement', label: 'Riwayat Pergerakan' },
         ] as const).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             aria-pressed={tab === t.id}
-            className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm transition ${tab === t.id ? 'border-jet bg-paper font-medium' : 'border-dove bg-paper text-muted hover:border-jet hover:text-fg'}`}
+            className={`rounded-lg border px-3.5 py-2 text-sm transition ${tab === t.id ? 'border-jet bg-paper font-medium' : 'border-dove bg-paper text-muted hover:border-jet hover:text-fg'}`}
           >
             {t.label}
-            <span className="font-mono text-xs tabular-nums text-fog">{!products || (t.id === 'movement' && !movements) ? '…' : t.n}</span>
           </button>
         ))}
       </div>
@@ -166,14 +167,31 @@ export default function Stok() {
               className="w-full rounded-md border border-border bg-paper py-2.5 pl-10 pr-3.5 text-sm focus:border-jet focus:outline-none"
             />
           </div>
-          <select
-            value={catFilter} onChange={(e) => setCatFilter(e.target.value)} aria-label="Filter kategori"
-            className="rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm focus:border-jet focus:outline-none sm:w-56"
-          >
-            <option value="">Semua kategori</option>
-            {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            <option value={NONE}>Tanpa kategori</option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Filter kategori"
+              className="flex items-center justify-between gap-2 rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm transition outline-none hover:border-jet focus-visible:ring-2 focus-visible:ring-ring sm:w-56"
+            >
+              <span className="min-w-0 flex-1 truncate text-left">{catLabel}</span>
+              <ChevronDown className="size-4 shrink-0 text-fog" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => setCatFilter('')}>
+                <Check className={`size-4 ${!catFilter ? 'opacity-100' : 'opacity-0'}`} />
+                Semua kategori
+              </DropdownMenuItem>
+              {cats.map((c) => (
+                <DropdownMenuItem key={c.id} onClick={() => setCatFilter(c.id)}>
+                  <Check className={`size-4 ${catFilter === c.id ? 'opacity-100' : 'opacity-0'}`} />
+                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onClick={() => setCatFilter(NONE)}>
+                <Check className={`size-4 ${catFilter === NONE ? 'opacity-100' : 'opacity-0'}`} />
+                Tanpa kategori
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
@@ -184,7 +202,7 @@ export default function Stok() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <Th>Produk</Th><Th>SKU</Th><Th>Kategori</Th><Th right>Stok</Th><Th>Status</Th><Th />
+                    <Th>Produk</Th><Th>SKU</Th><Th>Kategori</Th><Th><div className="text-center">Stok</div></Th><Th>Status</Th><Th />
                   </tr>
                 </thead>
                 <SkeletonRows cols={6} />
@@ -193,20 +211,20 @@ export default function Stok() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <Th>Produk</Th><Th>SKU</Th><Th>Kategori</Th><Th right>Stok</Th><Th>Status</Th><Th />
+                    <Th>Produk</Th><Th>SKU</Th><Th>Kategori</Th><Th><div className="text-center">Stok</div></Th><Th>Status</Th><Th />
                   </tr>
                 </thead>
                 <tbody>
                   {stockItems.map((p) => (
-                    <tr key={p.id} className="transition-colors hover:bg-muted/50">
+                    <tr key={p.id}>
                       <Td><span className="text-[15px] font-medium text-fg">{p.name}</span></Td>
                       <Td mono>{p.sku}</Td>
                       <Td>{p.category_name ?? 'Tanpa kategori'}</Td>
-                      <Td right><StockQty stock={p.stock} unit={p.unit} /></Td>
+                      <Td><div className="flex justify-center"><StockQty stock={p.stock} unit={p.unit} /></div></Td>
                       <Td><StockPill stock={p.stock} /></Td>
                       <Td>
                         <div className="flex justify-end">
-                          <RowMenu label={`Aksi ${p.name}`} onAdjust={() => setAdjustFor(p)} />
+                          <button className="text-[13px] font-medium text-jet hover:underline" onClick={() => setAdjustFor(p)}>Penyesuaian</button>
                         </div>
                       </Td>
                     </tr>
@@ -235,7 +253,7 @@ export default function Stok() {
                   <p className="mt-1 font-mono text-xs text-fog">{p.sku} · {p.category_name ?? 'Tanpa kategori'}</p>
                   <div className="mt-2.5 flex items-center justify-between">
                     <StockQty stock={p.stock} unit={p.unit} />
-                    <RowMenu label={`Aksi ${p.name}`} onAdjust={() => setAdjustFor(p)} />
+                    <button className="text-[13px] font-medium text-jet hover:underline" onClick={() => setAdjustFor(p)}>Penyesuaian</button>
                   </div>
                 </div>
               ))
@@ -349,21 +367,5 @@ function StockQty({ stock, unit }: { stock: number; unit: string }) {
       <span className="size-2 shrink-0 rounded-full" style={{ background: dot }} aria-hidden="true" />
       {stock} {unit}
     </span>
-  )
-}
-
-function RowMenu({ label, onAdjust }: { label: string; onAdjust: () => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label={label}
-        className="rounded-md p-1.5 text-muted transition outline-none hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <MoreHorizontal className="size-4.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onAdjust}>Penyesuaian stok</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

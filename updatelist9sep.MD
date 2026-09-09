@@ -350,6 +350,38 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 8. Stok — revisi: baris statis, stok tengah, aksi teks, tanpa angka tab, dropdown kategori proper (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Stok.tsx`.
+- **File offline terkait:** `web/src/pages/offline/Stok.tsx` (ikut item 7;
+  revisi ini bagian dari rewrite yang diporting).
+
+### Minta + perbaikan
+
+1. Baris tabel stok statis — hapus `hover:bg-muted/50` (seperti
+   Dashboard/Produk).
+2. Kolom Stok rata tengah — header + isi (`flex justify-center`),
+   tanpa ubah komponen `Th`/`Td` paylaş.
+3. Aksi 3-dot dikembalikan jadi tombol teks "Penyesuaian" (underline
+   saat hover, seperti sebelumnya); komponen `RowMenu` dihapus
+   (file `dropdown-menu.tsx` tetap dipakai untuk filter kategori).
+4. Angka count di tab "Stok Saat Ini" / "Riwayat Pergerakan" dihapus.
+5. Filter kategori DIGANTI dari native `<select>` ke dropdown proper
+   (shadcn `DropdownMenu`: trigger + chevron + checkmark item aktif).
+   Penyebab "tidak bekerja": logika filter benar (terverifikasi:
+   Minuman → 12 baris, Tanpa kategori → 37), masalahnya di UX —
+   kini ada umpan balik visual (label trigger + checkmark).
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos.
+- Edge headless + CDP: dropdown terbuka + checkmark, filter Minuman /
+  Tanpa kategori tepat, kolom tengah, aksi teks, tab tanpa angka,
+  pill Menipis + kartu Stok Menipis = 1 tampil semantik benar.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
