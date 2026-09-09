@@ -710,6 +710,21 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 20. Laporan Stok — indikator pindah tab, movement sejajar, deep-link riwayat (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx`, `web/src/pages/Stok.tsx`.
+
+### Isi perubahan
+
+1. Indikator switching diperluas ke pindah tab Produk/Stok
+   (`Memuat tab X…`) — pola item 14.
+2. Kolom qty movement fixed-width kanan — teks sejajar.
+3. `Lihat semua →` movement ke `/app/stok?tab=riwayat`; `Stok.tsx`
+   baca query param untuk tab awal (terverifikasi browser).
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -733,3 +748,4 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 | 17 | Redesign tab Profit | `web/src/pages/offline/Laporan.tsx` (blok profit) | Belum |
 | 18 | Revisi Profit (slot/insight/%/panah) | `web/src/pages/offline/Laporan.tsx` (bagian rewrite) | Belum |
 | 19 | Redesign tab Stok | `web/src/pages/offline/Laporan.tsx` (blok stock) | Belum |
+| 20 | Indikator tab + movement + deep-link | `offline/Laporan.tsx` (bagian rewrite) + `offline/Stok.tsx` (`?tab=riwayat`) | Belum |
