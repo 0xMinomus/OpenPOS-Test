@@ -571,6 +571,13 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 - Bawah 65/35: Transaksi Terbaru (Invoice `#TRX-…`, Tanggal, Kasir,
   Metode, Total, Status) + Produk Terlaris ranking + revenue.
 - Kartu `Performa Kasir` dihapus dari tab sales (memo dibersihkan).
+- Chart garis rapi (dot + round cap), sumbu kanan disembunyikan,
+  outline klik tanggal dimatikan (pola Dashboard).
+- Periode 1 hari (Hari ini/Kemarin) dipecah 4 slot jam — Pagi
+  05.00–10.59, Siang 11.00–14.59, Sore 15.00–18.59, Malam 19.00–04.59
+  (range saya yang tentukan). Jam dari `created_at` transaksi harian
+  (endpoint existing; `t.date` laporan hanya tanggal). Hover tampil
+  range jam. Periode lain tetap per tanggal.
 
 ### Verifikasi
 

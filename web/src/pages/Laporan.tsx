@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Banknote, BarChart3, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
-import { apiGetReport, type ReportBundle } from '../lib/api'
+import { apiGetReport, apiListTransactions, fetchAll, type ReportBundle, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort } from '../lib/store'
 import { Button, PageHead, SkeletonRows, StatusPill, Td, Th } from '../lib/ui'
@@ -74,6 +74,28 @@ function ChartCard({ title, sub, action, children }: { title: string; sub: strin
   )
 }
 
+// Slot jam untuk periode 1 hari (Hari ini/Kemarin). Range saya yang tentukan:
+// Pagi 05–11, Siang 11–15, Sore 15–18, Malam = sisanya.
+const TIME_SLOTS = [
+  { label: 'Pagi', range: '05.00–10.59' },
+  { label: 'Siang', range: '11.00–14.59' },
+  { label: 'Sore', range: '15.00–18.59' },
+  { label: 'Malam', range: '19.00–04.59' },
+] as const
+
+function slotOf(hour: number): number {
+  if (hour >= 5 && hour < 11) return 0
+  if (hour >= 11 && hour < 15) return 1
+  if (hour >= 15 && hour < 19) return 2
+  return 3
+}
+
+function localDayISO(offsetDays: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - offsetDays)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // Selisih % vs periode pembanding. Null bila tak terdefinisi (prev<=0) → fallback sub biasa.
 function delta(cur: number, prev: number | undefined): string | null {
   if (prev === undefined || prev <= 0 || !Number.isFinite(cur)) return null
@@ -129,9 +151,30 @@ export default function Laporan() {
     () => (tab === 'sales' && period === 'today' ? apiGetReport('yesterday') : Promise.resolve(null)),
   )
   const prev = needPrev ? prevRep.data : null
+  // Data per jam untuk periode 1 hari: t.date laporan hanya tanggal, jadi ambil
+  // jam dari daftar transaksi harian (created_at) — endpoint existing, tanpa API baru.
+  const needHourly = tab === 'sales' && (period === 'today' || period === 'yesterday')
+  const dayStr = period === 'yesterday' ? localDayISO(1) : localDayISO(0)
+  const hourRep = useCache<Trx[] | null>(
+    `reporthour:${tab}:${period}:${dayStr}`,
+    () => (tab === 'sales' && (period === 'today' || period === 'yesterday')
+      ? fetchAll<Trx>((pg) => apiListTransactions({ date: period === 'yesterday' ? localDayISO(1) : localDayISO(0), page: pg, limit: 200 }))
+      : Promise.resolve(null)),
+  )
+  const hourly = needHourly ? hourRep.data : undefined
 
   const daily = useMemo(() => {
     if (!data) return []
+    if (needHourly) {
+      if (!hourly) return []
+      const slots = TIME_SLOTS.map((s) => ({ label: s.label, range: s.range, omzet: 0, trx: 0 }))
+      for (const t of hourly) {
+        const s = slots[slotOf(new Date(t.created_at).getHours())]
+        s.omzet += t.total
+        s.trx += 1
+      }
+      return slots
+    }
     const map = new Map<string, { omzet: number; trx: number }>()
     for (const t of data.transactions) {
       const d = t.date.slice(0, 10)
@@ -143,7 +186,7 @@ export default function Laporan() {
     return [...map.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([date, v]) => ({ label: `${date.slice(8, 10)}/${date.slice(5, 7)}`, omzet: v.omzet, trx: v.trx }))
-  }, [data])
+  }, [data, needHourly, hourly])
 
   const topProducts = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty).slice(0, 5) : []), [data])
   const topProfitTrx = useMemo(() => (data ? [...data.transactions].sort((a, b) => b.profit - a.profit).slice(0, 5) : []), [data])
@@ -249,7 +292,11 @@ export default function Laporan() {
               <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
                 <ChartCard title="Penjualan & Transaksi" sub={daily.length > 0 ? `Total ${fmtRp(data.summary.omzet)} · per tanggal` : 'Tidak ada data pada periode ini'}>
                   {daily.length === 0 ? (
-                    <p className="py-16 text-center text-sm text-muted-foreground">Tidak ada transaksi pada periode ini.</p>
+                    needHourly && !hourly ? (
+                      <p className="py-16 text-center text-sm text-muted-foreground">Memuat rincian jam…</p>
+                    ) : (
+                      <p className="py-16 text-center text-sm text-muted-foreground">Tidak ada transaksi pada periode ini.</p>
+                    )
                   ) : (
                     <>
                       <div className="mb-3 flex items-center gap-4 text-xs text-muted-foreground">
@@ -268,7 +315,7 @@ export default function Laporan() {
                           <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="left" tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="right" orientation="right" hide domain={[0, 'auto']} />
-                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v, name) => (name === 'Transaksi' ? `${v} transaksi` : fmtRp(Number(v)))} />} />
+                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent labelFormatter={(label, payload) => (payload?.[0]?.payload as { range?: string } | undefined)?.range ?? label} formatter={(v, name) => (name === 'Transaksi' ? `${v} transaksi` : fmtRp(Number(v)))} />} />
                           <Bar yAxisId="left" dataKey="omzet" name="Penjualan" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                             {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
                           </Bar>
