@@ -24,7 +24,7 @@ const emptyDraft: Draft = { name: '', sku: '', barcode: '', categoryId: '', buyP
 
 const NONE = '__none__'
 // ponytail: paging client-side di atas fetchAll; pindah ke paging server-side bila katalog puluhan ribu.
-const PAGE_SIZE = 10
+const PAGE_SIZE = 15
 
 export default function Produk() {
   const { session } = useDB()

@@ -15,7 +15,7 @@ const TYPE_LABEL: Record<Movement['type'], string> = {
 }
 
 const NONE = '__none__'
-const PAGE_SIZE = 15
+const PAGE_SIZE = 10
 
 const isLow = (stock: number) => stock > 0 && stock <= 5
 
