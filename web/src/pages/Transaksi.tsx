@@ -4,7 +4,7 @@ import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
 import { NumInput, Button, Modal, PageHead, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 
-const PAGE = 20
+const PAGE = 10
 const METHODS = ['Semua', 'Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
 
 export default function Transaksi() {
