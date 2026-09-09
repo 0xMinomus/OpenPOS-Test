@@ -725,12 +725,13 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
-## 21. Subpage baru Karyawan (cashier analytics, cloud saja)
+## 21. Karyawan: dari menu mandiri jadi tab Laporan ke-5 (cloud saja)
 
 - **Status:** selesai, sudah push ke `main`.
-- **File baru:** `web/src/pages/Karyawan.tsx`; diubah: `App.tsx` (route
-  `/app/karyawan`), `AppShell.tsx` (menu setelah Laporan, adminOnly,
-  ikon UsersRound).
+- **File diubah:** `web/src/pages/Karyawan.tsx` (tanpa PageHead, tambah
+  baris Export kanan), `Laporan.tsx` (tab `karyawan` setelah Stok),
+  `App.tsx` + `AppShell.tsx` (route & menu mandiri dihapus).
+- Isi/fungsi 1:1 (pill periode + Export milik tab tetap ada di dalam).
 - **Halaman offline:** BELUM ada (tidak diminta; diputuskan nanti).
 
 ### Keputusan Q&A sesi (mengikat)
