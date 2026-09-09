@@ -406,6 +406,51 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 11. Transaksi — redesign transaction workspace (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Transaksi.tsx` (rewrite tampilan,
+  data flow + refund/export/detail sama).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/OfflineTransaksi.tsx` (rewrite tampilan
+  mengikuti cloud, impor data diganti `local-api`; `Pager` paylaş).
+
+### Keputusan Q&A sesi (mengikat)
+
+1. Kartu pakai fetch-all loop + filter aktif (pola Export) untuk
+   Total/Rata-rata; Hari Ini dari `apiGetDashboard`.
+2. Filter tetap existing (search, 1 tanggal, metode) — tanpa status,
+   tanpa rentang tanggal (backend tak dukung).
+3. Aksi tetap tombol teks Detail (+ Refund admin).
+
+### Isi perubahan
+
+- 4 kartu: Total Transaksi, Total Penjualan, Transaksi Hari Ini,
+  Rata-rata Transaksi (nilai mobile mengecil agar muat).
+- Toolbar: search + date sebaris (desktop), pill metode.
+- Tabel: Invoice `#TRX-00050`, Tanggal compact 2 baris, Pelanggan
+  (kolom baru dari `t.customer` yang selama ini tak dipakai), Kasir
+  (admin saja), Produk chips, Total paling menonjol, Metode teks,
+  Status pill, aksi teks. Hover subtle.
+- Mobile: daftar kartu. Detail modal: format invoice + baris Pelanggan.
+- Refund/export/pagination (`Pager` 10) utuh.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector desain — bersih.
+- Edge headless + CDP: desktop + mobile + modal detail sesuai;
+  1 ronde Micro-fix (angka kartu mobile) + konfirmasi ulang.
+- Reviewer bawaan skill tak ada di harness; ronde screenshot +
+  detector jadi pengganti.
+
+### Panduan porting ke native (offline)
+
+- Tulis ulang `OfflineTransaksi.tsx` mengikuti cloud item 11
+  (fetch-all ringkasan via `local-api` bila tersedia, jika tidak
+  kartu pakai data halaman + tandai di checklist).
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -420,3 +465,4 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 | 8  | Revisi Stok (item 8 di atas) | `web/src/pages/offline/Stok.tsx` (bagian rewrite) | Belum |
 | 9  | Ukuran halaman 15/10/10 | `OfflineProduk.tsx`, `offline/Stok.tsx`, `OfflineTransaksi.tsx` | Belum |
 | 10 | Pager angka transaksi | `web/src/pages/offline/OfflineTransaksi.tsx` | Belum |
+| 11 | Redesign Transaksi | `web/src/pages/offline/OfflineTransaksi.tsx` (rewrite ikut cloud) | Belum |

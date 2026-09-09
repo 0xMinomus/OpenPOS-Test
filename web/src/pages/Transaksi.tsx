@@ -1,11 +1,18 @@
-import { useState } from 'react'
-import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
+// Transaksi — transaction management workspace: ringkasan → cari/filter → review → detail/refund.
+// Token font/warna milik sistem (tidak ada token baru di file ini).
+import { useMemo, useState } from 'react'
+import { Banknote, CalendarDays, ReceiptText, Search, Sigma } from 'lucide-react'
+import { apiGetDashboard, apiListTransactions, apiRefundTransaction, fetchAll, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
-import { NumInput, Button, Modal, PageHead, Pager, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
+import { NumInput, Button, Empty, Modal, PageHead, Pager, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const PAGE = 10
 const METHODS = ['Semua', 'Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
+
+const fmtInv = (id: string) => (isNaN(Number(id)) ? `#${id}` : `#TRX-${String(Number(id)).padStart(5, '0')}`)
 
 export default function Transaksi() {
   const db = useDB()
@@ -14,14 +21,26 @@ export default function Transaksi() {
   const [method, setMethod] = useState('Semua')
   const [date, setDate] = useState('')
   const [page, setPage] = useState(0)
+  const f = {
+    q: q.trim() || undefined,
+    method: method === 'Semua' ? undefined : method,
+    date: date || undefined,
+  }
   const list = useCache(
     `trx:${s.id}:${s.role}:${q.trim()}:${method}:${date}:${page}`,
-    () => apiListTransactions({ q: q.trim() || undefined, method: method === 'Semua' ? undefined : method, date: date || undefined, page: page + 1, limit: PAGE }),
+    () => apiListTransactions({ ...f, page: page + 1, limit: PAGE }),
     'Gagal memuat transaksi.',
   )
   const trx = list.data?.items ?? []
   const total = list.data?.total ?? 0
   const loading = list.loading
+  // Ringkasan mengikuti filter aktif (fetch-all, pola sama seperti Export).
+  const agg = useCache(
+    `trxagg:${s.id}:${s.role}:${q.trim()}:${method}:${date}`,
+    () => fetchAll<Trx>((pg) => apiListTransactions({ ...f, page: pg, limit: 200 })),
+    'Gagal memuat ringkasan.',
+  )
+  const dash = useCache(`dashtrx:${s.id}:${s.role}`, apiGetDashboard)
   const [err, setErr] = useState('')
   const [detail, setDetail] = useState<Trx | null>(null)
   const [refundFor, setRefundFor] = useState<Trx | null>(null)
@@ -29,11 +48,20 @@ export default function Transaksi() {
   const [refundReason, setRefundReason] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const sum = useMemo(() => {
+    if (!agg.data) return null
+    const omzet = agg.data.reduce((n, t) => n + t.total, 0)
+    const n = agg.data.length
+    return { omzet, n, avg: n > 0 ? Math.round(omzet / n) : 0 }
+  }, [agg.data])
+
   function load() {
     list.reload()
+    agg.reload()
   }
 
   const pages = Math.max(1, Math.ceil(total / PAGE))
+  const safePage = Math.min(page, pages - 1)
 
   async function exportList() {
     const all: Trx[] = []
@@ -70,58 +98,97 @@ export default function Transaksi() {
     }
   }
 
+  const isAdmin = s.role === 'admin'
+  const cards = [
+    { label: 'Total Transaksi', value: sum ? String(sum.n) : null, icon: ReceiptText, tint: 'text-[var(--chart-1)] bg-[color-mix(in_oklch,var(--chart-1)_12%,transparent)]' },
+    { label: 'Total Penjualan', value: sum ? fmtRp(sum.omzet) : null, icon: Banknote, tint: 'text-[var(--t-sprout)] bg-[color-mix(in_oklch,var(--t-sprout)_12%,transparent)]' },
+    { label: 'Transaksi Hari Ini', value: dash.data ? String(dash.data.today.trx_count) : null, icon: CalendarDays, tint: 'text-[var(--chart-2)] bg-[color-mix(in_oklch,var(--chart-2)_12%,transparent)]' },
+    { label: 'Rata-rata Transaksi', value: sum ? fmtRp(sum.avg) : null, icon: Sigma, tint: 'text-[var(--chart-3)] bg-[color-mix(in_oklch,var(--chart-3)_14%,transparent)]' },
+  ]
+
   return (
     <>
       <PageHead
         title="Transaksi"
-        sub={s.role === 'cashier' ? 'Transaksi yang Anda buat sendiri.' : 'Seluruh transaksi toko.'}
+        sub={s.role === 'cashier' ? 'Transaksi yang Anda buat sendiri.' : 'Kelola dan pantau seluruh transaksi penjualan.'}
         right={<Button variant="ghost" onClick={exportList}>Export CSV</Button>}
       />
 
       {(err || list.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || list.err}</p>}
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {cards.map((c) => (
+          <Card key={c.label}>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[13px] font-medium text-muted-foreground">{c.label}</span>
+                <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${c.tint}`}>
+                  <c.icon className="size-4.5" />
+                </span>
+              </div>
+              {c.value === null ? (
+                <Skeleton className="mt-3 h-7 w-24" />
+              ) : (
+                <p className="mt-3 truncate text-lg font-semibold leading-none tabular-nums tracking-tight sm:text-[28px]" title={c.value}>{c.value}</p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-fog" />
+          <input
+            value={q} onChange={(e) => { setQ(e.target.value); setPage(0) }} placeholder="Cari invoice, pelanggan, atau kasir…"
+            aria-label="Cari transaksi"
+            className="w-full rounded-md border border-border bg-paper py-2.5 pl-10 pr-3.5 text-sm focus:border-jet focus:outline-none"
+          />
+        </div>
         <input
-          value={q} onChange={(e) => { setQ(e.target.value); setPage(0) }} placeholder="Cari ID atau kasir…"
-          className="min-w-52 rounded-md border border-border bg-paper px-3.5 py-2 text-sm focus:border-jet focus:outline-none"
-        />
-        <input
-          type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(0) }}
+          type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(0) }} aria-label="Filter tanggal"
           className="rounded-md border border-border bg-paper px-3.5 py-2 text-sm focus:border-jet focus:outline-none"
         />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
         {METHODS.map((m) => (
           <button
             key={m}
             onClick={() => { setMethod(m); setPage(0) }}
-            className={`rounded-full border px-3 py-1.5 text-xs ${method === m ? 'border-jet bg-jet text-paper' : 'border-dove text-muted hover:border-jet'}`}
+            aria-pressed={method === m}
+            className={`rounded-full border px-3 py-1.5 text-xs transition ${method === m ? 'border-jet bg-jet font-medium text-paper' : 'border-dove text-muted hover:border-jet hover:text-fg'}`}
           >
             {m}
           </button>
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl bg-cream p-2">
+      <div className="mt-4 hidden overflow-x-auto rounded-2xl bg-cream p-2 sm:block">
         {loading || trx.length > 0 ? (
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <Th>ID</Th><Th>Waktu</Th><Th>Kasir</Th><Th>Metode</Th><Th>Produk</Th><Th right>Total</Th><Th>Status</Th><Th />
+                <Th>Invoice</Th><Th>Tanggal</Th><Th>Pelanggan</Th>{isAdmin && <Th>Kasir</Th>}<Th>Produk</Th><Th right>Total</Th><Th>Pembayaran</Th><Th>Status</Th><Th />
               </tr>
             </thead>
             {loading ? (
-              <SkeletonRows cols={8} rows={10} />
+              <SkeletonRows cols={isAdmin ? 9 : 8} rows={10} />
             ) : (
             <tbody>
               {trx.map((t) => (
-                <tr key={t.id}>
-                  <Td mono>{t.id}</Td>
-                  <Td mono>{fmtDate(t.created_at)} {fmtTime(t.created_at)}</Td>
-                  <Td>{t.cashier_name}</Td>
-                  <Td>{t.method}</Td>
+                <tr key={t.id} className="transition-colors hover:bg-muted/50">
+                  <Td mono><span className="font-medium text-fg">{fmtInv(t.id)}</span></Td>
+                  <Td>
+                    <span className="block text-[13px] text-fg">{fmtDate(t.created_at)}</span>
+                    <span className="block font-mono text-xs text-fog">{fmtTime(t.created_at)}</span>
+                  </Td>
+                  <Td>{t.customer || '—'}</Td>
+                  {isAdmin && <Td>{t.cashier_name}</Td>}
                   <Td>
                     <TrxItems items={t.items} className="max-w-64" />
                   </Td>
-                  <Td right>{fmtRp(t.total)}</Td>
+                  <Td right><span className="text-[15px] font-semibold text-fg">{fmtRp(t.total)}</span></Td>
+                  <Td>{t.method}</Td>
                   <Td><StatusPill status={t.status} /></Td>
                   <Td>
                     <div className="flex justify-end gap-2.5 text-[13px]">
@@ -137,20 +204,56 @@ export default function Transaksi() {
             )}
           </table>
         ) : (
-          <p className="py-14 text-center text-sm text-fog">Tidak ada transaksi ditemukan.</p>
+          <Empty
+            title="Tidak ada transaksi ditemukan"
+            sub="Coba kata kunci, tanggal, atau metode lain."
+            action={<Button onClick={() => { setQ(''); setDate(''); setMethod('Semua'); setPage(0) }}>Tampilkan semua</Button>}
+          />
+        )}
+      </div>
+
+      <div className="mt-4 space-y-2.5 sm:hidden">
+        {loading ? (
+          [0, 1, 2].map((i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
+        ) : trx.length > 0 ? (
+          trx.map((t) => (
+            <div key={t.id} className="rounded-xl border border-dove bg-paper p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-[13px] font-medium text-fg">{fmtInv(t.id)}</p>
+                <StatusPill status={t.status} />
+              </div>
+              <div className="mt-1.5 flex items-baseline justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-xs text-fog">
+                  {fmtDate(t.created_at)} {fmtTime(t.created_at)}{t.customer ? ` · ${t.customer}` : ''}{isAdmin ? ` · ${t.cashier_name}` : ''} · {t.method}
+                </p>
+                <p className="shrink-0 text-[17px] font-semibold tabular-nums text-fg">{fmtRp(t.total)}</p>
+              </div>
+              <div className="mt-2">
+                <TrxItems items={t.items} />
+              </div>
+              <div className="mt-2.5 flex justify-end gap-3 text-[13px]">
+                <button className="font-medium text-jet hover:underline" onClick={() => setDetail(t)}>Detail</button>
+                {s.role === 'admin' && t.status === 'completed' && (
+                  <button className="text-muted hover:underline" onClick={() => openRefund(t)}>Refund</button>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="py-10 text-center text-sm text-fog">Tidak ada transaksi ditemukan.</p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
         <span>{total} transaksi</span>
-        <Pager page={Math.min(page, pages - 1)} total={pages} onChange={setPage} className="" />
+        <Pager page={safePage} total={pages} onChange={setPage} className="" />
       </div>
 
-      <Modal open={!!detail} title={`Detail ${detail?.id ?? ''}`} onClose={() => setDetail(null)} wide>
-        {detail && <TrxDetail t={detail} />}
+      <Modal open={!!detail} title={`Detail ${detail ? fmtInv(detail.id) : ''}`} onClose={() => setDetail(null)} wide>
+        {detail && <TrxDetail t={detail} showCashier={isAdmin} />}
       </Modal>
 
-      <Modal open={!!refundFor} title={`Refund ${refundFor?.id ?? ''}`} onClose={() => setRefundFor(null)} wide>
+      <Modal open={!!refundFor} title={`Refund ${refundFor ? fmtInv(refundFor.id) : ''}`} onClose={() => setRefundFor(null)} wide>
         {refundFor && (
           <div className="space-y-4">
             <p className="text-sm text-muted">Pilih jumlah item yang direfund. Stok akan dikembalikan otomatis.</p>
@@ -193,12 +296,22 @@ export default function Transaksi() {
   )
 }
 
-function TrxDetail({ t }: { t: Trx }) {
+function TrxDetail({ t, showCashier }: { t: Trx; showCashier: boolean }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg bg-surface p-4 font-mono text-[13px]">
+        <span className="text-fog">Invoice</span><span>{fmtInv(t.id)}</span>
         <span className="text-fog">Waktu</span><span>{fmtDate(t.created_at)} {fmtTime(t.created_at)}</span>
-        <span className="text-fog">Kasir</span><span>{t.cashier_name}</span>
+        {showCashier && (
+          <>
+            <span className="text-fog">Kasir</span><span>{t.cashier_name}</span>
+          </>
+        )}
+        {t.customer && (
+          <>
+            <span className="text-fog">Pelanggan</span><span>{t.customer}</span>
+          </>
+        )}
         <span className="text-fog">Metode</span><span>{t.method}</span>
         <span className="text-fog">Status</span><span><StatusPill status={t.status} /></span>
       </div>
