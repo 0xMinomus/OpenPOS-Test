@@ -126,9 +126,69 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 
 ---
 
+## 3. Dashboard — bar Penjualan biru + tanpa outline saat klik (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Dashboard.tsx` (2 baris: `salesConfig`
+  ±baris 21, `ChartContainer` chart Penjualan ±baris 181).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/Dashboard.tsx` (baris 21 dan 181, masih kode lama).
+
+### Minta
+
+1. Candle/bar chart "Penjualan — 7 hari terakhir" dari hijau menjadi biru.
+2. Klik candle tidak lagi memunculkan outline putih.
+3. Klik tanggal (label sumbu X) tidak lagi memunculkan outline
+   yang menyelimuti satu kotak chart.
+
+### Perbaikan (2 baris)
+
+```diff
+- omzet: { label: 'Penjualan', color: 'var(--chart-omzet)' },
++ omzet: { label: 'Penjualan', color: 'var(--chart-1)' },
+```
+
+```diff
+- <ChartContainer config={salesConfig} className="h-56 w-full">
++ <ChartContainer config={salesConfig} className="h-56 w-full [&_:focus-visible]:outline-none">
+```
+
+### Catatan teknis
+
+- `--chart-omzet` = hijau (`oklch ... 160`), `--chart-1` = biru
+  (`oklch ... 252`). `salesConfig` hanya dipakai chart Penjualan ini,
+  jadi ikon hijau lain (mis. kartu "Kasir siap") tidak ikut berubah.
+- Akar outline: aturan global di `web/src/index.css:237`
+  (`:focus-visible { outline: 2px solid var(--t-steel); ... }`).
+  Recharts 3 membuat elemen bar dan tick tanggal bisa menerima fokus
+  saat diklik, sehingga outline global muncul. Aturan tambahan
+  `[&_:focus-visible]:outline-none` spesifik ke chart ini saja
+  (spesifisitas 0-2-0 mengalahkan aturan global 0-1-0, terverifikasi
+  ada di CSS hasil build). Chart lain dan menu lain tidak tersentuh.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` di `web/` — lolos.
+- Aturan override terkonfirmasi ada di CSS produksi
+  (`:focus-visible { outline-style: none }` scoped ke chart).
+
+### Panduan porting ke native (offline)
+
+Terapkan 2 baris yang sama di:
+
+- `web/src/pages/offline/Dashboard.tsx` baris 21 (`salesConfig`
+  `color: 'var(--chart-1)'`) dan baris 181 (`className` tambah
+  `[&_:focus-visible]:outline-none`).
+
+Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
+`npm run electron:smoke`.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
 |----|-----------------|---------------------|-----------------|
 | 1  | `cursor={false}` chart Penjualan | `web/src/pages/offline/Dashboard.tsx:186` | Belum |
 | 2  | Baris Transaksi Terbaru statis | `web/src/pages/offline/Dashboard.tsx:344` | Belum |
+| 3  | Bar biru + tanpa outline klik | `web/src/pages/offline/Dashboard.tsx:21,181` | Belum |
