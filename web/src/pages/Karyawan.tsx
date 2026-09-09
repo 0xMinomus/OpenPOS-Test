@@ -6,7 +6,7 @@ import { Banknote, ReceiptText, Trophy, UsersRound } from 'lucide-react'
 import { apiGetReport, apiListUsers, type ReportBundle, type User } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort, useDB } from '../lib/store'
-import { Button, Empty, PageHead, Td, Th } from '../lib/ui'
+import { Button, Empty, Td, Th } from '../lib/ui'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -141,10 +141,7 @@ export default function Karyawan() {
   }
 
   if (err && !data) return (
-    <>
-      <PageHead title="Karyawan" sub="Pantau performa kasir dan kontribusi penjualan setiap karyawan." />
-      <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
-    </>
+    <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err}</p>
   )
 
   const metricFmt = (v: number) => (metric === 'omzet' ? fmtRp(v) : metric === 'trx' ? `${v} trx` : fmtRp(v))
@@ -152,11 +149,9 @@ export default function Karyawan() {
 
   return (
     <>
-      <PageHead
-        title="Karyawan"
-        sub="Pantau performa kasir dan kontribusi penjualan setiap karyawan."
-        right={<Button variant="ghost" onClick={exportList}>Export CSV</Button>}
-      />
+      <div className="mb-4 flex justify-end">
+        <Button variant="ghost" onClick={exportList}>Export CSV</Button>
+      </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Periode performa">
         {PERIODS.map((p) => (
