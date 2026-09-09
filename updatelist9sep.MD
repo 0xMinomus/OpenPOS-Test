@@ -652,6 +652,31 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 18. Laporan Profit — revisi slot jam, insight+, % margin, panah HPP (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx` (blok profit + helper
+  `tipLabel` paylaş tooltip).
+
+### Isi perubahan
+
+1. Slot jam Pagi–Malam untuk Tren + Margin pada Hari ini/Kemarin
+   (HPP per slot = Σ `buy_price` × qty item — satu-satunya sumber HPP
+   per jam yang ada; periode lain tetap per tanggal).
+2. Insight 5 maks: + HPP share omzet + produk margin % tertinggi.
+3. "pp" → "%" di komparasi margin + insight (membingungkan).
+4. Metrik biaya (HPP): panah dibalik — naik = ↓ merah, turun = ↑ hijau
+   (panah = arah kinerja, bukan arah angka). Berlaku umum via prop
+   `invert` di `DeltaKpi`.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP: slot di kedua chart, HPP ↓30% merah, margin
+  "naik 1%", 4 insight valid, chart + tooltip range benar.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -673,3 +698,4 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 | 15 | Redesign tab Penjualan (+`fmtInv`) | `web/src/pages/offline/Laporan.tsx` (blok sales + `fmtInv` paylaş) | Belum |
 | 16 | Redesign tab Produk | `web/src/pages/offline/Laporan.tsx` (blok products) | Belum |
 | 17 | Redesign tab Profit | `web/src/pages/offline/Laporan.tsx` (blok profit) | Belum |
+| 18 | Revisi Profit (slot/insight/%/panah) | `web/src/pages/offline/Laporan.tsx` (bagian rewrite) | Belum |

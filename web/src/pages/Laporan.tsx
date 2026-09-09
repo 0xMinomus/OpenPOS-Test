@@ -104,6 +104,12 @@ function localDayISO(offsetDays: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Label tooltip: range jam bila datum slot waktu, kalau tidak ya label sumbu apa adanya.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function tipLabel(label: any, payload?: any): any {
+  return payload?.[0]?.payload?.range ?? label
+}
+
 // Selisih % vs periode pembanding. Null bila tak terdefinisi (prev<=0) → fallback sub biasa.
 function delta(cur: number, prev: number | undefined): string | null {
   if (prev === undefined || prev <= 0 || !Number.isFinite(cur)) return null
@@ -113,6 +119,7 @@ function delta(cur: number, prev: number | undefined): string | null {
 }
 
 // KPI dengan komparasi ↑↓ (dipakai tab sales & profit; tab lain tetap pakai Kpi).
+// invert: panah dibalik (untuk metrik biaya — naik = memburuk).
 function DeltaKpi({ label, value, sub, compare, invert, icon: Icon, tint }: {
   label: string
   value: string
@@ -122,11 +129,10 @@ function DeltaKpi({ label, value, sub, compare, invert, icon: Icon, tint }: {
   icon: React.ComponentType<{ className?: string }>
   tint: { color: string; bg: string }
 }) {
-  const up = compare?.startsWith('↑') ?? false
-  const down = compare?.startsWith('↓') ?? false
-  const good = invert ? down : up
-  const bad = invert ? up : down
-  const tone = !compare ? 'text-muted-foreground' : good ? 'text-sprout' : bad ? 'text-ember' : 'text-muted-foreground'
+  const dir = invert && compare ? compare.replace(/↑/g, '⇅').replace(/↓/g, '↑').replace(/⇅/g, '↓') : compare
+  const up = dir?.startsWith('↑') ?? false
+  const down = dir?.startsWith('↓') ?? false
+  const tone = !dir ? 'text-muted-foreground' : up ? 'text-sprout' : down ? 'text-ember' : 'text-muted-foreground'
   return (
     <Card>
       <CardContent className="relative min-h-32 p-5">
@@ -136,7 +142,7 @@ function DeltaKpi({ label, value, sub, compare, invert, icon: Icon, tint }: {
         <div className="flex h-full flex-col justify-center pr-9">
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
           <p className="mt-1 truncate text-3xl font-semibold tabular-nums tracking-tight" title={value}>{value}</p>
-          <p className={`mt-0.5 text-xs tabular-nums ${tone}`}>{compare ?? sub}</p>
+          <p className={`mt-0.5 text-xs tabular-nums ${tone}`}>{dir ?? sub}</p>
         </div>
       </CardContent>
     </Card>
@@ -178,11 +184,12 @@ export default function Laporan() {
   }, [catRep.data])
   // Data per jam untuk periode 1 hari: t.date laporan hanya tanggal, jadi ambil
   // jam dari daftar transaksi harian (created_at) — endpoint existing, tanpa API baru.
-  const needHourly = tab === 'sales' && (period === 'today' || period === 'yesterday')
+  // HPP per slot = Σ buy_price × qty per item (TrxItem existing).
+  const needHourly = (tab === 'sales' || tab === 'profit') && (period === 'today' || period === 'yesterday')
   const dayStr = period === 'yesterday' ? localDayISO(1) : localDayISO(0)
   const hourRep = useCache<Trx[] | null>(
     `reporthour:${tab}:${period}:${dayStr}`,
-    () => (tab === 'sales' && (period === 'today' || period === 'yesterday')
+    () => ((tab === 'sales' || tab === 'profit') && (period === 'today' || period === 'yesterday')
       ? fetchAll<Trx>((pg) => apiListTransactions({ date: period === 'yesterday' ? localDayISO(1) : localDayISO(0), page: pg, limit: 200 }))
       : Promise.resolve(null)),
   )
@@ -219,6 +226,19 @@ export default function Laporan() {
   const prodProfit = useMemo(() => (data ? [...data.products].sort((a, b) => b.profit - a.profit) : []), [data])
   const profitDaily = useMemo(() => {
     if (!data) return []
+    if (needHourly) {
+      if (!hourly) return []
+      const slots = TIME_SLOTS.map((s) => ({ label: s.label, range: s.range, revenue: 0, hpp: 0, profit: 0, margin: 0 }))
+      for (const t of hourly) {
+        const s = slots[slotOf(new Date(t.created_at).getHours())]
+        const h = t.items.reduce((n, i) => n + i.buy_price * i.qty, 0)
+        s.revenue += t.total
+        s.hpp += h
+        s.profit += t.total - h
+      }
+      for (const s of slots) s.margin = s.revenue > 0 ? Math.round((s.profit / s.revenue) * 100) : 0
+      return slots
+    }
     const map = new Map<string, { revenue: number; hpp: number; profit: number }>()
     for (const t of data.transactions) {
       const d = t.date.slice(0, 10)
@@ -235,8 +255,8 @@ export default function Laporan() {
         ...v,
         margin: v.revenue > 0 ? Math.round((v.profit / v.revenue) * 100) : 0,
       }))
-  }, [data])
-  // Insight valid dari data existing (maks 3, tanpa klaim buatan).
+  }, [data, needHourly, hourly])
+  // Insight valid dari data existing (maks 5, tanpa klaim buatan).
   const profitInsights = useMemo(() => {
     if (!data || data.transactions.length === 0) return []
     const out: string[] = []
@@ -245,7 +265,7 @@ export default function Laporan() {
       const cur = Math.round((data.summary.gross_profit / omzet) * 100)
       const pr = Math.round((prev.summary.gross_profit / prev.summary.omzet) * 100)
       const d = cur - pr
-      out.push(`Margin profit hari ini ${cur}%, ${d === 0 ? 'sama seperti kemarin' : d > 0 ? `naik ${d}pp dibanding kemarin` : `turun ${Math.abs(d)}pp dibanding kemarin`}.`)
+      out.push(`Margin profit hari ini ${cur}%, ${d === 0 ? 'sama seperti kemarin' : d > 0 ? `naik ${d}% dibanding kemarin` : `turun ${Math.abs(d)}% dibanding kemarin`}.`)
     }
     if (catMap.size > 0 && data.summary.gross_profit > 0) {
       const byCat = new Map<string, number>()
@@ -258,7 +278,11 @@ export default function Laporan() {
     }
     const star = prodProfit[0]
     if (star && star.profit > 0) out.push(`${star.name} menjadi produk dengan kontribusi profit terbesar (${fmtRp(star.profit)}).`)
-    return out.slice(0, 3)
+    const hppTotal = data.transactions.reduce((n, t) => n + t.hpp, 0)
+    if (omzet > 0 && hppTotal > 0) out.push(`HPP periode ini ${fmtRp(hppTotal)} (${Math.round((hppTotal / omzet) * 100)}% dari omzet).`)
+    const fat = [...data.products].filter((p) => p.revenue > 0).sort((a, b) => (b.profit / b.revenue) - (a.profit / a.revenue))[0]
+    if (fat && fat.profit > 0) out.push(`${fat.name} margin tertinggi ${Math.round((fat.profit / fat.revenue) * 100)}% (${fmtRp(fat.profit)} profit).`)
+    return out.slice(0, 5)
   }, [data, period, prev, catMap, prodProfit])
   // Donut kategori: gabung agregat laporan + kategori katalog; 4 teratas + Lainnya.
   const catDonut = useMemo(() => {
@@ -401,7 +425,7 @@ export default function Laporan() {
                           <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="left" tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="right" orientation="right" hide domain={[0, 'auto']} />
-                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent labelFormatter={(label, payload) => (payload?.[0]?.payload as { range?: string } | undefined)?.range ?? label} formatter={(v, name) => (name === 'Transaksi' ? `${v} transaksi` : fmtRp(Number(v)))} />} />
+                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent labelFormatter={tipLabel} formatter={(v, name) => (name === 'Transaksi' ? `${v} transaksi` : fmtRp(Number(v)))} />} />
                           <Bar yAxisId="left" dataKey="omzet" name="Penjualan" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                             {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
                           </Bar>
@@ -662,7 +686,7 @@ export default function Laporan() {
                   compare={(() => {
                     if (!prev || prev.summary.omzet <= 0 || data.summary.omzet <= 0) return null
                     const d = Math.round((data.summary.gross_profit / data.summary.omzet) * 100) - Math.round((prev.summary.gross_profit / prev.summary.omzet) * 100)
-                    return d === 0 ? '±0pp dari kemarin' : `${d > 0 ? '↑' : '↓'} ${Math.abs(d)}pp dari kemarin`
+                    return d === 0 ? '±0% dari kemarin' : `${d > 0 ? '↑' : '↓'} ${Math.abs(d)}% dari kemarin`
                   })()}
                   icon={BarChart3} tint={iconTint.teal}
                 />
@@ -696,7 +720,7 @@ export default function Laporan() {
                           <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="left" tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="right" orientation="right" hide domain={[0, 'auto']} />
-                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+<ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent labelFormatter={tipLabel} formatter={(v) => fmtRp(Number(v))} />} />
                           <Bar yAxisId="left" dataKey="revenue" name="Pendapatan" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} maxBarSize={28} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
                           <Bar yAxisId="left" dataKey="hpp" name="HPP" fill="var(--color-hpp)" radius={[6, 6, 0, 0]} maxBarSize={28} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
                           <Line yAxisId="right" type="monotone" dataKey="profit" name="Profit" stroke="var(--chart-omzet)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--chart-omzet)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
@@ -715,7 +739,7 @@ export default function Laporan() {
                         <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                         <YAxis tickLine={false} axisLine={false} width={40} domain={[0, 'auto']} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => `Margin: ${v}%`} />} />
+                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent labelFormatter={tipLabel} formatter={(v) => `Margin: ${v}%`} />} />
                         <Line type="monotone" dataKey="margin" name="Margin" stroke="var(--color-margin)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--color-margin)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
                       </LineChart>
                     </ChartContainer>
