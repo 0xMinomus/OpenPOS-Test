@@ -1,0 +1,92 @@
+# Update List — 9 Sep 2026
+
+Daftar perubahan sesi ini. Tujuan: mempermudah porting ke aplikasi native
+(Electron offline) nantinya. Diurut dari yang terbaru dibahas ke atas;
+item nomor 1 adalah update terakhir sesi ini.
+
+> Konvensi: semua path di bawah relatif ke root repo (`OpenPOS-Test`).
+> Frontend cloud di `web/src/pages/*`, salinan offline di
+> `web/src/pages/offline/*` (adapter `../../lib/local-api`).
+
+---
+
+## 1. Dashboard — hapus highlight besar saat hover chart Penjualan (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Dashboard.tsx` (baris 186).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/Dashboard.tsx` (baris 186, masih kode lama).
+
+### Masalah
+
+Saat hover bar pada chart "Penjualan — 7 hari terakhir", muncul **kotak
+highlight besar** (pita vertikal abu-abu terang di light mode / gelap di
+dark mode) di belakang bar. Kotak kecil tooltip berisi tanggal + nominal
+Rp harus tetap ada — yang dihapus hanya kotak besarnya.
+
+### Perbaikan (final, 1 baris)
+
+```diff
+- <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
++ <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+```
+
+Efek: tidak ada lagi cursor/highlight saat hover; tooltip kecil
+(`ChartTooltipContent`: tanggal + `fmtRp(omzet)`) tetap muncul normal.
+Layout, warna, font, data, dan chart lain (donut Metode Pembayaran)
+tidak berubah.
+
+### Riwayat percobaan (agar tidak diulang)
+
+1. **Percobaan pertama (dibatalkan via undo):** tooltip diganti komponen
+   custom transparan `SalesTip` (teks polos tanpa box) + cursor
+   transparan. Commit `dc940f2`.
+   - Hasil: box kecil ikut hilang, hanya tersisa teks. Tidak sesuai
+     permintaan ("hapus box besarnya, bukan box kecil").
+2. **Perbaikan final:** `SalesTip` dihapus, `ChartTooltipContent`
+   dikembalikan, cursor dimatikan total (`cursor={false}`).
+   Commit `1b23f42`.
+
+### Catatan teknis: kenapa `cursor={false}`, bukan `fill: 'transparent'`
+
+`ChartContainer` (`web/src/components/ui/chart.tsx`, baris 68) punya
+aturan CSS:
+
+```css
+[&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted
+```
+
+Aturan CSS ini mengalahkan atribut presentasi `fill="transparent"` dari
+prop cursor, sehingga `cursor={{ fill: 'transparent' }}` **tidak**
+menghilangkan kotak besar. `cursor={false}` membuat Recharts tidak
+merender elemen cursor sama sekali, sehingga aturan CSS tersebut tidak
+relevan. Ini alasan `cursor={false}` dipilih.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` di `web/` — lolos.
+- Commit: `dc940f2` (percobaan) → `1b23f42` (final). Net diff sesi ini
+  untuk file ini = 1 baris (lihat diff di atas).
+
+### Panduan porting ke native (offline)
+
+Terapkan perubahan 1 baris yang sama di:
+
+- `web/src/pages/offline/Dashboard.tsx` baris 186:
+
+```tsx
+<ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+```
+
+Tidak perlu menyalin `SalesTip` (sudah dihapus dari cloud).
+Tidak ada perubahan di `chart.tsx`, `store.ts`, atau file offline lain.
+Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
+`npm run electron:smoke`.
+
+---
+
+## Checklist porting native
+
+| No | Perubahan cloud | File offline tujuan | Sudah diporting |
+|----|-----------------|---------------------|-----------------|
+| 1  | `cursor={false}` chart Penjualan | `web/src/pages/offline/Dashboard.tsx:186` | Belum |
