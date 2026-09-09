@@ -394,6 +394,18 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 10. Transaksi — pager angka paylaş (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Transaksi.tsx` (ganti pager lama
+  Sebelumnya/X/Y/Berikutnya dengan `Pager` paylaş),
+  `web/src/lib/ui.tsx` (`Pager` terima prop `className` opsional).
+- **File offline terkait (BELUM diubah):**
+  `web/src/pages/offline/OfflineTransaksi.tsx` (ganti pager lama
+  dengan `Pager` paylaş).
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -407,3 +419,4 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 | 7  | Redesign Stok (kartu+tab+toolbar+3-dot) | `web/src/pages/offline/Stok.tsx` (rewrite ikut cloud) | Belum |
 | 8  | Revisi Stok (item 8 di atas) | `web/src/pages/offline/Stok.tsx` (bagian rewrite) | Belum |
 | 9  | Ukuran halaman 15/10/10 | `OfflineProduk.tsx`, `offline/Stok.tsx`, `OfflineTransaksi.tsx` | Belum |
+| 10 | Pager angka transaksi | `web/src/pages/offline/OfflineTransaksi.tsx` | Belum |
