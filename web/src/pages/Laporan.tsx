@@ -262,17 +262,17 @@ export default function Laporan() {
                           Transaksi
                         </span>
                       </div>
-                      <ChartContainer config={salesChartConfig} className="h-64 w-full">
+                      <ChartContainer config={salesChartConfig} className="h-64 w-full [&_:focus]:outline-none">
                         <ComposedChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
                           <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                           <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                           <YAxis yAxisId="left" tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} />
-                          <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} width={30} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
+                          <YAxis yAxisId="right" orientation="right" hide domain={[0, 'auto']} />
                           <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v, name) => (name === 'Transaksi' ? `${v} transaksi` : fmtRp(Number(v)))} />} />
                           <Bar yAxisId="left" dataKey="omzet" name="Penjualan" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                             {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
                           </Bar>
-                          <Line yAxisId="right" type="monotone" dataKey="trx" name="Transaksi" stroke="var(--chart-1)" strokeWidth={2} dot={false} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                          <Line yAxisId="right" type="monotone" dataKey="trx" name="Transaksi" stroke="var(--chart-1)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--chart-1)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
                         </ComposedChart>
                       </ChartContainer>
                     </>
