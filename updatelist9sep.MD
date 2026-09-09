@@ -294,6 +294,62 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 
 ---
 
+## 7. Stok — redesign jadi inventory monitoring workspace (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Stok.tsx` (rewrite tampilan, logic data
+  sama). Baru: `PRODUCT.md` (root, konteks produk untuk skill desain).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/Stok.tsx` (rewrite tampilan mengikuti cloud,
+  impor data diganti `local-api` sesuai pola offline).
+
+### Minta (brief user, mode Operate)
+
+Header + 4 kartu ringkasan + toolbar search/kategori + tab
+Stok Saat Ini | Riwayat Pergerakan + tabel + pager. Token font/warna
+existing, tanpa palet/identitas baru, tanpa chart tambahan.
+
+### Keputusan Q&A sesi (mengikat)
+
+1. Kolom "Stok Minimum" DIBATALKAN — tidak ada field di API/DB.
+2. Tabel riwayat pakai kolom existing (Tanggal, Produk, Jenis, Jumlah,
+   Keterangan, Aktor) — tanpa SKU/sebelum/sesudah.
+3. Aksi baris = dropdown 3-dot BARU dari shadcn terinstall
+   (`components/ui/dropdown-menu`), isi: Penyesuaian stok.
+
+### Isi perubahan
+
+- 4 kartu: Total Produk, Stok Aman, Stok Menipis, Stok Habis (threshold
+  existing 0 / <=5, ikon + tint semantic existing).
+- Toolbar (tab stok saja): search nama/SKU + select kategori.
+- Tab dengan count; tabel stok (Produk, SKU, Kategori, Stok, Status,
+  Aksi) + `Pager` 15/halaman; tabel riwayat + `Pager` 15/halaman.
+- Mobile (<sm): daftar kartu, tanpa horizontal overflow.
+- Hover baris subtle di tabel stok (permintaan brief halaman ini).
+- Skeleton + empty state di semua kondisi. Modal penyesuaian utuh.
+- Page lain, API, DB, routing tidak disentuh.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos.
+- Detector desain (`scripts/detect.mjs`) — bersih.
+- Edge headless + CDP: desktop + mobile + tab riwayat + menu 3-dot
+  terbuka — semua sesuai (screenshot sesi di temp `opencode/`).
+- Reviewer bawaan skill tidak tersedia di harness ini; verifikasi
+  diganti ronde screenshot + detector (dinyatakan di sini).
+
+### Panduan porting ke native (offline)
+
+- Tulis ulang `web/src/pages/offline/Stok.tsx` mengikuti cloud item 7,
+  dengan impor data (`apiListProducts`, `apiListMovements`,
+  `apiListCategories`) diganti padanan `../../lib/local-api`
+  (cek ketersediaan; bila belum ada buat mengikuti pola file offline
+  lain). `Pager`, komponen `ui`, dropdown, Card paylaş cloud+offline.
+- Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
+  `npm run electron:smoke`.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -304,3 +360,4 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 | 4  | Baris tabel produk statis | `web/src/pages/offline/OfflineProduk.tsx:298` | Belum |
 | 5  | Paging produk 15/halaman (`Pager` di `lib/ui.tsx` paylaş) | `web/src/pages/offline/OfflineProduk.tsx` (state/slice/`Pager`) | Belum |
 | 6  | Paging status stok 15/halaman | `web/src/pages/offline/Stok.tsx` (state/slice/`Pager`) | Belum |
+| 7  | Redesign Stok (kartu+tab+toolbar+3-dot) | `web/src/pages/offline/Stok.tsx` (rewrite ikut cloud) | Belum |
