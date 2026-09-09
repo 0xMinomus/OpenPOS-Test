@@ -228,6 +228,49 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 
 ---
 
+## 5. Produk — paging 15 produk per halaman (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Produk.tsx` (state `page`,
+  `PAGE_SIZE = 15`, slice + tombol pager).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/OfflineProduk.tsx` (masih full list 1 halaman).
+
+### Minta
+
+Produk menumpuk dalam 1 halaman. Batasi 15 produk per halaman +
+tombol pindah halaman di bawah tabel.
+
+### Perbaikan
+
+Paging client-side di atas data yang sudah di-fetch + filter
+(search/kategori), pola tombol sama persis dengan menu Transaksi
+(`‹ Sebelumnya` + `X / Y` + `Berikutnya ›`, varian `ghost`).
+Halaman reset ke 1 setiap search/kategori berubah; tombol pager hanya
+muncul bila halaman lebih dari 1. Search, filter kategori, CRUD,
+import/export tidak berubah.
+
+### Catatan teknis
+
+- `// ponytail:` di kode: paging client-side cukup untuk skala UMKM;
+  pindah ke paging server-side bila katalog puluhan ribu.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` di `web/` — lolos.
+
+### Panduan porting ke native (offline)
+
+Terapkan perubahan yang sama di:
+
+- `web/src/pages/offline/OfflineProduk.tsx` (tambah `page` state,
+  `PAGE_SIZE`, slice, pager; impor `useEffect`).
+
+Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
+`npm run electron:smoke`.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -236,3 +279,4 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 | 2  | Baris Transaksi Terbaru statis | `web/src/pages/offline/Dashboard.tsx:344` | Belum |
 | 3  | Bar biru + tanpa outline klik | `web/src/pages/offline/Dashboard.tsx:21,181` | Belum |
 | 4  | Baris tabel produk statis | `web/src/pages/offline/OfflineProduk.tsx:298` | Belum |
+| 5  | Paging produk 15/halaman | `web/src/pages/offline/OfflineProduk.tsx` | Belum |

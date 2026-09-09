@@ -1,6 +1,6 @@
 // Produk — Operate surface. Katalog + filter kategori + CRUD + CSV.
 // Token font/warna milik sistem (tidak ada token baru di file ini).
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FolderPlus, Plus, Search, Upload } from 'lucide-react'
 import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
 import { useCache } from '../lib/cache'
@@ -23,12 +23,15 @@ interface Draft {
 const emptyDraft: Draft = { name: '', sku: '', barcode: '', categoryId: '', buyPrice: '', sellPrice: '', stock: '', unit: 'pcs' }
 
 const NONE = '__none__'
+// ponytail: paging client-side di atas fetchAll; pindah ke paging server-side bila katalog puluhan ribu.
+const PAGE_SIZE = 15
 
 export default function Produk() {
   const { session } = useDB()
   const who = `${session?.id}:${session?.role}`
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState('')
+  const [page, setPage] = useState(0)
   const prod = useCache<Product[]>(`products:${who}:${q.trim()}`, () => fetchAll<Product>((page) => apiListProducts({ q: q.trim() || undefined, page, limit: 200 })), 'Gagal memuat produk.')
   const products = prod.data
   const catq = useCache<Category[]>(`cats:${who}`, () => apiListCategories())
@@ -59,6 +62,11 @@ export default function Produk() {
     if (catFilter === NONE) return products.filter((p) => !p.category_id)
     return products.filter((p) => p.category_id === catFilter)
   }, [products, catFilter])
+
+  useEffect(() => { setPage(0) }, [q, catFilter])
+  const totalPages = Math.max(1, Math.ceil((filtered?.length ?? 0) / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages - 1)
+  const pageItems = filtered?.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
 
   const activeCats = cats.filter((c) => c.active)
 
@@ -294,7 +302,7 @@ export default function Produk() {
                   <SkeletonRows cols={8} />
                 ) : (
                 <tbody>
-                  {filtered.map((p) => (
+                  {(pageItems ?? []).map((p) => (
                     <tr key={p.id}>
                       <Td><span className="font-medium text-fg">{p.name}</span></Td>
                       <Td mono>{p.sku}</Td>
@@ -321,6 +329,13 @@ export default function Produk() {
               <Empty title="Belum ada produk" sub="Tambah produk pertama untuk mulai berjualan." action={<Button onClick={() => setEditing({ ...emptyDraft })}>+ Tambah Produk</Button>} />
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <Button variant="ghost" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>‹ Sebelumnya</Button>
+              <span className="self-center font-mono text-xs text-fog">{safePage + 1} / {totalPages}</span>
+              <Button variant="ghost" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}>Berikutnya ›</Button>
+            </div>
+          )}
         </div>
       </div>
 
