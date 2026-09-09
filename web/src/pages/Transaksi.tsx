@@ -175,7 +175,7 @@ export default function Transaksi() {
             ) : (
             <tbody>
               {trx.map((t) => (
-                <tr key={t.id} className="transition-colors hover:bg-muted/50">
+                <tr key={t.id}>
                   <Td mono><span className="font-medium text-fg">{fmtInv(t.id)}</span></Td>
                   <Td>
                     <span className="block text-[13px] text-fg">{fmtDate(t.created_at)}</span>
