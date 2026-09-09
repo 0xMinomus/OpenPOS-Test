@@ -464,7 +464,7 @@ function StatCard({ label, value, sub, icon: Icon, tint }: {
             <Icon className="size-4.5" />
           </span>
         </div>
-        <p className="mt-3 truncate text-[26px] font-semibold leading-none tabular-nums tracking-tight" title={value}>{value}</p>
+        <p className="mt-3 truncate text-[26px] font-semibold leading-tight tabular-nums tracking-tight" title={value}>{value}</p>
         {sub && <p className="mt-1.5 truncate text-xs text-muted-foreground">{sub}</p>}
       </CardContent>
     </Card>
