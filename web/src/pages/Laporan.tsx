@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Banknote, BarChart3, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
-import { apiGetReport, apiListTransactions, fetchAll, type ReportBundle, type Trx } from '../lib/api'
+import { Banknote, BarChart3, Boxes, CircleCheck, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
+import { apiGetReport, apiListProducts, apiListTransactions, fetchAll, type Product, type ReportBundle, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort } from '../lib/store'
 import { Button, PageHead, SkeletonRows, StatusPill, Td, Th } from '../lib/ui'
@@ -34,6 +34,7 @@ const salesChartConfig = {
 } as const
 const profitConfig = { profit: { label: 'Profit', color: 'var(--chart-2)' } } as const
 const stockConfig = { nilai: { label: 'Nilai stok', color: 'var(--chart-3)' } } as const
+const CAT_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
 
 const iconTint = {
   blue: { color: 'text-[var(--chart-1)]', bg: 'bg-[color-mix(in_oklch,var(--chart-1)_12%,transparent)]' },
@@ -151,6 +152,18 @@ export default function Laporan() {
     () => (tab === 'sales' && period === 'today' ? apiGetReport('yesterday') : Promise.resolve(null)),
   )
   const prev = needPrev ? prevRep.data : null
+  // Katalog untuk join kategori + hitung produk aktif (hanya saat tab Produk).
+  const catRep = useCache<Product[] | null>(
+    `lapcats:${tab}`,
+    () => (tab === 'products' ? fetchAll<Product>((pg) => apiListProducts({ page: pg, limit: 200 })) : Promise.resolve(null)),
+  )
+  const [prodAll, setProdAll] = useState(false)
+  useEffect(() => { setProdAll(false) }, [period])
+  const catMap = useMemo(() => {
+    const m = new Map<string, { category: string; active: boolean }>()
+    for (const p of catRep.data ?? []) m.set(p.id, { category: p.category_name ?? 'Tanpa kategori', active: p.active })
+    return m
+  }, [catRep.data])
   // Data per jam untuk periode 1 hari: t.date laporan hanya tanggal, jadi ambil
   // jam dari daftar transaksi harian (created_at) — endpoint existing, tanpa API baru.
   const needHourly = tab === 'sales' && (period === 'today' || period === 'yesterday')
@@ -189,6 +202,22 @@ export default function Laporan() {
   }, [data, needHourly, hourly])
 
   const topProducts = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty).slice(0, 5) : []), [data])
+  const prodSorted = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty) : []), [data])
+  const lowProducts = useMemo(() => (data ? [...data.products].sort((a, b) => a.qty - b.qty).slice(0, 5) : []), [data])
+  // Donut kategori: gabung agregat laporan + kategori katalog; 4 teratas + Lainnya.
+  const catDonut = useMemo(() => {
+    if (!data) return []
+    const map = new Map<string, number>()
+    for (const p of data.products) {
+      const c = catMap.get(p.product_id)?.category ?? 'Tanpa kategori'
+      map.set(c, (map.get(c) ?? 0) + p.qty)
+    }
+    const rows = [...map.entries()].map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty)
+    if (rows.length <= 5) return rows
+    const top = rows.slice(0, 4)
+    const rest = rows.slice(4).reduce((n, r) => n + r.qty, 0)
+    return [...top, { name: 'Lainnya', qty: rest }]
+  }, [data, catMap])
   const topProfitTrx = useMemo(() => (data ? [...data.transactions].sort((a, b) => b.profit - a.profit).slice(0, 5) : []), [data])
   const stockTop = useMemo(() => (data ? [...data.stock].sort((a, b) => b.stock_value - a.stock_value).slice(0, 8) : []), [data])
 
@@ -432,59 +461,131 @@ export default function Laporan() {
 
           {tab === 'products' && (
             <div className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Kpi label="Produk Terjual" value={String(data.products.reduce((n, p) => n + p.qty, 0))} sub="total satuan" icon={Package} tint={iconTint.blue} />
-                <Kpi label="Pendapatan Produk" value={fmtRp(data.products.reduce((n, p) => n + p.revenue, 0))} sub="dari semua produk" icon={Banknote} tint={iconTint.teal} />
-                <Kpi label="Profit Produk" value={fmtRp(data.products.reduce((n, p) => n + p.profit, 0))} sub="setelah HPP" icon={TrendingUp} tint={iconTint.amber} />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <Kpi label="Qty Terjual" value={String(data.products.reduce((n, p) => n + p.qty, 0))} sub="total satuan" icon={Package} tint={iconTint.blue} />
+                <Kpi label="Produk Unik" value={String(data.products.length)} sub="jenis produk laku" icon={Boxes} tint={iconTint.teal} />
+                <Kpi label="Pendapatan Produk" value={fmtRp(data.products.reduce((n, p) => n + p.revenue, 0))} sub="dari semua produk" icon={Banknote} tint={iconTint.amber} />
+                <Kpi
+                  label="Produk Aktif"
+                  value={catRep.data ? String([...catMap.values()].filter((c) => c.active).length) : '…'}
+                  sub={catRep.data ? `dari ${catMap.size} produk` : 'memuat katalog…'}
+                  icon={CircleCheck} tint={iconTint.rose}
+                />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1fr_1.6fr]">
-                <ChartCard title="Produk Terlaris" sub="Top 5 berdasarkan jumlah terjual">
+              <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+                <ChartCard title="Penjualan Produk Teratas" sub="Top 5 berdasarkan jumlah terjual">
                   {topProducts.length === 0 ? (
                     <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                   ) : (
-                    <div className="space-y-4">
-                      {topProducts.map((p) => {
-                        const max = topProducts[0].qty || 1
-                        return (
-                          <div key={p.product_id} className="space-y-1.5">
-                            <div className="flex items-baseline justify-between gap-3 text-sm">
-                              <span className="truncate font-medium">{p.name}</span>
-                              <span className="shrink-0 tabular-nums text-muted-foreground">{p.qty} pcs</span>
-                            </div>
-                            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-                              <div className="h-full rounded-full" style={{ width: `${Math.round((p.qty / max) * 100)}%`, background: 'var(--chart-2)' }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <ChartContainer config={{}} className="h-64 w-full [&_:focus]:outline-none">
+                      <BarChart data={topProducts.map((p) => ({ name: p.name.length > 16 ? `${p.name.slice(0, 16)}…` : p.name, qty: p.qty }))} layout="vertical" margin={{ top: 0, right: 48, bottom: 0, left: 8 }}>
+                        <CartesianGrid horizontal={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
+                        <XAxis type="number" hide domain={[0, 'auto']} />
+                        <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={128} tick={{ fontSize: 11 }} />
+                        <ChartTooltip cursor={{ fill: 'var(--muted)', opacity: 0.4 }} content={<ChartTooltipContent formatter={(v) => `${v} terjual`} hideLabel />} />
+                        <Bar dataKey="qty" fill="var(--chart-2)" radius={[0, 6, 6, 0]} barSize={22} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
+                          <LabelList dataKey="qty" position="right" fontSize={11} className="fill-muted-foreground" />
+                        </Bar>
+                      </BarChart>
+                    </ChartContainer>
                   )}
                 </ChartCard>
 
-                <ChartCard title="Rincian Produk" sub="Qty, pendapatan, dan profit per produk">
+                <ChartCard title="Kategori Terlaris" sub={catDonut.length > 0 ? 'Kontribusi unit per kategori' : 'Belum ada data'}>
+                  {catDonut.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <ChartContainer config={{}} className="relative mx-auto h-44 w-full">
+                        <PieChart>
+                          <ChartTooltip content={<ChartTooltipContent formatter={(v) => `${v} terjual`} hideLabel />} />
+                          <Pie data={catDonut.map((c, i) => ({ ...c, fill: CAT_COLORS[i % CAT_COLORS.length] }))} dataKey="qty" nameKey="name" innerRadius={52} outerRadius={74} paddingAngle={3} strokeWidth={0} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
+                            {catDonut.map((c, i) => (
+                              <Cell key={c.name} fill={CAT_COLORS[i % CAT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                          <div className="text-center">
+                            <p className="text-sm font-semibold tabular-nums tracking-tight">{fmtShort(catDonut.reduce((n, c) => n + c.qty, 0))}</p>
+                            <p className="text-[11px] text-muted-foreground">Unit Terjual</p>
+                          </div>
+                        </div>
+                      </ChartContainer>
+                      <div className="space-y-2">
+                        {(() => {
+                          const catTotal = catDonut.reduce((n, c) => n + c.qty, 0) || 1
+                          return catDonut.map((c) => (
+                            <div key={c.name} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="size-2.5 shrink-0 rounded-full" style={{ background: CAT_COLORS[catDonut.indexOf(c) % CAT_COLORS.length] }} />
+                                <span className="truncate">{c.name}</span>
+                              </span>
+                              <span className="shrink-0 tabular-nums">
+                                <span className="font-medium">{c.qty}</span>
+                                <span className="text-muted-foreground"> · {Math.round((c.qty / catTotal) * 100)}%</span>
+                              </span>
+                            </div>
+                          ))
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </ChartCard>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+                <ChartCard
+                  title="Produk Terlaris"
+                  sub={prodAll ? `Semua ${prodSorted.length} produk` : 'Top 5 jumlah terjual'}
+                  action={prodSorted.length > 5 ? (
+                    <button onClick={() => setProdAll((v) => !v)} className="shrink-0 text-[13px] font-medium text-jet hover:underline">
+                      {prodAll ? '← Ringkas' : 'Lihat semua →'}
+                    </button>
+                  ) : undefined}
+                >
                   <div className="overflow-x-auto">
-                    {data.products.length === 0 ? (
+                    {prodSorted.length === 0 ? (
                       <p className="py-10 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                     ) : (
                       <table className="w-full border-collapse">
                         <thead>
-                          <tr><Th>Produk</Th><Th>SKU</Th><Th right>Qty</Th><Th right>Pendapatan</Th><Th right>Profit</Th></tr>
+                          <tr><Th>#</Th><Th>Produk</Th><Th>Kategori</Th><Th right>Qty Terjual</Th><Th right>Pendapatan</Th></tr>
                         </thead>
                         <tbody>
-                          {data.products.map((p) => (
+                          {(prodAll ? prodSorted : prodSorted.slice(0, 5)).map((p, i) => (
                             <tr key={p.product_id}>
+                              <Td mono>{String(i + 1).padStart(2, '0')}</Td>
                               <Td><span className="font-medium text-fg">{p.name}</span></Td>
-                              <Td mono>{p.sku}</Td>
+                              <Td>{catMap.get(p.product_id)?.category ?? 'Tanpa kategori'}</Td>
                               <Td right>{p.qty}</Td>
-                              <Td right>{fmtRp(p.revenue)}</Td>
-                              <Td right>{fmtRp(p.profit)}</Td>
+                              <Td right><span className="font-medium text-fg">{fmtRp(p.revenue)}</span></Td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     )}
                   </div>
+                </ChartCard>
+
+                <ChartCard title="Perlu Perhatian" sub="Penjualan terendah periode ini">
+                  {lowProducts.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {lowProducts.map((p) => (
+                        <div key={p.product_id} className="flex items-baseline gap-3">
+                          <span className="size-2 mt-1.5 shrink-0 rounded-full" style={{ background: 'var(--t-sunbeam)' }} aria-hidden="true" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{p.name}</p>
+                            <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{p.qty} terjual · {fmtRp(p.revenue)}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <p className="text-xs text-muted-foreground">Cek stok, harga, atau promosikan kembali produk ini.</p>
+                    </div>
+                  )}
                 </ChartCard>
               </div>
             </div>

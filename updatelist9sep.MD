@@ -588,6 +588,40 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 16. Laporan — redesign tab Produk (prompt 3/5, cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx` (blok tab products saja;
+  penjualan/profit/stok/header/export tak disentuh).
+
+### Keputusan Q&A sesi (mengikat)
+
+1. Tren line Top produk DIBATALKAN — API tak kirim histori harian per
+   produk. Diganti bar horizontal Top 5.
+2. Donut Kategori LANJUT via join katalog (`apiListProducts` existing,
+   1 request ekstra, hanya saat tab Produk).
+3. KPI: Qty Terjual, Produk Unik, Pendapatan, Produk Aktif x-dari-y
+   (Unit Terjual dibuang karena identik Qty).
+
+### Isi perubahan
+
+- KPI 4 + bar horizontal Top 5 + donut kategori (4 teratas + Lainnya,
+  center total unit, legenda qty · %) + tabel Produk Terlaris
+  (#|Produk|Kategori|Qty|Pendapatan, top 5 + expand Lihat semua) +
+  Perlu Perhatian (5 terbawah + saran, tanpa merah berlebihan).
+- Kategori "Tanpa kategori" bila produk tak berkategori.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP desktop + mobile: KPI (29/15/Rp 395rb/49 dari
+  51), donut join benar (Tanpa 59% + Minuman 41%), tabel + expand,
+  Perlu Perhatian. (Catatan: capture full-page headless sempat tak
+  merender bar horizontal — geometri DOM benar, screenshot viewport
+  normal. Artefak harness, bukan bug.)
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -607,3 +641,4 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 | 13 | Header/filter/tab Laporan | `web/src/pages/offline/Laporan.tsx` (blok header saja) | Belum |
 | 14 | Loading jujur pindah periode | `lib/cache.ts` paylaş + `offline/Laporan.tsx` (ikut rewrite) | Cache done |
 | 15 | Redesign tab Penjualan (+`fmtInv`) | `web/src/pages/offline/Laporan.tsx` (blok sales + `fmtInv` paylaş) | Belum |
+| 16 | Redesign tab Produk | `web/src/pages/offline/Laporan.tsx` (blok products) | Belum |
