@@ -150,7 +150,7 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 
 ```diff
 - <ChartContainer config={salesConfig} className="h-56 w-full">
-+ <ChartContainer config={salesConfig} className="h-56 w-full [&_:focus-visible]:outline-none">
++ <ChartContainer config={salesConfig} className="h-56 w-full [&_:focus]:outline-none">
 ```
 
 ### Catatan teknis
@@ -158,19 +158,27 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 - `--chart-omzet` = hijau (`oklch ... 160`), `--chart-1` = biru
   (`oklch ... 252`). `salesConfig` hanya dipakai chart Penjualan ini,
   jadi ikon hijau lain (mis. kartu "Kasir siap") tidak ikut berubah.
-- Akar outline: aturan global di `web/src/index.css:237`
-  (`:focus-visible { outline: 2px solid var(--t-steel); ... }`).
-  Recharts 3 membuat elemen bar dan tick tanggal bisa menerima fokus
-  saat diklik, sehingga outline global muncul. Aturan tambahan
-  `[&_:focus-visible]:outline-none` spesifik ke chart ini saja
-  (spesifisitas 0-2-0 mengalahkan aturan global 0-1-0, terverifikasi
-  ada di CSS hasil build). Chart lain dan menu lain tidak tersentuh.
+- Akar outline (terverifikasi via Edge headless + CDP, klik asli):
+  Recharts 3 me-render grup fokus `g.recharts-zIndex-layer_300`
+  (klik bar) dan `g.recharts-zIndex-layer_2000` (klik tanggal) yang
+  menerima `:focus` saat diklik — perhatikan `:focus`, BUKAN
+  `:focus-visible`, sehingga aturan global `index.css:237`
+  (`:focus-visible {...}`) maupun varian `[&_:focus-visible]` TIDAK
+  menangkapnya (percobaan pertama dengan `:focus-visible` gagal,
+  outline masih muncul). Browser lalu menggambar outline default
+  (`5px auto`) di sekitar grup tersebut. Aturan tambahan
+  `[&_:focus]:outline-none` spesifik ke chart ini saja dan mematikan
+  outline pada kedua kasus; tooltip kecil tanggal+Rp tetap muncul.
+  Chart lain dan menu lain tidak tersentuh.
 
 ### Verifikasi
 
 - `npx tsc -b` + `npm run build` di `web/` — lolos.
+- Klik bar dan klik tanggal diuji di browser asli: elemen fokus
+  terkomputasi `outline-style: none`, screenshot tanpa outline,
+  bar biru, tooltip kecil utuh, tabel statis.
 - Aturan override terkonfirmasi ada di CSS produksi
-  (`:focus-visible { outline-style: none }` scoped ke chart).
+  (`:focus { outline-style: none }` scoped ke chart).
 
 ### Panduan porting ke native (offline)
 

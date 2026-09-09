@@ -178,7 +178,7 @@ export default function Dashboard() {
             <CardDescription>7 hari terakhir</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={salesConfig} className="h-56 w-full [&_:focus-visible]:outline-none">
+            <ChartContainer config={salesConfig} className="h-56 w-full [&_:focus]:outline-none">
               <BarChart data={sales7} margin={{ top: 16, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
                 <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                 <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={16} tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12 }} />
