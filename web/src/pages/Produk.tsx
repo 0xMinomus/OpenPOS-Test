@@ -26,6 +26,20 @@ const NONE = '__none__'
 // ponytail: paging client-side di atas fetchAll; pindah ke paging server-side bila katalog puluhan ribu.
 const PAGE_SIZE = 15
 
+// Nomor halaman ringkas: semua bila <=7, else 1 … jendela … akhir.
+function pageNums(cur: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
+  const keep = [...new Set([0, total - 1, cur - 1, cur, cur + 1].filter((n) => n >= 0 && n < total))].sort((a, b) => a - b)
+  const out: (number | '…')[] = []
+  let prev = -1
+  for (const n of keep) {
+    if (n - prev > 1) out.push('…')
+    out.push(n)
+    prev = n
+  }
+  return out
+}
+
 export default function Produk() {
   const { session } = useDB()
   const who = `${session?.id}:${session?.role}`
@@ -330,10 +344,23 @@ export default function Produk() {
             )}
           </div>
           {totalPages > 1 && (
-            <div className="mt-3 flex items-center justify-center gap-2">
-              <Button variant="ghost" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>‹ Sebelumnya</Button>
-              <span className="self-center font-mono text-xs text-fog">{safePage + 1} / {totalPages}</span>
-              <Button variant="ghost" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}>Berikutnya ›</Button>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+              <button
+                aria-label="Halaman sebelumnya" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}
+                className="rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40"
+              >‹</button>
+              {pageNums(safePage, totalPages).map((n, i) => n === '…' ? (
+                <span key={`e${i}`} className="px-1 text-fog">…</span>
+              ) : (
+                <button
+                  key={n} onClick={() => setPage(n)} aria-label={`Halaman ${n + 1}`} aria-current={n === safePage || undefined}
+                  className={`min-w-9 rounded-lg border px-2.5 py-1.5 font-mono text-[13px] tabular-nums transition ${n === safePage ? 'border-jet bg-jet font-medium text-paper' : 'border-dove bg-paper hover:border-jet'}`}
+                >{n + 1}</button>
+              ))}
+              <button
+                aria-label="Halaman berikutnya" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}
+                className="rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40"
+              >›</button>
             </div>
           )}
         </div>
