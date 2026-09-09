@@ -244,9 +244,11 @@ tombol pindah halaman di bawah tabel.
 ### Perbaikan
 
 Paging client-side di atas data yang sudah di-fetch + filter
-(search/kategori), pola tombol sama persis dengan menu Transaksi
-(`‹ Sebelumnya` + `X / Y` + `Berikutnya ›`, varian `ghost`).
-Halaman reset ke 1 setiap search/kategori berubah; tombol pager hanya
+(search/kategori). Pager di bawah tabel: tombol angka langsung
+(1 … N, bisa lompat mis. 1 → 3) + tombol `‹` / `›` ringkas di kiri
+kanan. Bila halaman > 7, angka diringkas model window
+(`1 … 4 5 6 … 12`); halaman aktif hitam solid, sisanya outline.
+Halaman reset ke 1 setiap search/kategori berubah; pager hanya
 muncul bila halaman lebih dari 1. Search, filter kategori, CRUD,
 import/export tidak berubah.
 
