@@ -73,6 +73,11 @@ export function fmtShort(n: number): string {
   return String(n)
 }
 
+export function fmtInv(id: string | number): string {
+  const s = String(id).trim()
+  return s !== '' && !isNaN(Number(s)) ? `#TRX-${String(Math.trunc(Number(s))).padStart(5, '0')}` : `#${s}`
+}
+
 export function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }

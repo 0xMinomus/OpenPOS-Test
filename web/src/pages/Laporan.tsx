@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Banknote, BarChart3, Loader2, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
+import { Link } from 'react-router'
+import { Banknote, BarChart3, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, type ReportBundle } from '../lib/api'
 import { useCache } from '../lib/cache'
-import { exportCSV, fmtRp, fmtShort } from '../lib/store'
-import { Button, PageHead, SkeletonRows, Td, Th } from '../lib/ui'
+import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort } from '../lib/store'
+import { Button, PageHead, SkeletonRows, StatusPill, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Line, Pie, PieChart, XAxis, YAxis } from 'recharts'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
 
@@ -27,7 +28,10 @@ const payConfig: Record<string, string> = {
   Card: 'var(--chart-5)',
 }
 
-const omzetConfig = { omzet: { label: 'Omzet', color: 'var(--chart-omzet)' } } as const
+const salesChartConfig = {
+  omzet: { label: 'Penjualan', color: 'var(--chart-omzet)' },
+  trx: { label: 'Transaksi', color: 'var(--chart-1)' },
+} as const
 const profitConfig = { profit: { label: 'Profit', color: 'var(--chart-2)' } } as const
 const stockConfig = { nilai: { label: 'Nilai stok', color: 'var(--chart-3)' } } as const
 
@@ -55,14 +59,51 @@ function Kpi({ label, value, sub, icon: Icon, tint }: { label: string; value: st
   )
 }
 
-function ChartCard({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
+function ChartCard({ title, sub, action, children }: { title: string; sub: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>{sub}</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle className="text-base">{title}</CardTitle>
+          <CardDescription>{sub}</CardDescription>
+        </div>
+        {action}
       </CardHeader>
       <CardContent>{children}</CardContent>
+    </Card>
+  )
+}
+
+// Selisih % vs periode pembanding. Null bila tak terdefinisi (prev<=0) → fallback sub biasa.
+function delta(cur: number, prev: number | undefined): string | null {
+  if (prev === undefined || prev <= 0 || !Number.isFinite(cur)) return null
+  const pct = Math.round(((cur - prev) / prev) * 100)
+  if (pct === 0) return '±0% dari kemarin'
+  return `${pct > 0 ? '↑' : '↓'} ${Math.abs(pct)}% dari kemarin`
+}
+
+// KPI khusus tab Penjualan (tab lain tetap pakai Kpi agar tak tersentuh).
+function SalesKpi({ label, value, sub, compare, icon: Icon, tint }: {
+  label: string
+  value: string
+  sub: string
+  compare: string | null
+  icon: React.ComponentType<{ className?: string }>
+  tint: { color: string; bg: string }
+}) {
+  const tone = !compare ? 'text-muted-foreground' : compare.startsWith('↑') ? 'text-sprout' : compare.startsWith('↓') ? 'text-ember' : 'text-muted-foreground'
+  return (
+    <Card>
+      <CardContent className="relative min-h-32 p-5">
+        <span className={`absolute right-5 top-5 grid size-9 place-items-center rounded-lg ${tint.bg}`}>
+          <Icon className={`size-4.5 ${tint.color}`} />
+        </span>
+        <div className="flex h-full flex-col justify-center pr-9">
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          <p className="mt-1 truncate text-3xl font-semibold tabular-nums tracking-tight" title={value}>{value}</p>
+          <p className={`mt-0.5 text-xs tabular-nums ${tone}`}>{compare ?? sub}</p>
+        </div>
+      </CardContent>
     </Card>
   )
 }
@@ -80,34 +121,31 @@ export default function Laporan() {
   const data = rep.data
   const err = rep.err
   const switching = rep.loading && data !== null
+  // Pembanding "kemarin" hanya terdefinisi untuk periode hari ini (API tak punya
+  // periode lalu untuk kemarin/minggu/bulan/semua) — tab lain tak ikut fetch.
+  const needPrev = tab === 'sales' && period === 'today'
+  const prevRep = useCache<ReportBundle | null>(
+    `reportprev:${tab}:${period}`,
+    () => (tab === 'sales' && period === 'today' ? apiGetReport('yesterday') : Promise.resolve(null)),
+  )
+  const prev = needPrev ? prevRep.data : null
 
   const daily = useMemo(() => {
     if (!data) return []
-    const map = new Map<string, number>()
+    const map = new Map<string, { omzet: number; trx: number }>()
     for (const t of data.transactions) {
       const d = t.date.slice(0, 10)
-      map.set(d, (map.get(d) ?? 0) + t.total)
+      const e = map.get(d) ?? { omzet: 0, trx: 0 }
+      e.omzet += t.total
+      e.trx += 1
+      map.set(d, e)
     }
     return [...map.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, omzet]) => ({ label: `${date.slice(8, 10)}/${date.slice(5, 7)}`, omzet }))
+      .map(([date, v]) => ({ label: `${date.slice(8, 10)}/${date.slice(5, 7)}`, omzet: v.omzet, trx: v.trx }))
   }, [data])
 
   const topProducts = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty).slice(0, 5) : []), [data])
-  const cashierStats = useMemo(() => {
-    if (!data) return []
-    const map = new Map<string, { omzet: number; trx: number }>()
-    for (const t of data.transactions) {
-      const e = map.get(t.cashier) ?? { omzet: 0, trx: 0 }
-      e.omzet += t.total
-      e.trx += 1
-      map.set(t.cashier, e)
-    }
-    return [...map.entries()]
-      .map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => b.omzet - a.omzet)
-      .slice(0, 5)
-  }, [data])
   const topProfitTrx = useMemo(() => (data ? [...data.transactions].sort((a, b) => b.profit - a.profit).slice(0, 5) : []), [data])
   const stockTop = useMemo(() => (data ? [...data.stock].sort((a, b) => b.stock_value - a.stock_value).slice(0, 8) : []), [data])
 
@@ -193,109 +231,149 @@ export default function Laporan() {
           {tab === 'sales' && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi label="Total Omzet" value={fmtRp(data.summary.omzet)} sub={`${data.transactions.length} transaksi`} icon={Banknote} tint={iconTint.blue} />
-                <Kpi label="Jumlah Transaksi" value={String(data.summary.trx_count)} sub="selesai dalam periode ini" icon={ReceiptText} tint={iconTint.teal} />
-                <Kpi label="Item Terjual" value={String(data.summary.items_sold)} sub="satuan produk" icon={Package} tint={iconTint.amber} />
-                <Kpi label="Profit Kotor" value={fmtRp(data.summary.gross_profit)} sub="pendapatan dikurangi HPP" icon={TrendingUp} tint={iconTint.rose} />
+                <SalesKpi label="Total Penjualan" value={fmtRp(data.summary.omzet)} sub={`${data.summary.trx_count} transaksi`} compare={delta(data.summary.omzet, prev?.summary.omzet)} icon={Banknote} tint={iconTint.blue} />
+                <SalesKpi label="Jumlah Transaksi" value={String(data.summary.trx_count)} sub="selesai dalam periode ini" compare={delta(data.summary.trx_count, prev?.summary.trx_count)} icon={ReceiptText} tint={iconTint.teal} />
+                <SalesKpi
+                  label="Rata-rata Transaksi"
+                  value={fmtRp(data.summary.trx_count > 0 ? Math.round(data.summary.omzet / data.summary.trx_count) : 0)}
+                  sub="per transaksi"
+                  compare={delta(
+                    data.summary.trx_count > 0 ? Math.round(data.summary.omzet / data.summary.trx_count) : 0,
+                    prev && prev.summary.trx_count > 0 ? Math.round(prev.summary.omzet / prev.summary.trx_count) : undefined,
+                  )}
+                  icon={Sigma} tint={iconTint.amber}
+                />
+                <SalesKpi label="Produk Terjual" value={String(data.summary.items_sold)} sub="satuan produk" compare={delta(data.summary.items_sold, prev?.summary.items_sold)} icon={Package} tint={iconTint.rose} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-                <ChartCard title="Omzet per Hari" sub={daily.length > 0 ? `Total ${fmtRp(data.summary.omzet)} · per tanggal` : 'Tidak ada data pada periode ini'}>
+                <ChartCard title="Penjualan & Transaksi" sub={daily.length > 0 ? `Total ${fmtRp(data.summary.omzet)} · per tanggal` : 'Tidak ada data pada periode ini'}>
                   {daily.length === 0 ? (
                     <p className="py-16 text-center text-sm text-muted-foreground">Tidak ada transaksi pada periode ini.</p>
                   ) : (
-                    <ChartContainer config={omzetConfig} className="h-64 w-full">
-                      <BarChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
-                        <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
-                        <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                        <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
-                          {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
-                        </Bar>
-                      </BarChart>
-                    </ChartContainer>
+                    <>
+                      <div className="mb-3 flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-omzet)' }} />
+                          Penjualan
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-1)' }} />
+                          Transaksi
+                        </span>
+                      </div>
+                      <ChartContainer config={salesChartConfig} className="h-64 w-full">
+                        <ComposedChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
+                          <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
+                          <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+                          <YAxis yAxisId="left" tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} />
+                          <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} width={30} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
+                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v, name) => (name === 'Transaksi' ? `${v} transaksi` : fmtRp(Number(v)))} />} />
+                          <Bar yAxisId="left" dataKey="omzet" name="Penjualan" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
+                            {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
+                          </Bar>
+                          <Line yAxisId="right" type="monotone" dataKey="trx" name="Transaksi" stroke="var(--chart-1)" strokeWidth={2} dot={false} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                        </ComposedChart>
+                      </ChartContainer>
+                    </>
                   )}
                 </ChartCard>
 
-                <ChartCard title="Metode Pembayaran" sub={data.by_method.length > 0 ? 'Total per metode' : 'Belum ada data'}>
+                <ChartCard title="Metode Pembayaran" sub={data.by_method.length > 0 ? `Total ${fmtRp(data.summary.omzet)}` : 'Belum ada data'}>
                   {data.by_method.length === 0 ? (
                     <p className="py-16 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                   ) : (
                     <div className="space-y-4">
-                      <ChartContainer config={{}} className="mx-auto h-44 w-full">
+                      <ChartContainer config={{}} className="relative mx-auto h-44 w-full">
                         <PieChart>
-                          <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                          <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} hideLabel />} />
                           <Pie data={data.by_method.map((m) => ({ ...m, fill: payConfig[m.method] ?? 'var(--chart-4)' }))} dataKey="total" nameKey="method" innerRadius={52} outerRadius={74} paddingAngle={3} strokeWidth={0} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                             {data.by_method.map((m, i) => (
                               <Cell key={i} fill={payConfig[m.method] ?? 'var(--chart-4)'} />
                             ))}
                           </Pie>
                         </PieChart>
+                        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                          <div className="text-center">
+                            <p className="text-sm font-semibold tabular-nums tracking-tight">{fmtShort(data.summary.omzet)}</p>
+                            <p className="text-[11px] text-muted-foreground">Total Penjualan</p>
+                          </div>
+                        </div>
                       </ChartContainer>
                       <div className="space-y-2">
-                        {data.by_method.map((m) => (
-                          <div key={m.method} className="flex items-center justify-between gap-3 text-sm">
-                            <span className="flex items-center gap-2">
-                              <span className="size-2.5 rounded-full" style={{ background: payConfig[m.method] ?? 'var(--chart-4)' }} />
-                              {m.method}
-                            </span>
-                            <span className="font-medium tabular-nums">{fmtRp(m.total)}</span>
-                          </div>
-                        ))}
+                        {(() => {
+                          const payTotal = data.by_method.reduce((n, m) => n + m.total, 0) || 1
+                          return data.by_method.map((m) => (
+                            <div key={m.method} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="size-2.5 shrink-0 rounded-full" style={{ background: payConfig[m.method] ?? 'var(--chart-4)' }} />
+                                <span className="truncate">{m.method}</span>
+                              </span>
+                              <span className="shrink-0 tabular-nums">
+                                <span className="font-medium">{fmtRp(m.total)}</span>
+                                <span className="text-muted-foreground"> · {Math.round((m.total / payTotal) * 100)}%</span>
+                              </span>
+                            </div>
+                          ))
+                        })()}
                       </div>
                     </div>
                   )}
                 </ChartCard>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-                <ChartCard title="Performa Kasir" sub="Omzet per kasir periode ini">
-                  {cashierStats.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {cashierStats.map((c) => {
-                        const max = cashierStats[0].omzet || 1
-                        return (
-                          <div key={c.name} className="space-y-1.5">
-                            <div className="flex items-baseline justify-between gap-3 text-sm">
-                              <span className="truncate font-medium">{c.name}</span>
-                              <span className="shrink-0 tabular-nums text-muted-foreground">{c.trx} trx · {fmtRp(c.omzet)}</span>
-                            </div>
-                            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-                              <div className="h-full rounded-full" style={{ width: `${Math.round((c.omzet / max) * 100)}%`, background: 'var(--chart-1)' }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </ChartCard>
-
-                <ChartCard title="Transaksi Terbaru" sub="10 transaksi terakhir periode ini">
+              <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+                <ChartCard
+                  title="Transaksi Terbaru"
+                  sub="10 transaksi terakhir periode ini"
+                  action={<Link to="/app/transaksi" className="shrink-0 text-[13px] font-medium text-jet hover:underline">Lihat semua →</Link>}
+                >
                   <div className="overflow-x-auto">
                     {data.transactions.length === 0 ? (
                       <p className="py-10 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                     ) : (
                       <table className="w-full border-collapse">
                         <thead>
-                          <tr><Th>Tanggal</Th><Th>ID</Th><Th>Kasir</Th><Th>Metode</Th><Th right>Total</Th></tr>
+                          <tr><Th>Invoice</Th><Th>Tanggal</Th><Th>Kasir</Th><Th>Metode</Th><Th right>Total</Th><Th>Status</Th></tr>
                         </thead>
                         <tbody>
                           {data.transactions.slice(0, 10).map((t) => (
                             <tr key={t.id}>
-                              <Td mono>{t.date.slice(0, 10)}</Td>
-                              <Td mono>{t.id}</Td>
+                              <Td mono><span className="font-medium text-fg">{fmtInv(t.id)}</span></Td>
+                              <Td mono>{fmtDate(t.date)}</Td>
                               <Td>{t.cashier}</Td>
                               <Td>{t.method}</Td>
-                              <Td right>{fmtRp(t.total)}</Td>
+                              <Td right><span className="font-medium text-fg">{fmtRp(t.total)}</span></Td>
+                              <Td><StatusPill status={t.status} /></Td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     )}
                   </div>
+                </ChartCard>
+
+                <ChartCard
+                  title="Produk Terlaris"
+                  sub="Top 5 jumlah terjual"
+                  action={<button onClick={() => setTab('products')} className="shrink-0 text-[13px] font-medium text-jet hover:underline">Lihat semua →</button>}
+                >
+                  {topProducts.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {topProducts.map((p, i) => (
+                        <div key={p.product_id} className="flex items-baseline gap-3">
+                          <span className="w-6 shrink-0 font-mono text-xs text-muted-foreground">{String(i + 1).padStart(2, '0')}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{p.name}</p>
+                            <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{p.qty} terjual</p>
+                          </div>
+                          <span className="shrink-0 text-sm font-medium tabular-nums">{fmtRp(p.revenue)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </ChartCard>
               </div>
             </div>

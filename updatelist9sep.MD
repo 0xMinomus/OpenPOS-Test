@@ -541,6 +541,46 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 15. Laporan — redesign tab Penjualan (prompt 2/5, cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx` (blok tab sales saja;
+  produk/profit/stok/header/export tak disentuh) + `web/src/lib/store.ts`
+  (`fmtInv` paylaş baru).
+- **File offline terkait (BELUM diubah):**
+  `web/src/pages/offline/Laporan.tsx` (terapkan blok sales sama;
+  `fmtInv`/`Pager`/komponen paylaş).
+
+### Keputusan Q&A sesi (mengikat)
+
+1. Komparasi ↑% DIIMPLEMENTASI via fetch periode kemarin (bukan drop).
+2. Kolom Pelanggan DIBATALKAN — API tak kirim data.
+3. Aksi baris: tanpa kolom Aksi (tak ada di existing); "Lihat semua →"
+   ke `/app/transaksi` + ke tab Produk (in-page).
+
+### Isi perubahan
+
+- KPI: Total Penjualan, Jumlah Transaksi, Rata-rata Transaksi (ganti
+  Profit Kotor → ranah tab Profit), Produk Terjual. Komparasi vs
+  kemarin HANYA di periode "Hari ini" (satu-satunya yang previous-nya
+  bisa di-fetch; API tak punya periode-lalu untuk kemarin/minggu/
+  bulan/semua) — periode lain fallback sub existing.
+- Chart Bar omzet + Line transaksi (dual axis, legenda HTML, tooltip
+  compact   `Tanggal | Rp | N transaksi` box kecil (pola tooltip yang dipertahankan).
+- Donut: center total + legenda nominal · %.
+- Bawah 65/35: Transaksi Terbaru (Invoice `#TRX-…`, Tanggal, Kasir,
+  Metode, Total, Status) + Produk Terlaris ranking + revenue.
+- Kartu `Performa Kasir` dihapus dari tab sales (memo dibersihkan).
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP: KPI + komparasi ↑1% ↓67% ↑203% ↑20% (cocok
+  hitung manual), chart + tooltip compact, donut center, tab Produk
+  tak regresi.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -559,3 +599,4 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 | 12 | DatePicker kalender | — (paylaş `lib/ui.tsx`, tanpa porting) | Done |
 | 13 | Header/filter/tab Laporan | `web/src/pages/offline/Laporan.tsx` (blok header saja) | Belum |
 | 14 | Loading jujur pindah periode | `lib/cache.ts` paylaş + `offline/Laporan.tsx` (ikut rewrite) | Cache done |
+| 15 | Redesign tab Penjualan (+`fmtInv`) | `web/src/pages/offline/Laporan.tsx` (blok sales + `fmtInv` paylaş) | Belum |
