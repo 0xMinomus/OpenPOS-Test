@@ -5,7 +5,7 @@ import { Download, FolderPlus, Plus, Search, Upload } from 'lucide-react'
 import { apiCreateCategory, apiCreateProduct, apiDeleteCategory, apiDeleteProduct, apiListCategories, apiListProducts, apiSetProductActive, apiUpdateProduct, fetchAll, type Category, type Product } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtRp, useDB } from '../lib/store'
-import { NumInput, Button, Empty, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
+import { NumInput, Button, Empty, Input, Modal, PageHead, Pager, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface Draft {
@@ -25,20 +25,6 @@ const emptyDraft: Draft = { name: '', sku: '', barcode: '', categoryId: '', buyP
 const NONE = '__none__'
 // ponytail: paging client-side di atas fetchAll; pindah ke paging server-side bila katalog puluhan ribu.
 const PAGE_SIZE = 15
-
-// Nomor halaman ringkas: semua bila <=7, else 1 … jendela … akhir.
-function pageNums(cur: number, total: number): (number | '…')[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
-  const keep = [...new Set([0, total - 1, cur - 1, cur, cur + 1].filter((n) => n >= 0 && n < total))].sort((a, b) => a - b)
-  const out: (number | '…')[] = []
-  let prev = -1
-  for (const n of keep) {
-    if (n - prev > 1) out.push('…')
-    out.push(n)
-    prev = n
-  }
-  return out
-}
 
 export default function Produk() {
   const { session } = useDB()
@@ -343,26 +329,7 @@ export default function Produk() {
               <Empty title="Belum ada produk" sub="Tambah produk pertama untuk mulai berjualan." action={<Button onClick={() => setEditing({ ...emptyDraft })}>+ Tambah Produk</Button>} />
             )}
           </div>
-          {totalPages > 1 && (
-            <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
-              <button
-                aria-label="Halaman sebelumnya" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}
-                className="rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40"
-              >‹</button>
-              {pageNums(safePage, totalPages).map((n, i) => n === '…' ? (
-                <span key={`e${i}`} className="px-1 text-fog">…</span>
-              ) : (
-                <button
-                  key={n} onClick={() => setPage(n)} aria-label={`Halaman ${n + 1}`} aria-current={n === safePage || undefined}
-                  className={`min-w-9 rounded-lg border px-2.5 py-1.5 font-mono text-[13px] tabular-nums transition ${n === safePage ? 'border-jet bg-jet font-medium text-paper' : 'border-dove bg-paper hover:border-jet'}`}
-                >{n + 1}</button>
-              ))}
-              <button
-                aria-label="Halaman berikutnya" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}
-                className="rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40"
-              >›</button>
-            </div>
-          )}
+          <Pager page={safePage} total={totalPages} onChange={setPage} />
         </div>
       </div>
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiAdjustStock, apiListMovements, apiListProducts, fetchAll, type Movement, type Product } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { fmtDate, fmtTime, useDB } from '../lib/store'
-import { NumInput, Button, Input, Modal, PageHead, Pill, SkeletonRows, Td, Th } from '../lib/ui'
+import { NumInput, Button, Input, Modal, PageHead, Pager, Pill, SkeletonRows, Td, Th } from '../lib/ui'
 
 const TYPE_LABEL: Record<Movement['type'], string> = {
   sale: 'Penjualan', refund: 'Refund', adjust: 'Penyesuaian', initial: 'Stok awal',
@@ -20,6 +20,13 @@ export default function Stok() {
   const [reason, setReason] = useState('')
   const [type, setType] = useState<'plus' | 'minus'>('plus')
   const [busy, setBusy] = useState(false)
+  const [page, setPage] = useState(0)
+
+  // ponytail: paging client-side di atas fetchAll; server-side bila katalog puluhan ribu.
+  const stockRows = (products ?? []).filter((p) => p.active)
+  const stockPages = Math.max(1, Math.ceil(stockRows.length / 15))
+  const stockPage = Math.min(page, stockPages - 1)
+  const stockItems = stockRows.slice(stockPage * 15, stockPage * 15 + 15)
 
   function load() {
     prod.reload()
@@ -60,7 +67,7 @@ export default function Stok() {
                 <SkeletonRows cols={4} />
               ) : (
               <tbody>
-                {products.filter((p) => p.active).map((p) => (
+                {stockItems.map((p) => (
                     <tr key={p.id}>
                       <Td><span className="font-medium text-fg">{p.name}</span></Td>
                       <Td right><span className={p.stock <= 5 ? 'font-medium text-ember' : ''}>{p.stock} {p.unit}</span></Td>
@@ -76,6 +83,7 @@ export default function Stok() {
               )}
               </table>
           </div>
+          <Pager page={stockPage} total={stockPages} onChange={setPage} />
         </div>
 
         <div>

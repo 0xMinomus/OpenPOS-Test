@@ -244,13 +244,34 @@ tombol pindah halaman di bawah tabel.
 ### Perbaikan
 
 Paging client-side di atas data yang sudah di-fetch + filter
-(search/kategori). Pager di bawah tabel: tombol angka langsung
-(1 … N, bisa lompat mis. 1 → 3) + tombol `‹` / `›` ringkas di kiri
-kanan. Bila halaman > 7, angka diringkas model window
-(`1 … 4 5 6 … 12`); halaman aktif hitam solid, sisanya outline.
-Halaman reset ke 1 setiap search/kategori berubah; pager hanya
-muncul bila halaman lebih dari 1. Search, filter kategori, CRUD,
-import/export tidak berubah.
+(search/kategori) via komponen **`Pager`** baru di
+`web/src/lib/ui.tsx` (angka langsung 1 … N + `‹` / `›` ringkas,
+window bila > 7 halaman, rata kanan, null bila 1 halaman).
+`Produk.tsx` memakai `Pager` (helper lokal `pageNums` dihapus).
+Halaman reset ke 1 setiap search/kategori berubah. Search, filter
+kategori, CRUD, import/export tidak berubah.
+
+---
+
+## 6. Stok — paging 15 baris di Status stok (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Stok.tsx` + `web/src/lib/ui.tsx`
+  (komponen `Pager` paylaş).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/Stok.tsx` (tambah state/slice/`Pager`;
+  `Pager` sendiri di `lib/ui.tsx` paylaş cloud+offline, tak perlu porting).
+  Sama untuk `OfflineProduk.tsx` item 4–5 (tambah state/slice/`Pager` saja).
+
+### Minta
+
+Terapkan paging produk ke menu Stok.
+
+### Perbaikan
+
+Tabel "Status stok" dipaging 15 baris/halaman pakai `Pager` yang sama
+dengan Produk. Tabel "Riwayat pergerakan" TIDAK diubah (sudah dibatasi
+50 server-side + scroll internal).
 
 ### Catatan teknis
 
@@ -281,4 +302,5 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 | 2  | Baris Transaksi Terbaru statis | `web/src/pages/offline/Dashboard.tsx:344` | Belum |
 | 3  | Bar biru + tanpa outline klik | `web/src/pages/offline/Dashboard.tsx:21,181` | Belum |
 | 4  | Baris tabel produk statis | `web/src/pages/offline/OfflineProduk.tsx:298` | Belum |
-| 5  | Paging produk 15/halaman | `web/src/pages/offline/OfflineProduk.tsx` | Belum |
+| 5  | Paging produk 15/halaman (`Pager` di `lib/ui.tsx` paylaş) | `web/src/pages/offline/OfflineProduk.tsx` (state/slice/`Pager`) | Belum |
+| 6  | Paging status stok 15/halaman | `web/src/pages/offline/Stok.tsx` (state/slice/`Pager`) | Belum |

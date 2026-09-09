@@ -231,6 +231,40 @@ export function Td({ children, mono, right }: { children: ReactNode; mono?: bool
   )
 }
 
+// Nomor halaman ringkas: semua bila <=7, else 1 … jendela … akhir.
+function pageNums(cur: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
+  const keep = [...new Set([0, total - 1, cur - 1, cur, cur + 1].filter((n) => n >= 0 && n < total))].sort((a, b) => a - b)
+  const out: (number | '…')[] = []
+  let prev = -1
+  for (const n of keep) {
+    if (n - prev > 1) out.push('…')
+    out.push(n)
+    prev = n
+  }
+  return out
+}
+
+// Pager angka rata kanan: ‹ › ringkas + lompat langsung. Null bila 1 halaman.
+export function Pager({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  if (total <= 1) return null
+  const btn = 'rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40'
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
+      <button aria-label="Halaman sebelumnya" disabled={page === 0} onClick={() => onChange(page - 1)} className={btn}>‹</button>
+      {pageNums(page, total).map((n, i) => n === '…' ? (
+        <span key={`e${i}`} className="px-1 text-fog">…</span>
+      ) : (
+        <button
+          key={n} onClick={() => onChange(n)} aria-label={`Halaman ${n + 1}`} aria-current={n === page || undefined}
+          className={`min-w-9 rounded-lg border px-2.5 py-1.5 font-mono text-[13px] tabular-nums transition ${n === page ? 'border-jet bg-jet font-medium text-paper' : 'border-dove bg-paper hover:border-jet'}`}
+        >{n + 1}</button>
+      ))}
+      <button aria-label="Halaman berikutnya" disabled={page >= total - 1} onClick={() => onChange(page + 1)} className={btn}>›</button>
+    </div>
+  )
+}
+
 // Baris skeleton dalam tabel asli (pakai setelah <thead> saat data null)
 // agar kolom & padding sama persis dengan isi sebenarnya.
 export function SkeletonRows({ cols, rows = 8 }: { cols: number; rows?: number }) {
