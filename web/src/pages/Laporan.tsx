@@ -979,7 +979,7 @@ export default function Laporan() {
                     <div className="space-y-3">
                       {(movRep.data ?? []).slice(0, 5).map((m) => (
                         <div key={m.id} className="flex items-baseline gap-3">
-                          <span className={`w-12 shrink-0 text-right font-mono text-sm font-medium tabular-nums ${m.qty > 0 ? 'text-sprout' : 'text-ember'}`}>
+                          <span className={`w-12 shrink-0 text-center font-mono text-sm font-medium tabular-nums ${m.qty > 0 ? 'text-sprout' : 'text-ember'}`}>
                             {m.qty > 0 ? `+${m.qty}` : m.qty}
                           </span>
                           <div className="min-w-0 flex-1">
