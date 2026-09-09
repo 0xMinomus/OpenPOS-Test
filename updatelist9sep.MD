@@ -725,6 +725,43 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 21. Subpage baru Karyawan (cashier analytics, cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File baru:** `web/src/pages/Karyawan.tsx`; diubah: `App.tsx` (route
+  `/app/karyawan`), `AppShell.tsx` (menu setelah Laporan, adminOnly,
+  ikon UsersRound).
+- **Halaman offline:** BELUM ada (tidak diminta; diputuskan nanti).
+
+### Keputusan Q&A sesi (mengikat)
+
+1. Filter 5 periode (tanpa Custom — API tak dukung rentang).
+2. Tren max 5 garis, tanpa selector kasir.
+3. Perubahan: Hari ini vs kemarin; periode lain "—" + Stabil.
+
+### Isi halaman (satu fetch laporan + users + kemarin)
+
+- KPI: Total Penjualan, Total Transaksi, Kasir Aktif (ada trx),
+  Kasir Terbaik. Filter 5 periode + Export CSV.
+- Bar per kasir (selector Nilai/Transaksi/Rata-rata) + donut
+  proporsi (Top 5 + Lainnya, center total).
+- Tren multi-line Top 5 per tanggal + Ringkasan (inisial, kontribusi
+  bar, kasir 0-trx "Belum ada transaksi").
+- Transaksi Terbaru 8 (kolom report: tanpa Status — tak ada di API)
+  + Perubahan Performa (Naik/Menurun/Stabil netral).
+- Empty/loading/skeleton semua; mobile kartu; tanpa target fiktif,
+  tanpa drawer detail.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP desktop + mobile: state kosong (4 kasir
+  0-trx) + state isi (Rp 5,3jt, 33 trx, Anggara 47%), chart + donut +
+  tren + tabel + perubahan. Reviewer bawaan tak ada; ronde
+  screenshot jadi pengganti.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
