@@ -5,7 +5,7 @@ import { Banknote, CalendarDays, ReceiptText, Search, Sigma } from 'lucide-react
 import { apiGetDashboard, apiListTransactions, apiRefundTransaction, fetchAll, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
-import { NumInput, Button, Empty, Modal, PageHead, Pager, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
+import { NumInput, Button, DatePicker, Empty, Modal, PageHead, Pager, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -145,10 +145,9 @@ export default function Transaksi() {
             className="w-full rounded-md border border-border bg-paper py-2.5 pl-10 pr-3.5 text-sm focus:border-jet focus:outline-none"
           />
         </div>
-        <input
-          type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(0) }} aria-label="Filter tanggal"
-          className="rounded-md border border-border bg-paper px-3.5 py-2 text-sm focus:border-jet focus:outline-none"
-        />
+        <div className="sm:w-60">
+          <DatePicker value={date} onChange={(v) => { setDate(v); setPage(0) }} label="Filter tanggal" placeholder="Semua tanggal" />
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {METHODS.map((m) => (

@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { TrxItem } from './api'
+import { fmtDate } from './store'
 
 export function TrxItems({ items, className }: { items: TrxItem[]; className?: string }) {
   const shown = items.slice(0, 2)
@@ -261,6 +264,160 @@ export function Pager({ page, total, onChange, className = 'mt-3' }: { page: num
         >{n + 1}</button>
       ))}
       <button aria-label="Halaman berikutnya" disabled={page >= total - 1} onClick={() => onChange(page + 1)} className={btn}>›</button>
+    </div>
+  )
+}
+
+// DatePicker — pemilih tanggal kalender popover (Senin dulu, label Indonesia).
+// Nilai string 'YYYY-MM-DD' ('' = kosong), tanpa dependensi tanggal baru.
+const MONTHS_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const WEEKDAYS_ID = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+
+function isoDay(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+function parseISODate(s: string): [number, number, number] | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return null
+  return [Number(m[1]), Number(m[2]) - 1, Number(m[3])]
+}
+
+function todayParts(): [number, number, number] {
+  const t = new Date()
+  return [t.getFullYear(), t.getMonth(), t.getDate()]
+}
+
+export function DatePicker({ value, onChange, label = 'Pilih tanggal', placeholder = 'Pilih tanggal' }: {
+  value: string
+  onChange: (v: string) => void
+  label?: string
+  placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const today = todayParts()
+  const parsed = parseISODate(value)
+  const [view, setView] = useState<[number, number]>([parsed?.[0] ?? today[0], parsed?.[1] ?? today[1]])
+  const box = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [open ])
+
+  const [vy, vm] = view
+  const todayISO = isoDay(today[0], today[1], today[2])
+  const offset = (new Date(vy, vm, 1).getDay() + 6) % 7
+  const dim = new Date(vy, vm + 1, 0).getDate()
+  const prevDim = new Date(vy, vm, 0).getDate()
+  const cells: { key: string; d: number; iso: string; outside: boolean }[] = []
+  for (let i = offset - 1; i >= 0; i--) {
+    const d = prevDim - i
+    cells.push({ key: `p${d}`, d, iso: isoDay(vm === 0 ? vy - 1 : vy, (vm + 11) % 12, d), outside: true })
+  }
+  for (let d = 1; d <= dim; d++) cells.push({ key: `c${d}`, d, iso: isoDay(vy, vm, d), outside: false })
+  for (let d = 1; cells.length % 7 !== 0; d++) {
+    cells.push({ key: `n${d}`, d, iso: isoDay(vm === 11 ? vy + 1 : vy, (vm + 1) % 12, d), outside: true })
+  }
+
+  function pick(iso: string) {
+    onChange(iso)
+    setOpen(false)
+  }
+
+  function openMenu() {
+    const p = parseISODate(value)
+    setView([p?.[0] ?? today[0], p?.[1] ?? today[1]])
+    setOpen((o) => !o)
+  }
+
+  return (
+    <div ref={box} className="relative">
+      <button
+        type="button" aria-label={label} aria-expanded={open} onClick={openMenu}
+        className="flex w-full items-center gap-2.5 rounded-md border border-border bg-paper px-3.5 py-2 text-sm transition outline-none hover:border-jet focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <CalendarDays className="size-4 shrink-0 text-fog" />
+        <span className={`min-w-0 flex-1 truncate text-left tabular-nums ${value ? 'text-fg' : 'text-fog'}`}>
+          {value ? fmtDate(value) : placeholder}
+        </span>
+        {value ? (
+          <span
+            role="button" tabIndex={0} aria-label="Hapus tanggal"
+            onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onChange(''); } }}
+            className="grid shrink-0 place-items-center rounded-full p-0.5 text-fog transition outline-none hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="size-3.5" />
+          </span>
+        ) : (
+          <ChevronDown className="size-4 shrink-0 text-fog" />
+        )}
+      </button>
+
+      {open && (
+        <div role="dialog" aria-label="Kalender" className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-dove bg-paper p-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <button
+              type="button" aria-label="Bulan sebelumnya"
+              onClick={() => setView([vm === 0 ? vy - 1 : vy, (vm + 11) % 12])}
+              className="grid size-8 place-items-center rounded-lg text-muted transition outline-none hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <p className="text-sm font-medium">{MONTHS_ID[vm]} {vy}</p>
+            <button
+              type="button" aria-label="Bulan berikutnya"
+              onClick={() => setView([vm === 11 ? vy + 1 : vy, (vm + 1) % 12])}
+              className="grid size-8 place-items-center rounded-lg text-muted transition outline-none hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-7 text-center font-mono text-[11px] uppercase text-fog">
+            {WEEKDAYS_ID.map((d) => <span key={d} className="py-1">{d}</span>)}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {cells.map((c) => {
+              const selected = c.iso === value
+              const isToday = c.iso === todayISO
+              return (
+                <button
+                  key={c.key} type="button" aria-label={fmtDate(c.iso)} aria-pressed={selected}
+                  onClick={() => { setView([Number(c.iso.slice(0, 4)), Number(c.iso.slice(5, 7)) - 1]); pick(c.iso) }}
+                  className={`grid size-9 place-items-center rounded-full text-[13px] tabular-nums transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected
+                    ? 'bg-jet font-medium text-paper'
+                    : isToday
+                      ? 'border border-jet font-medium text-fg hover:bg-surface'
+                      : `border border-transparent hover:bg-surface ${c.outside ? 'text-fog/60' : 'text-fg'}`}`}
+                >
+                  {c.d}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t border-dove pt-2">
+            <button
+              type="button" onClick={() => { setView([today[0], today[1]]); pick(todayISO) }}
+              className="text-[13px] font-medium text-jet hover:underline"
+            >
+              Hari ini
+            </button>
+            {value && (
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }} className="text-[13px] text-ember hover:underline">
+                Hapus filter
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -451,6 +451,35 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 12. Transaksi — DatePicker kalender proper (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/lib/ui.tsx` (komponen `DatePicker` baru,
+  tanpa dependensi tanggal baru), `web/src/pages/Transaksi.tsx`
+  (ganti native `input[type=date]`).
+- **File offline terkait:** `OfflineTransaksi.tsx` ikut rewrite item 11
+  (pakai `DatePicker` paylaş dari `lib/ui.tsx`, tanpa porting tambahan).
+
+### Isi perubahan
+
+- Trigger gaya input existing (ikon kalender + label `8 Sep 2026` /
+  placeholder `Semua tanggal`, tombol × hapus).
+- Panel kalender: navigasi bulan, header Senin–Min, tanggal di luar
+  bulan redup, hari ini berbingkai, pilihan solid, footer Hari ini +
+  Hapus filter. Pilih tanggal → panel tutup + filter jalan.
+- Tutup via klik luar / Escape; `aria-label`/`aria-pressed`/`role`
+  dialog; panel `right-0` agar tak overflow di layar sempit.
+- Nilai tetap string `YYYY-MM-DD` — API/data flow tak berubah.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector desain — bersih.
+- Edge headless + CDP: kalender render benar (grid Sept 2026),
+  pilih 8 → trigger `8 Sep 2026` + tabel 5 baris; 1024px panel penuh
+  tanpa overflow halaman.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
