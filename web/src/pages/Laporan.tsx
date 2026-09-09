@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Banknote, BarChart3, Boxes, ChevronDown, ChevronUp, CircleCheck, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
-import { apiGetReport, apiListProducts, apiListTransactions, fetchAll, type Product, type ReportBundle, type Trx } from '../lib/api'
+import { Banknote, BarChart3, Boxes, ChevronDown, ChevronUp, CircleCheck, Loader2, OctagonX, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
+import { apiGetReport, apiListMovements, apiListProducts, apiListTransactions, fetchAll, type Movement, type Product, type ReportBundle, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
-import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort } from '../lib/store'
-import { Button, PageHead, SkeletonRows, StatusPill, Td, Th } from '../lib/ui'
+import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort, fmtTime } from '../lib/store'
+import { Button, PageHead, Pill, SkeletonRows, StatusPill, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -42,6 +42,10 @@ const profitMarginConfig = {
 } as const
 const stockConfig = { nilai: { label: 'Nilai stok', color: 'var(--chart-3)' } } as const
 const CAT_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
+
+const MOV_LABEL: Record<Movement['type'], string> = {
+  sale: 'Penjualan', refund: 'Refund', adjust: 'Penyesuaian', initial: 'Stok awal',
+}
 
 const iconTint = {
   blue: { color: 'text-[var(--chart-1)]', bg: 'bg-[color-mix(in_oklch,var(--chart-1)_12%,transparent)]' },
@@ -170,10 +174,15 @@ export default function Laporan() {
     () => ((tab === 'sales' || tab === 'profit') && period === 'today' ? apiGetReport('yesterday') : Promise.resolve(null)),
   )
   const prev = needPrev ? prevRep.data : null
-  // Katalog untuk join kategori + hitung produk aktif (hanya saat tab Produk).
+  // Katalog untuk join kategori + hitung produk aktif (tab Produk & Stok).
   const catRep = useCache<Product[] | null>(
     `lapcats:${tab}`,
-    () => (tab === 'products' ? fetchAll<Product>((pg) => apiListProducts({ page: pg, limit: 200 })) : Promise.resolve(null)),
+    () => (tab === 'products' || tab === 'stock' ? fetchAll<Product>((pg) => apiListProducts({ page: pg, limit: 200 })) : Promise.resolve(null)),
+  )
+  // Riwayat global 5 terbaru (API tak dukung filter periode) — tab Stok saja.
+  const movRep = useCache<Movement[]>(
+    `lapmov:${tab}`,
+    () => (tab === 'stock' ? apiListMovements({ limit: 5 }).then((r) => r.items) : Promise.resolve([])),
   )
   const [prodAll, setProdAll] = useState(false)
   useEffect(() => { setProdAll(false) }, [period])
@@ -298,7 +307,35 @@ export default function Laporan() {
     const rest = rows.slice(4).reduce((n, r) => n + r.qty, 0)
     return [...top, { name: 'Lainnya', qty: rest }]
   }, [data, catMap])
-  const stockTop = useMemo(() => (data ? [...data.stock].sort((a, b) => b.stock_value - a.stock_value).slice(0, 8) : []), [data])
+  // Baris stok + kategori katalog (cocok SKU lalu nama).
+  const stockRows = useMemo(() => {
+    if (!data) return []
+    const bySku = new Map((catRep.data ?? []).map((p) => [p.sku, p.category_name ?? 'Tanpa kategori']))
+    const byName = new Map((catRep.data ?? []).map((p) => [p.name, p.category_name ?? 'Tanpa kategori']))
+    return data.stock.map((s) => ({ ...s, category: bySku.get(s.sku) ?? byName.get(s.name) ?? 'Tanpa kategori' }))
+  }, [data, catRep.data])
+  const stockStatus = useMemo(() => {
+    let aman = 0, menipis = 0, habis = 0
+    for (const s of stockRows) {
+      if (s.stock === 0) habis++
+      else if (s.stock <= 5) menipis++
+      else aman++
+    }
+    return { aman, menipis, habis }
+  }, [stockRows])
+  const lowStock = useMemo(
+    () => stockRows.filter((s) => s.stock <= 5).sort((a, b) => a.stock - b.stock),
+    [stockRows],
+  )
+  const catValue = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of stockRows) map.set(s.category, (map.get(s.category) ?? 0) + s.stock_value)
+    const rows = [...map.entries()].map(([name, nilai]) => ({ name, nilai })).sort((a, b) => b.nilai - a.nilai)
+    if (rows.length <= 5) return rows
+    const top = rows.slice(0, 4)
+    const rest = rows.slice(4).reduce((n, r) => n + r.nilai, 0)
+    return [...top, { name: 'Lainnya', nilai: rest }]
+  }, [stockRows])
 
   function exportTab() {
     if (!data) return
@@ -807,53 +844,147 @@ export default function Laporan() {
 
           {tab === 'stock' && (
             <div className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="Nilai Stok" value={fmtRp(data.stock.reduce((n, s) => n + s.stock_value, 0))} sub="total modal di gudang" icon={Wallet} tint={iconTint.blue} />
-                <Kpi label="Jenis Produk" value={String(data.stock.length)} sub="produk terdaftar" icon={Package} tint={iconTint.teal} />
-                <Kpi label="Stok Menipis" value={String(data.stock.filter((s) => s.stock <= 5).length)} sub="perlu di-restock" icon={TriangleAlert} tint={iconTint.rose} />
+                <Kpi
+                  label="Total Produk"
+                  value={catRep.data ? String([...catMap.values()].filter((c) => c.active).length) : '…'}
+                  sub={catRep.data ? `dari ${catMap.size} produk` : 'memuat katalog…'}
+                  icon={Package} tint={iconTint.teal}
+                />
+                <Kpi label="Stok Menipis" value={String(stockStatus.menipis)} sub="Perlu perhatian" icon={TriangleAlert} tint={iconTint.amber} />
+                <Kpi label="Stok Habis" value={String(stockStatus.habis)} sub="Perlu segera restock" icon={OctagonX} tint={iconTint.rose} />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-                <ChartCard title="Nilai Stok per Produk" sub="Top 8 produk dengan nilai stok terbesar">
-                  {stockTop.length === 0 ? (
+              <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+                <ChartCard title="Nilai Stok per Kategori" sub={catValue.length > 0 ? 'Kategori penyimpan nilai terbesar' : 'Belum ada data'}>
+                  {catValue.length === 0 ? (
                     <p className="py-14 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                   ) : (
-                    <ChartContainer config={stockConfig} className="h-56 w-full">
-                      <BarChart data={stockTop.map((s) => ({ label: s.name.length > 16 ? s.name.slice(0, 16) + '…' : s.name, nilai: s.stock_value }))} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
-                        <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                        <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                        <Bar dataKey="nilai" fill="var(--color-nilai)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
-                          <LabelList dataKey="nilai" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
+                    <ChartContainer config={stockConfig} className="h-64 w-full [&_:focus]:outline-none">
+                      <BarChart data={catValue.map((c) => ({ name: c.name.length > 16 ? `${c.name.slice(0, 16)}…` : c.name, full: c.name, nilai: c.nilai }))} layout="vertical" margin={{ top: 0, right: 48, bottom: 0, left: 8 }}>
+                        <CartesianGrid horizontal={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
+                        <XAxis type="number" hide domain={[0, 'auto']} />
+                        <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={128} tick={{ fontSize: 11 }} />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={tipLabel} formatter={(v) => fmtRp(Number(v))} />} />
+                        <Bar dataKey="nilai" fill="var(--color-nilai)" radius={[0, 6, 6, 0]} barSize={22} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
+                          <LabelList dataKey="nilai" position="right" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
                         </Bar>
                       </BarChart>
                     </ChartContainer>
                   )}
                 </ChartCard>
 
-                <ChartCard title="Rincian Stok" sub="Stok, harga, dan nilai per produk">
-                  <div className="max-h-72 overflow-y-auto">
-                    {data.stock.length === 0 ? (
-                      <p className="py-10 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                <ChartCard title="Distribusi Status Stok" sub={stockRows.length > 0 ? 'Kondisi inventory' : 'Belum ada data'}>
+                  {stockRows.length === 0 ? (
+                    <p className="py-14 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <ChartContainer config={{}} className="relative mx-auto h-44 w-full">
+                        <PieChart>
+                          <ChartTooltip content={<ChartTooltipContent formatter={(v) => `${v} produk`} hideLabel />} />
+                          <Pie
+                            data={[
+                              { name: 'Aman', total: stockStatus.aman, fill: 'var(--chart-2)' },
+                              { name: 'Menipis', total: stockStatus.menipis, fill: 'var(--t-sunbeam)' },
+                              { name: 'Habis', total: stockStatus.habis, fill: 'var(--chart-5)' },
+                            ].filter((d) => d.total > 0)}
+                            dataKey="total" nameKey="name" innerRadius={52} outerRadius={74} paddingAngle={3} strokeWidth={0}
+                            isAnimationActive={animate} animationDuration={650} animationEasing="ease-out"
+                          >
+                            <Cell fill="var(--chart-2)" />
+                            <Cell fill="var(--t-sunbeam)" />
+                            <Cell fill="var(--chart-5)" />
+                          </Pie>
+                        </PieChart>
+                        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                          <div className="text-center">
+                            <p className="text-sm font-semibold tabular-nums tracking-tight">{stockRows.length}</p>
+                            <p className="text-[11px] text-muted-foreground">Total Produk</p>
+                          </div>
+                        </div>
+                      </ChartContainer>
+                      <div className="space-y-2">
+                        {(() => {
+                          const n = stockRows.length || 1
+                          return [
+                            { name: 'Aman', total: stockStatus.aman, fill: 'var(--chart-2)' },
+                            { name: 'Menipis', total: stockStatus.menipis, fill: 'var(--t-sunbeam)' },
+                            { name: 'Habis', total: stockStatus.habis, fill: 'var(--chart-5)' },
+                          ].map((d) => (
+                            <div key={d.name} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="size-2.5 shrink-0 rounded-full" style={{ background: d.fill }} />
+                                <span className="truncate">{d.name}</span>
+                              </span>
+                              <span className="shrink-0 tabular-nums">
+                                <span className="font-medium">{d.total > 0 ? Math.round((d.total / n) * 100) : 0}%</span>
+                                <span className="text-muted-foreground"> ({d.total})</span>
+                              </span>
+                            </div>
+                          ))
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </ChartCard>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+                <ChartCard
+                  title="Produk Stok Menipis"
+                  sub="Habis dulu, lalu stok terkecil"
+                  action={<Link to="/app/stok" className="shrink-0 text-[13px] font-medium text-jet hover:underline">Lihat semua →</Link>}
+                >
+                  <div className="overflow-x-auto">
+                    {lowStock.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-muted-foreground">Semua stok aman.</p>
                     ) : (
                       <table className="w-full border-collapse">
                         <thead>
-                          <tr><Th>Produk</Th><Th right>Stok</Th><Th right>Harga beli</Th><Th right>Nilai</Th></tr>
+                          <tr><Th>#</Th><Th>Produk</Th><Th>SKU</Th><Th right>Stok</Th><Th>Kategori</Th><Th>Status</Th></tr>
                         </thead>
                         <tbody>
-                          {data.stock.map((s, i) => (
-                            <tr key={i}>
+                          {lowStock.map((s, i) => (
+                            <tr key={`${s.sku}-${s.name}`}>
+                              <Td mono>{String(i + 1).padStart(2, '0')}</Td>
                               <Td><span className="font-medium text-fg">{s.name}</span></Td>
-                              <Td right><span className={s.stock <= 5 ? 'text-ember' : ''}>{s.stock}</span></Td>
-                              <Td right>{fmtRp(s.buy_price)}</Td>
-                              <Td right>{fmtRp(s.stock_value)}</Td>
+                              <Td mono>{s.sku}</Td>
+                              <Td right><span className="font-medium tabular-nums text-ember">{s.stock}</span></Td>
+                              <Td>{s.category}</Td>
+                              <Td><Pill tone="warn">{s.stock === 0 ? 'Habis' : 'Menipis'}</Pill></Td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     )}
                   </div>
+                </ChartCard>
+
+                <ChartCard
+                  title="Pergerakan Stok Terbaru"
+                  sub="5 terbaru · semua periode"
+                  action={<Link to="/app/stok" className="shrink-0 text-[13px] font-medium text-jet hover:underline">Lihat semua →</Link>}
+                >
+                  {(movRep.data ?? []).length === 0 ? (
+                    <p className="py-10 text-center text-sm text-fog">{!movRep.loading && movRep.data ? 'Belum ada pergerakan stok.' : 'Memuat…'}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {(movRep.data ?? []).slice(0, 5).map((m) => (
+                        <div key={m.id} className="flex items-baseline gap-3">
+                          <span className={`shrink-0 font-mono text-sm font-medium tabular-nums ${m.qty > 0 ? 'text-sprout' : 'text-ember'}`}>
+                            {m.qty > 0 ? `+${m.qty}` : m.qty}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{m.product_name ?? '—'}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {fmtDate(m.created_at)} {fmtTime(m.created_at)} · {MOV_LABEL[m.type]} · {m.actor}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </ChartCard>
               </div>
             </div>

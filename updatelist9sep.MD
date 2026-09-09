@@ -677,6 +677,39 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 19. Laporan — redesign tab Stok (prompt 5/5, cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx` (blok tab stock saja).
+
+### Keputusan Q&A sesi (mengikat)
+
+1. Kolom Min. Stok DIBATALKAN (precedent page Stok); urut Habis → stok
+   terkecil.
+2. Tanpa kolom Stok Akhir (tak ada di API); riwayat = 5 terbaru global
+   dengan sub jujur "semua periode".
+3. Link Lihat semua polos ke `/app/stok`.
+
+### Isi perubahan
+
+- KPI: Nilai Stok, Total Produk (aktif, sub dari-total katalog),
+  Menipis, Habis (threshold existing 0/<=5).
+- Bar horizontal Nilai per Kategori (join katalog via SKU→nama,
+  top + Lainnya) + donut status (Aman/Menipis/Habis + count) +
+  tabel menipis (#|Produk|SKU|Stok|Kategori|Status) + Pergerakan
+  Terbaru (±qty berwarna, sub jujur).
+- Rincian Stok lama (per produk + harga) dihapus dari tab ini —
+  ranah page Stok utama.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP desktop + mobile. Temuan: kartu movement
+  sempat "Belum ada" dari data basi key lama (pola item 14) —
+  diperbaiki pakai `movRep.loading`.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -699,3 +732,4 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 | 16 | Redesign tab Produk | `web/src/pages/offline/Laporan.tsx` (blok products) | Belum |
 | 17 | Redesign tab Profit | `web/src/pages/offline/Laporan.tsx` (blok profit) | Belum |
 | 18 | Revisi Profit (slot/insight/%/panah) | `web/src/pages/offline/Laporan.tsx` (bagian rewrite) | Belum |
+| 19 | Redesign tab Stok | `web/src/pages/offline/Laporan.tsx` (blok stock) | Belum |
