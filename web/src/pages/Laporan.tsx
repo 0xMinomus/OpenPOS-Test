@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Banknote, BarChart3, Boxes, CircleCheck, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
+import { Banknote, BarChart3, Boxes, ChevronDown, ChevronUp, CircleCheck, Loader2, Package, ReceiptText, Sigma, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, apiListProducts, apiListTransactions, fetchAll, type Product, type ReportBundle, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtInv, fmtRp, fmtShort } from '../lib/store'
@@ -463,7 +463,7 @@ export default function Laporan() {
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="Qty Terjual" value={String(data.products.reduce((n, p) => n + p.qty, 0))} sub="total satuan" icon={Package} tint={iconTint.blue} />
-                <Kpi label="Produk Unik" value={String(data.products.length)} sub="jenis produk laku" icon={Boxes} tint={iconTint.teal} />
+                <Kpi label="Produk Terjual" value={String(data.products.length)} sub="jenis berbeda terjual" icon={Boxes} tint={iconTint.teal} />
                 <Kpi label="Pendapatan Produk" value={fmtRp(data.products.reduce((n, p) => n + p.revenue, 0))} sub="dari semua produk" icon={Banknote} tint={iconTint.amber} />
                 <Kpi
                   label="Produk Aktif"
@@ -479,11 +479,11 @@ export default function Laporan() {
                     <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                   ) : (
                     <ChartContainer config={{}} className="h-64 w-full [&_:focus]:outline-none">
-                      <BarChart data={topProducts.map((p) => ({ name: p.name.length > 16 ? `${p.name.slice(0, 16)}…` : p.name, qty: p.qty }))} layout="vertical" margin={{ top: 0, right: 48, bottom: 0, left: 8 }}>
+                      <BarChart data={topProducts.map((p) => ({ name: p.name.length > 16 ? `${p.name.slice(0, 16)}…` : p.name, full: p.name, qty: p.qty }))} layout="vertical" margin={{ top: 0, right: 48, bottom: 0, left: 8 }}>
                         <CartesianGrid horizontal={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                         <XAxis type="number" hide domain={[0, 'auto']} />
                         <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={128} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ fill: 'var(--muted)', opacity: 0.4 }} content={<ChartTooltipContent formatter={(v) => `${v} terjual`} hideLabel />} />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={(_, payload) => (payload?.[0]?.payload as { full?: string } | undefined)?.full ?? ''} formatter={(v) => `${v} terjual`} />} />
                         <Bar dataKey="qty" fill="var(--chart-2)" radius={[0, 6, 6, 0]} barSize={22} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                           <LabelList dataKey="qty" position="right" fontSize={11} className="fill-muted-foreground" />
                         </Bar>
@@ -539,11 +539,6 @@ export default function Laporan() {
                 <ChartCard
                   title="Produk Terlaris"
                   sub={prodAll ? `Semua ${prodSorted.length} produk` : 'Top 5 jumlah terjual'}
-                  action={prodSorted.length > 5 ? (
-                    <button onClick={() => setProdAll((v) => !v)} className="shrink-0 text-[13px] font-medium text-jet hover:underline">
-                      {prodAll ? '← Ringkas' : 'Lihat semua →'}
-                    </button>
-                  ) : undefined}
                 >
                   <div className="overflow-x-auto">
                     {prodSorted.length === 0 ? (
@@ -567,6 +562,16 @@ export default function Laporan() {
                       </table>
                     )}
                   </div>
+                  {prodSorted.length > 5 && (
+                    <button
+                      onClick={() => setProdAll((v) => !v)}
+                      aria-expanded={prodAll}
+                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dove bg-paper py-2 text-[13px] font-medium transition hover:border-jet"
+                    >
+                      {prodAll ? 'Ringkas' : 'Selengkapnya'}
+                      {prodAll ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                    </button>
+                  )}
                 </ChartCard>
 
                 <ChartCard title="Perlu Perhatian" sub="Penjualan terendah periode ini">
