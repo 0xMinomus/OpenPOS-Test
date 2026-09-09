@@ -7,6 +7,7 @@ import Daftar from './pages/Daftar'
 import PilihAkun from './pages/PilihAkun'
 import AppShell from './pages/AppShell'
 import Dashboard from './pages/Dashboard'
+import Karyawan from './pages/Karyawan'
 import Pos from './pages/Pos'
 import Produk from './pages/Produk'
 import Stok from './pages/Stok'
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="stok" element={<Stok />} />
           <Route path="transaksi" element={<Transaksi />} />
           <Route path="laporan" element={<Laporan />} />
+          <Route path="karyawan" element={<Karyawan />} />
           <Route path="users" element={<Users />} />
           <Route path="pengaturan" element={<Pengaturan />} />
         </Route>

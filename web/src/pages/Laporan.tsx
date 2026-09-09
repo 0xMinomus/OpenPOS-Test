@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from 'recharts'
-import Karyawan from './Karyawan'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
 
@@ -156,7 +155,7 @@ function DeltaKpi({ label, value, sub, compare, invert, icon: Icon, tint }: {
 
 export default function Laporan() {
   const [period, setPeriod] = useState<Period>('today')
-  const [tab, setTab] = useState<'sales' | 'products' | 'profit' | 'stock' | 'karyawan'>('sales')
+  const [tab, setTab] = useState<'sales' | 'products' | 'profit' | 'stock'>('sales')
   // Animasi chart hidup hanya saat mount; refresh/pindah tab tak me-restartnya.
   const [animate, setAnimate] = useState(true)
   useEffect(() => {
@@ -205,7 +204,7 @@ export default function Laporan() {
   const hourly = needHourly ? hourRep.data : undefined
   // Indikator switching: ganti periode (fetch ulang) MAUPUN pindah tab yang butuh
   // data tambahan (katalog) — pola sama seperti kasus periode Hari ini dkk.
-  const tabLabel = tab === 'sales' ? 'Penjualan' : tab === 'products' ? 'Produk' : tab === 'profit' ? 'Profit' : tab === 'stock' ? 'Stok' : 'Karyawan'
+  const tabLabel = tab === 'sales' ? 'Penjualan' : tab === 'products' ? 'Produk' : tab === 'profit' ? 'Profit' : 'Stok'
   const auxLoading = (tab === 'products' || tab === 'stock') && catRep.loading && !catRep.data
   const switching = (rep.loading && data !== null) || auxLoading
   const switchingText = auxLoading && !(rep.loading && data !== null)
@@ -400,7 +399,7 @@ export default function Laporan() {
         </div>
 
         <div className="mt-2.5 inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Jenis laporan">
-          {(['sales', 'products', 'profit', 'stock', 'karyawan'] as const).map((t) => (
+          {(['sales', 'products', 'profit', 'stock'] as const).map((t) => (
             <button
               key={t}
               role="tab"
@@ -408,7 +407,7 @@ export default function Laporan() {
               onClick={() => setTab(t)}
               className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${tab === t ? 'bg-paper font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
             >
-              {t === 'sales' ? 'Penjualan' : t === 'products' ? 'Produk' : t === 'profit' ? 'Profit' : t === 'stock' ? 'Stok' : 'Karyawan'}
+              {t === 'sales' ? 'Penjualan' : t === 'products' ? 'Produk' : t === 'profit' ? 'Profit' : 'Stok'}
             </button>
           ))}
         </div>
@@ -997,8 +996,6 @@ export default function Laporan() {
               </div>
             </div>
           )}
-
-          {tab === 'karyawan' && <Karyawan />}
         </div>
       )}
     </>
