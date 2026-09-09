@@ -246,11 +246,11 @@ function pageNums(cur: number, total: number): (number | '…')[] {
 }
 
 // Pager angka rata kanan: ‹ › ringkas + lompat langsung. Null bila 1 halaman.
-export function Pager({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+export function Pager({ page, total, onChange, className = 'mt-3' }: { page: number; total: number; onChange: (p: number) => void; className?: string }) {
   if (total <= 1) return null
   const btn = 'rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40'
   return (
-    <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
+    <div className={`flex flex-wrap items-center justify-end gap-1.5 ${className}`}>
       <button aria-label="Halaman sebelumnya" disabled={page === 0} onClick={() => onChange(page - 1)} className={btn}>‹</button>
       {pageNums(page, total).map((n, i) => n === '…' ? (
         <span key={`e${i}`} className="px-1 text-fog">…</span>

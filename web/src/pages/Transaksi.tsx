@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiListTransactions, apiRefundTransaction, type Trx } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtRp, fmtTime, useDB } from '../lib/store'
-import { NumInput, Button, Modal, PageHead, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
+import { NumInput, Button, Modal, PageHead, Pager, SkeletonRows, StatusPill, Td, Th, TrxItems } from '../lib/ui'
 
 const PAGE = 10
 const METHODS = ['Semua', 'Cash', 'Bank Transfer', 'QRIS', 'E-Wallet', 'Card']
@@ -141,13 +141,9 @@ export default function Transaksi() {
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-[13px] text-muted">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
         <span>{total} transaksi</span>
-        <div className="flex gap-2">
-          <Button variant="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>← Sebelumnya</Button>
-          <span className="self-center font-mono text-xs text-fog">{page + 1} / {pages}</span>
-          <Button variant="ghost" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>Berikutnya →</Button>
-        </div>
+        <Pager page={Math.min(page, pages - 1)} total={pages} onChange={setPage} className="" />
       </div>
 
       <Modal open={!!detail} title={`Detail ${detail?.id ?? ''}`} onClose={() => setDetail(null)} wide>
