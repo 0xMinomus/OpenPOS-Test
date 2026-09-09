@@ -1,6 +1,7 @@
 // Stok — inventory monitoring workspace: ringkasan → cari/filter → tab stok/riwayat → tindakan.
 // Token font/warna milik sistem (tidak ada token baru di file ini).
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Check, ChevronDown, CircleCheck, OctagonX, Package, Search, TriangleAlert } from 'lucide-react'
 import { apiAdjustStock, apiListCategories, apiListMovements, apiListProducts, fetchAll, type Category, type Movement, type Product } from '../lib/api'
 import { useCache } from '../lib/cache'
@@ -32,7 +33,8 @@ export default function Stok() {
   const [err, setErr] = useState('')
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState('')
-  const [tab, setTab] = useState<'stock' | 'movement'>('stock')
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<'stock' | 'movement'>(params.get('tab') === 'riwayat' ? 'movement' : 'stock')
   const [page, setPage] = useState(0)
   const [mpage, setMpage] = useState(0)
   const [adjustFor, setAdjustFor] = useState<Product | null>(null)

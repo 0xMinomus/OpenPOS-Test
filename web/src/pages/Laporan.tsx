@@ -165,7 +165,6 @@ export default function Laporan() {
   const rep = useCache<ReportBundle>(`report:${period}`, () => apiGetReport(period), 'Gagal memuat laporan.')
   const data = rep.data
   const err = rep.err
-  const switching = rep.loading && data !== null
   // Pembanding "kemarin" hanya terdefinisi untuk periode hari ini (API tak punya
   // periode lalu untuk kemarin/minggu/bulan/semua) — dipakai tab sales & profit.
   const needPrev = (tab === 'sales' || tab === 'profit') && period === 'today'
@@ -203,6 +202,14 @@ export default function Laporan() {
       : Promise.resolve(null)),
   )
   const hourly = needHourly ? hourRep.data : undefined
+  // Indikator switching: ganti periode (fetch ulang) MAUPUN pindah tab yang butuh
+  // data tambahan (katalog) — pola sama seperti kasus periode Hari ini dkk.
+  const tabLabel = tab === 'sales' ? 'Penjualan' : tab === 'products' ? 'Produk' : tab === 'profit' ? 'Profit' : 'Stok'
+  const auxLoading = (tab === 'products' || tab === 'stock') && catRep.loading && !catRep.data
+  const switching = (rep.loading && data !== null) || auxLoading
+  const switchingText = auxLoading && !(rep.loading && data !== null)
+    ? `Memuat tab ${tabLabel}…`
+    : `Memuat periode ${PERIODS.find((p) => p.id === period)?.label}…`
 
   const daily = useMemo(() => {
     if (!data) return []
@@ -413,7 +420,7 @@ export default function Laporan() {
           {switching && (
             <p className="mb-3 flex items-center gap-2 text-[13px] text-muted" role="status">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Memuat periode {PERIODS.find((p) => p.id === period)?.label}…
+              {switchingText}
             </p>
           )}
           {tab === 'sales' && (
@@ -964,7 +971,7 @@ export default function Laporan() {
                 <ChartCard
                   title="Pergerakan Stok Terbaru"
                   sub="5 terbaru · semua periode"
-                  action={<Link to="/app/stok" className="shrink-0 text-[13px] font-medium text-jet hover:underline">Lihat semua →</Link>}
+                  action={<Link to="/app/stok?tab=riwayat" className="shrink-0 text-[13px] font-medium text-jet hover:underline">Lihat semua →</Link>}
                 >
                   {(movRep.data ?? []).length === 0 ? (
                     <p className="py-10 text-center text-sm text-fog">{!movRep.loading && movRep.data ? 'Belum ada pergerakan stok.' : 'Memuat…'}</p>
@@ -972,7 +979,7 @@ export default function Laporan() {
                     <div className="space-y-3">
                       {(movRep.data ?? []).slice(0, 5).map((m) => (
                         <div key={m.id} className="flex items-baseline gap-3">
-                          <span className={`shrink-0 font-mono text-sm font-medium tabular-nums ${m.qty > 0 ? 'text-sprout' : 'text-ember'}`}>
+                          <span className={`w-12 shrink-0 text-right font-mono text-sm font-medium tabular-nums ${m.qty > 0 ? 'text-sprout' : 'text-ember'}`}>
                             {m.qty > 0 ? `+${m.qty}` : m.qty}
                           </span>
                           <div className="min-w-0 flex-1">
