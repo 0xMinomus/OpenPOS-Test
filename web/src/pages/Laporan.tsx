@@ -8,7 +8,7 @@ import { Button, PageHead, SkeletonRows, StatusPill, Td, Th } from '../lib/ui'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Line, Pie, PieChart, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from 'recharts'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
 
@@ -32,7 +32,14 @@ const salesChartConfig = {
   omzet: { label: 'Penjualan', color: 'var(--chart-omzet)' },
   trx: { label: 'Transaksi', color: 'var(--chart-1)' },
 } as const
-const profitConfig = { profit: { label: 'Profit', color: 'var(--chart-2)' } } as const
+const profitTrendConfig = {
+  revenue: { label: 'Pendapatan', color: 'var(--chart-1)' },
+  hpp: { label: 'HPP', color: 'var(--muted)' },
+  profit: { label: 'Profit', color: 'var(--chart-omzet)' },
+} as const
+const profitMarginConfig = {
+  margin: { label: 'Margin', color: 'var(--chart-2)' },
+} as const
 const stockConfig = { nilai: { label: 'Nilai stok', color: 'var(--chart-3)' } } as const
 const CAT_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
 
@@ -105,16 +112,21 @@ function delta(cur: number, prev: number | undefined): string | null {
   return `${pct > 0 ? '↑' : '↓'} ${Math.abs(pct)}% dari kemarin`
 }
 
-// KPI khusus tab Penjualan (tab lain tetap pakai Kpi agar tak tersentuh).
-function SalesKpi({ label, value, sub, compare, icon: Icon, tint }: {
+// KPI dengan komparasi ↑↓ (dipakai tab sales & profit; tab lain tetap pakai Kpi).
+function DeltaKpi({ label, value, sub, compare, invert, icon: Icon, tint }: {
   label: string
   value: string
   sub: string
   compare: string | null
+  invert?: boolean
   icon: React.ComponentType<{ className?: string }>
   tint: { color: string; bg: string }
 }) {
-  const tone = !compare ? 'text-muted-foreground' : compare.startsWith('↑') ? 'text-sprout' : compare.startsWith('↓') ? 'text-ember' : 'text-muted-foreground'
+  const up = compare?.startsWith('↑') ?? false
+  const down = compare?.startsWith('↓') ?? false
+  const good = invert ? down : up
+  const bad = invert ? up : down
+  const tone = !compare ? 'text-muted-foreground' : good ? 'text-sprout' : bad ? 'text-ember' : 'text-muted-foreground'
   return (
     <Card>
       <CardContent className="relative min-h-32 p-5">
@@ -145,11 +157,11 @@ export default function Laporan() {
   const err = rep.err
   const switching = rep.loading && data !== null
   // Pembanding "kemarin" hanya terdefinisi untuk periode hari ini (API tak punya
-  // periode lalu untuk kemarin/minggu/bulan/semua) — tab lain tak ikut fetch.
-  const needPrev = tab === 'sales' && period === 'today'
+  // periode lalu untuk kemarin/minggu/bulan/semua) — dipakai tab sales & profit.
+  const needPrev = (tab === 'sales' || tab === 'profit') && period === 'today'
   const prevRep = useCache<ReportBundle | null>(
     `reportprev:${tab}:${period}`,
-    () => (tab === 'sales' && period === 'today' ? apiGetReport('yesterday') : Promise.resolve(null)),
+    () => ((tab === 'sales' || tab === 'profit') && period === 'today' ? apiGetReport('yesterday') : Promise.resolve(null)),
   )
   const prev = needPrev ? prevRep.data : null
   // Katalog untuk join kategori + hitung produk aktif (hanya saat tab Produk).
@@ -204,6 +216,50 @@ export default function Laporan() {
   const topProducts = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty).slice(0, 5) : []), [data])
   const prodSorted = useMemo(() => (data ? [...data.products].sort((a, b) => b.qty - a.qty) : []), [data])
   const lowProducts = useMemo(() => (data ? [...data.products].sort((a, b) => a.qty - b.qty).slice(0, 5) : []), [data])
+  const prodProfit = useMemo(() => (data ? [...data.products].sort((a, b) => b.profit - a.profit) : []), [data])
+  const profitDaily = useMemo(() => {
+    if (!data) return []
+    const map = new Map<string, { revenue: number; hpp: number; profit: number }>()
+    for (const t of data.transactions) {
+      const d = t.date.slice(0, 10)
+      const e = map.get(d) ?? { revenue: 0, hpp: 0, profit: 0 }
+      e.revenue += t.total
+      e.hpp += t.hpp
+      e.profit += t.profit
+      map.set(d, e)
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, v]) => ({
+        label: `${date.slice(8, 10)}/${date.slice(5, 7)}`,
+        ...v,
+        margin: v.revenue > 0 ? Math.round((v.profit / v.revenue) * 100) : 0,
+      }))
+  }, [data])
+  // Insight valid dari data existing (maks 3, tanpa klaim buatan).
+  const profitInsights = useMemo(() => {
+    if (!data || data.transactions.length === 0) return []
+    const out: string[] = []
+    const omzet = data.summary.omzet
+    if (period === 'today' && prev && prev.summary.omzet > 0 && omzet > 0) {
+      const cur = Math.round((data.summary.gross_profit / omzet) * 100)
+      const pr = Math.round((prev.summary.gross_profit / prev.summary.omzet) * 100)
+      const d = cur - pr
+      out.push(`Margin profit hari ini ${cur}%, ${d === 0 ? 'sama seperti kemarin' : d > 0 ? `naik ${d}pp dibanding kemarin` : `turun ${Math.abs(d)}pp dibanding kemarin`}.`)
+    }
+    if (catMap.size > 0 && data.summary.gross_profit > 0) {
+      const byCat = new Map<string, number>()
+      for (const p of data.products) {
+        const c = catMap.get(p.product_id)?.category ?? 'Tanpa kategori'
+        byCat.set(c, (byCat.get(c) ?? 0) + p.profit)
+      }
+      const top = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0]
+      if (top) out.push(`Kategori ${top[0]} menyumbang ${Math.round((top[1] / data.summary.gross_profit) * 100)}% dari total profit.`)
+    }
+    const star = prodProfit[0]
+    if (star && star.profit > 0) out.push(`${star.name} menjadi produk dengan kontribusi profit terbesar (${fmtRp(star.profit)}).`)
+    return out.slice(0, 3)
+  }, [data, period, prev, catMap, prodProfit])
   // Donut kategori: gabung agregat laporan + kategori katalog; 4 teratas + Lainnya.
   const catDonut = useMemo(() => {
     if (!data) return []
@@ -218,7 +274,6 @@ export default function Laporan() {
     const rest = rows.slice(4).reduce((n, r) => n + r.qty, 0)
     return [...top, { name: 'Lainnya', qty: rest }]
   }, [data, catMap])
-  const topProfitTrx = useMemo(() => (data ? [...data.transactions].sort((a, b) => b.profit - a.profit).slice(0, 5) : []), [data])
   const stockTop = useMemo(() => (data ? [...data.stock].sort((a, b) => b.stock_value - a.stock_value).slice(0, 8) : []), [data])
 
   function exportTab() {
@@ -303,9 +358,9 @@ export default function Laporan() {
           {tab === 'sales' && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <SalesKpi label="Total Penjualan" value={fmtRp(data.summary.omzet)} sub={`${data.summary.trx_count} transaksi`} compare={delta(data.summary.omzet, prev?.summary.omzet)} icon={Banknote} tint={iconTint.blue} />
-                <SalesKpi label="Jumlah Transaksi" value={String(data.summary.trx_count)} sub="selesai dalam periode ini" compare={delta(data.summary.trx_count, prev?.summary.trx_count)} icon={ReceiptText} tint={iconTint.teal} />
-                <SalesKpi
+                <DeltaKpi label="Total Penjualan" value={fmtRp(data.summary.omzet)} sub={`${data.summary.trx_count} transaksi`} compare={delta(data.summary.omzet, prev?.summary.omzet)} icon={Banknote} tint={iconTint.blue} />
+                <DeltaKpi label="Jumlah Transaksi" value={String(data.summary.trx_count)} sub="selesai dalam periode ini" compare={delta(data.summary.trx_count, prev?.summary.trx_count)} icon={ReceiptText} tint={iconTint.teal} />
+                <DeltaKpi
                   label="Rata-rata Transaksi"
                   value={fmtRp(data.summary.trx_count > 0 ? Math.round(data.summary.omzet / data.summary.trx_count) : 0)}
                   sub="per transaksi"
@@ -315,7 +370,7 @@ export default function Laporan() {
                   )}
                   icon={Sigma} tint={iconTint.amber}
                 />
-                <SalesKpi label="Produk Terjual" value={String(data.summary.items_sold)} sub="satuan produk" compare={delta(data.summary.items_sold, prev?.summary.items_sold)} icon={Package} tint={iconTint.rose} />
+                <DeltaKpi label="Produk Terjual" value={String(data.summary.items_sold)} sub="satuan produk" compare={delta(data.summary.items_sold, prev?.summary.items_sold)} icon={Package} tint={iconTint.rose} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -598,53 +653,129 @@ export default function Laporan() {
 
           {tab === 'profit' && (
             <div className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Kpi label="Profit Kotor" value={fmtRp(data.summary.gross_profit)} sub={`dari omzet ${fmtRp(data.summary.omzet)}`} icon={TrendingUp} tint={iconTint.blue} />
-                <Kpi label="Margin Profit" value={data.summary.omzet > 0 ? `${Math.round((data.summary.gross_profit / data.summary.omzet) * 100)}%` : '0%'} sub="profit per rupiah omzet" icon={BarChart3} tint={iconTint.teal} />
-                <Kpi label="Rata-rata per Transaksi" value={data.summary.trx_count > 0 ? fmtRp(Math.round(data.summary.omzet / data.summary.trx_count)) : 'Rp 0'} sub="omzet dibagi transaksi" icon={ReceiptText} tint={iconTint.amber} />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <DeltaKpi label="Profit Kotor" value={fmtRp(data.summary.gross_profit)} sub={`dari omzet ${fmtRp(data.summary.omzet)}`} compare={delta(data.summary.gross_profit, prev?.summary.gross_profit)} icon={TrendingUp} tint={iconTint.blue} />
+                <DeltaKpi
+                  label="Margin Profit"
+                  value={data.summary.omzet > 0 ? `${Math.round((data.summary.gross_profit / data.summary.omzet) * 100)}%` : '0%'}
+                  sub="profit per rupiah omzet"
+                  compare={(() => {
+                    if (!prev || prev.summary.omzet <= 0 || data.summary.omzet <= 0) return null
+                    const d = Math.round((data.summary.gross_profit / data.summary.omzet) * 100) - Math.round((prev.summary.gross_profit / prev.summary.omzet) * 100)
+                    return d === 0 ? '±0pp dari kemarin' : `${d > 0 ? '↑' : '↓'} ${Math.abs(d)}pp dari kemarin`
+                  })()}
+                  icon={BarChart3} tint={iconTint.teal}
+                />
+                <DeltaKpi label="Pendapatan" value={fmtRp(data.summary.omzet)} sub="total penjualan" compare={delta(data.summary.omzet, prev?.summary.omzet)} icon={Banknote} tint={iconTint.amber} />
+                <DeltaKpi label="HPP" value={fmtRp(data.transactions.reduce((n, t) => n + t.hpp, 0))} sub="modal barang terjual" compare={delta(data.transactions.reduce((n, t) => n + t.hpp, 0), prev ? prev.transactions.reduce((n, t) => n + t.hpp, 0) : undefined)} invert icon={Wallet} tint={iconTint.rose} />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-                <ChartCard title="Profit per Transaksi" sub="Top 5 transaksi paling menguntungkan">
-                  {topProfitTrx.length === 0 ? (
-                    <p className="py-14 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+              <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+                <ChartCard title="Tren Profit" sub={profitDaily.length > 0 ? 'Pendapatan, HPP, dan profit per tanggal' : 'Tidak ada data pada periode ini'}>
+                  {profitDaily.length === 0 ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">Tidak ada transaksi pada periode ini.</p>
                   ) : (
-                    <ChartContainer config={profitConfig} className="h-56 w-full">
-                      <BarChart data={topProfitTrx.map((t) => ({ label: t.id, profit: t.profit }))} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
-                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
-                        <XAxis dataKey="label" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                        <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
-                        <Bar dataKey="profit" fill="var(--color-profit)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
-                          <LabelList dataKey="profit" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
-                        </Bar>
-                      </BarChart>
-                    </ChartContainer>
+                    <>
+                      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-1)' }} />
+                          Pendapatan
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: 'var(--muted)' }} />
+                          HPP
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-omzet)' }} />
+                          Profit
+                        </span>
+                      </div>
+                      <ChartContainer config={profitTrendConfig} className="h-64 w-full [&_:focus]:outline-none">
+                        <ComposedChart data={profitDaily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
+                          <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
+                          <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+                          <YAxis yAxisId="left" tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} />
+                          <YAxis yAxisId="right" orientation="right" hide domain={[0, 'auto']} />
+                          <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
+                          <Bar yAxisId="left" dataKey="revenue" name="Pendapatan" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} maxBarSize={28} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                          <Bar yAxisId="left" dataKey="hpp" name="HPP" fill="var(--color-hpp)" radius={[6, 6, 0, 0]} maxBarSize={28} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                          <Line yAxisId="right" type="monotone" dataKey="profit" name="Profit" stroke="var(--chart-omzet)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--chart-omzet)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                        </ComposedChart>
+                      </ChartContainer>
+                    </>
                   )}
                 </ChartCard>
 
-                <ChartCard title="Rincian Profit" sub="Total, HPP, dan profit per transaksi">
-                  <div className="max-h-72 overflow-y-auto">
-                    {data.transactions.length === 0 ? (
+                <ChartCard title="Margin Profit" sub={profitDaily.length > 0 ? 'Margin per tanggal' : 'Belum ada data'}>
+                  {profitDaily.length === 0 ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                  ) : (
+                    <ChartContainer config={profitMarginConfig} className="h-64 w-full [&_:focus]:outline-none">
+                      <LineChart data={profitDaily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
+                        <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+                        <YAxis tickLine={false} axisLine={false} width={40} domain={[0, 'auto']} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} />
+                        <ChartTooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} content={<ChartTooltipContent formatter={(v) => `Margin: ${v}%`} />} />
+                        <Line type="monotone" dataKey="margin" name="Margin" stroke="var(--color-margin)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--color-margin)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                      </LineChart>
+                    </ChartContainer>
+                  )}
+                </ChartCard>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+                <ChartCard title="Produk Paling Menguntungkan" sub="Urut profit terbesar">
+                  <div className="max-h-80 overflow-auto">
+                    {prodProfit.length === 0 ? (
                       <p className="py-10 text-center text-sm text-muted-foreground">Tidak ada data.</p>
                     ) : (
                       <table className="w-full border-collapse">
                         <thead>
-                          <tr><Th>ID</Th><Th right>Total</Th><Th right>HPP</Th><Th right>Profit</Th></tr>
+                          <tr><Th>#</Th><Th>Produk</Th><Th right>Qty Terjual</Th><Th right>Pendapatan</Th><Th right>HPP</Th><Th right>Profit</Th><Th right>Margin</Th></tr>
                         </thead>
                         <tbody>
-                          {data.transactions.map((t) => (
-                            <tr key={t.id}>
-                              <Td mono>{t.id}</Td>
-                              <Td right>{fmtRp(t.total)}</Td>
-                              <Td right>{fmtRp(t.hpp)}</Td>
-                              <Td right><span className="font-medium text-fg">{fmtRp(t.profit)}</span></Td>
+                          {prodProfit.map((p, i) => (
+                            <tr key={p.product_id}>
+                              <Td mono>{String(i + 1).padStart(2, '0')}</Td>
+                              <Td><span className="font-medium text-fg">{p.name}</span></Td>
+                              <Td right>{p.qty}</Td>
+                              <Td right>{fmtRp(p.revenue)}</Td>
+                              <Td right>{fmtRp(p.revenue - p.profit)}</Td>
+                              <Td right><span className="font-medium text-fg">{fmtRp(p.profit)}</span></Td>
+                              <Td right>{p.revenue > 0 ? `${Math.round((p.profit / p.revenue) * 100)}%` : '—'}</Td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     )}
                   </div>
+                </ChartCard>
+
+                <ChartCard title="Profit Insight" sub="Dari data periode ini">
+                  {profitInsights.length === 0 && data.summary.trx_count === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada data.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-lg bg-surface p-4">
+                        <p className="text-[13px] text-muted-foreground">Profit per Transaksi</p>
+                        <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
+                          {data.summary.trx_count > 0 ? fmtRp(Math.round(data.summary.gross_profit / data.summary.trx_count)) : 'Rp 0'}
+                        </p>
+                        {(() => {
+                          const c = prev && prev.summary.trx_count > 0 && data.summary.trx_count > 0
+                            ? delta(Math.round(data.summary.gross_profit / data.summary.trx_count), Math.round(prev.summary.gross_profit / prev.summary.trx_count))
+                            : null
+                          return c ? <p className={`mt-1 text-xs tabular-nums ${c.startsWith('↑') ? 'text-sprout' : c.startsWith('↓') ? 'text-ember' : 'text-muted-foreground'}`}>{c}</p> : null
+                        })()}
+                      </div>
+                      {profitInsights.map((s) => (
+                        <div key={s} className="flex items-start gap-2.5">
+                          <span className="size-2 mt-1.5 shrink-0 rounded-full" style={{ background: 'var(--chart-2)' }} aria-hidden="true" />
+                          <p className="text-sm leading-relaxed">{s}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </ChartCard>
               </div>
             </div>

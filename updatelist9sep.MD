@@ -622,6 +622,36 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 17. Laporan — redesign tab Profit (prompt 4/5, cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx` (blok tab profit saja).
+
+### Isi perubahan
+
+- KPI: Profit Kotor, Margin Profit, Pendapatan, HPP (label HPP sesuai
+  data, bukan Total Biaya) + komparasi vs kemarin pola prompt 2
+  (HPP invert: naik = merah).
+- Tren Profit: Bar Pendapatan + Bar HPP + Line Profit (dual axis,
+  legenda, tooltip Rp compact). Periode 1 tanggal = 1 grup bar
+  (profit per jam tak tersedia: Trx tak bawa hpp/profit).
+- Margin Profit: line chart % sederhana (1 titik bila 1 tanggal).
+- Tabel Produk Paling Menguntungkan (#|Produk|Qty|Pendapatan|HPP|
+  Profit|Margin, urut profit, scroll) — profit ikut rumus existing
+  (`revenue - profit` = HPP produk).
+- Insight valid saja: profit/transaksi + margin vs kemarin + share
+  kategori + top produk (maks 3, absen bila tak terhitung).
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP desktop + mobile: KPI + delta, tabel, insight.
+  Temuan ronde 1: bar Pendapatan hitam (salah nama var
+  `--color-pendapatan` vs key `revenue`) — diperbaiki + konfirmasi
+  viewport (biru/abu/hijau benar).
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -642,3 +672,4 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 | 14 | Loading jujur pindah periode | `lib/cache.ts` paylaş + `offline/Laporan.tsx` (ikut rewrite) | Cache done |
 | 15 | Redesign tab Penjualan (+`fmtInv`) | `web/src/pages/offline/Laporan.tsx` (blok sales + `fmtInv` paylaş) | Belum |
 | 16 | Redesign tab Produk | `web/src/pages/offline/Laporan.tsx` (blok products) | Belum |
+| 17 | Redesign tab Profit | `web/src/pages/offline/Laporan.tsx` (blok profit) | Belum |
