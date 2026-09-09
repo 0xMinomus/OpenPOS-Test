@@ -193,6 +193,41 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 
 ---
 
+## 4. Produk — baris tabel produk dibuat statis (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Produk.tsx` (baris 298).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/OfflineProduk.tsx` (baris 298, masih kode lama).
+
+### Masalah
+
+Saat kursor diarahkan ke salah satu baris produk, baris tersorot
+pita hitam/putih (hover highlight). Minta dihilangkan, tabel statis.
+Pola sama seperti item 2 (Transaksi Terbaru di Dashboard).
+
+### Perbaikan (1 baris)
+
+```diff
+- <tr key={p.id} className="transition-colors hover:bg-muted/50">
++ <tr key={p.id}>
+```
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` di `web/` — lolos.
+
+### Panduan porting ke native (offline)
+
+Terapkan perubahan 1 baris yang sama di:
+
+- `web/src/pages/offline/OfflineProduk.tsx` baris 298.
+
+Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
+`npm run electron:smoke`.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -200,3 +235,4 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 | 1  | `cursor={false}` chart Penjualan | `web/src/pages/offline/Dashboard.tsx:186` | Belum |
 | 2  | Baris Transaksi Terbaru statis | `web/src/pages/offline/Dashboard.tsx:344` | Belum |
 | 3  | Bar biru + tanpa outline klik | `web/src/pages/offline/Dashboard.tsx:21,181` | Belum |
+| 4  | Baris tabel produk statis | `web/src/pages/offline/OfflineProduk.tsx:298` | Belum |

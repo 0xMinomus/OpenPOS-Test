@@ -295,7 +295,7 @@ export default function Produk() {
                 ) : (
                 <tbody>
                   {filtered.map((p) => (
-                    <tr key={p.id} className="transition-colors hover:bg-muted/50">
+                    <tr key={p.id}>
                       <Td><span className="font-medium text-fg">{p.name}</span></Td>
                       <Td mono>{p.sku}</Td>
                       <Td>{p.category_name ?? 'Tanpa kategori'}</Td>
