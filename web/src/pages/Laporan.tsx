@@ -157,9 +157,8 @@ export default function Laporan() {
               key={p.id}
               onClick={() => setPeriod(p.id)}
               aria-pressed={period === p.id}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] transition ${period === p.id ? 'border-jet bg-jet font-medium text-paper' : 'border-dove bg-paper text-muted hover:border-jet hover:text-fg'}`}
+              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] transition ${period === p.id ? 'border-jet bg-jet font-medium text-paper' : 'border-dove bg-paper text-muted hover:border-jet hover:text-fg'}`}
             >
-              {period === p.id && <span className="size-1.5 shrink-0 rounded-full bg-paper" aria-hidden="true" />}
               {p.label}
             </button>
           ))}
