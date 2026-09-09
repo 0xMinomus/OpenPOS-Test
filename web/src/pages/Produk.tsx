@@ -344,7 +344,7 @@ export default function Produk() {
             )}
           </div>
           {totalPages > 1 && (
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
               <button
                 aria-label="Halaman sebelumnya" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}
                 className="rounded-lg border border-dove bg-paper px-3 py-1.5 text-sm transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-40"
