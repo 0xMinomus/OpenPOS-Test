@@ -341,7 +341,7 @@ function RecentTable({ items, showCashier }: { items: Trx[]; showCashier: boolea
         </thead>
         <tbody>
           {items.map((t) => (
-            <tr key={t.id} className="transition-colors hover:bg-muted/50">
+            <tr key={t.id}>
               <Td mono>{fmtDate(t.created_at)} {fmtTime(t.created_at)}</Td>
               <Td mono>#TRX-{String(t.id).padStart(5, '0')}</Td>
               {showCashier && <Td>{t.cashier_name}</Td>}

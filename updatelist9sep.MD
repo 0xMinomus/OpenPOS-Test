@@ -1,8 +1,8 @@
 # Update List — 9 Sep 2026
 
 Daftar perubahan sesi ini. Tujuan: mempermudah porting ke aplikasi native
-(Electron offline) nantinya. Diurut dari yang terbaru dibahas ke atas;
-item nomor 1 adalah update terakhir sesi ini.
+(Electron offline) nantinya. Diurut kronologis dari awal sesi;
+item nomor terbesar adalah update terakhir.
 
 > Konvensi: semua path di bawah relatif ke root repo (`OpenPOS-Test`).
 > Frontend cloud di `web/src/pages/*`, salinan offline di
@@ -85,8 +85,50 @@ Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
 
 ---
 
+## 2. Dashboard — baris tabel Transaksi Terbaru dibuat statis (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Dashboard.tsx` (`RecentTable`, ±baris 344).
+- **File offline terkait (BELUM diubah, untuk porting):**
+  `web/src/pages/offline/Dashboard.tsx` (baris 344, masih kode lama).
+
+### Masalah
+
+Saat kursor diarahkan ke salah satu baris transaksi di card "Transaksi
+Terbaru", baris tersorot pita hitam/putih (hover highlight). Minta
+dihilangkan, tabel statis.
+
+### Perbaikan (1 baris)
+
+```diff
+- <tr key={t.id} className="transition-colors hover:bg-muted/50">
++ <tr key={t.id}>
+```
+
+Efek: tidak ada lagi highlight saat hover di tabel Transaksi Terbaru
+Dashboard (berlaku untuk tampilan admin maupun kasir, keduanya memakai
+`RecentTable` yang sama). Tabel lain dan menu lain tidak berubah.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` di `web/` — lolos.
+
+### Panduan porting ke native (offline)
+
+Terapkan perubahan 1 baris yang sama di:
+
+- `web/src/pages/offline/Dashboard.tsx` baris 344
+  (`RecentTable`, ganti `<tr key={t.id} className="transition-colors hover:bg-muted/50">`
+  menjadi `<tr key={t.id}>`).
+
+Setelah edit, verifikasi offline: `npx tsc -b`, `npm run build`,
+`npm run electron:smoke`.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
 |----|-----------------|---------------------|-----------------|
 | 1  | `cursor={false}` chart Penjualan | `web/src/pages/offline/Dashboard.tsx:186` | Belum |
+| 2  | Baris Transaksi Terbaru statis | `web/src/pages/offline/Dashboard.tsx:344` | Belum |
