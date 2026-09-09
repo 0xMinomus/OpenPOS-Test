@@ -509,6 +509,38 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 14. Laporan — jujur loading saat pindah periode (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/lib/cache.ts` (`useCache` jujur `loading`
+  saat key berubah), `web/src/pages/Laporan.tsx` (indikator switching).
+
+### Akar masalah (hasil inspect, bukan tebakan)
+
+`useCache` menyimpan `data` lama saat key periode berubah, tapi
+`loading` tetap `false` selama fetch — klik periode tak memicu
+indikator apa pun sampai data baru datang (server Vercel + Supabase
+butuh detik). Jadi lag server tak terlihat: "delay misterius".
+
+### Perbaikan
+
+- `useCache`: bedakan mount/remount (key sama → perilaku cache instan
+  tetap) vs ganti key (filter/halaman → `loading: true` + `err: ''`).
+  Konsumen lain aman: Produk (kategori tak pakai loading), Transaksi
+  (kini skeleton jujur tiap pindah halaman — membaik), Dashboard
+  (kunci sesi tak berubah perilaku).
+- Laporan: saat switching, konten lama redup (`opacity-60`,
+  tanpa layout shift) + baris status "Memuat periode X…" (spinner,
+  `role=status`, `aria-busy`).
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos.
+- Edge headless + CDP klik "Minggu ini": status muncul + `aria-busy`,
+  lalu hilang dan pill aktif = Minggu ini. Screenshot sesuai.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -526,3 +558,4 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 | 11 | Redesign Transaksi | `web/src/pages/offline/OfflineTransaksi.tsx` (rewrite ikut cloud) | Belum |
 | 12 | DatePicker kalender | — (paylaş `lib/ui.tsx`, tanpa porting) | Done |
 | 13 | Header/filter/tab Laporan | `web/src/pages/offline/Laporan.tsx` (blok header saja) | Belum |
+| 14 | Loading jujur pindah periode | `lib/cache.ts` paylaş + `offline/Laporan.tsx` (ikut rewrite) | Cache done |

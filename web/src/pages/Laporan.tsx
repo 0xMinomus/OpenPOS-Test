@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Banknote, BarChart3, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
+import { Banknote, BarChart3, Loader2, Package, ReceiptText, TriangleAlert, TrendingUp, Wallet } from 'lucide-react'
 import { apiGetReport, type ReportBundle } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtRp, fmtShort } from '../lib/store'
@@ -79,6 +79,7 @@ export default function Laporan() {
   const rep = useCache<ReportBundle>(`report:${period}`, () => apiGetReport(period), 'Gagal memuat laporan.')
   const data = rep.data
   const err = rep.err
+  const switching = rep.loading && data !== null
 
   const daily = useMemo(() => {
     if (!data) return []
@@ -182,7 +183,13 @@ export default function Laporan() {
       {!data ? (
         <LaporanSkeleton />
       ) : (
-        <>
+        <div aria-busy={switching || undefined} className={switching ? 'pointer-events-none opacity-60 transition-opacity' : undefined}>
+          {switching && (
+            <p className="mb-3 flex items-center gap-2 text-[13px] text-muted" role="status">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Memuat periode {PERIODS.find((p) => p.id === period)?.label}…
+            </p>
+          )}
           {tab === 'sales' && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -461,7 +468,7 @@ export default function Laporan() {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </>
   )

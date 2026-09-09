@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Cache GET sederhana pola stale-while-revalidate: buka halaman langsung
 // render data kunjungan terakhir, lalu refresh diam-diam di latar belakang.
@@ -25,9 +25,16 @@ export function useCache<T>(key: string, fn: () => Promise<T>, errMsg = 'Gagal m
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState<boolean>(() => read<T>(key) === null)
   const [tick, setTick] = useState(0)
+  const prevKey = useRef(key)
   useEffect(() => {
     let dead = false
-    if (read<T>(key) === null) setLoading(true)
+    if (prevKey.current !== key) {
+      // Ganti filter/halaman: data lama tetap tampil tapi status wajib jujur
+      // loading agar UI bisa kasih umpan balik (mount/remount tak berubah).
+      prevKey.current = key
+      setLoading(true)
+      setErr('')
+    } else if (read<T>(key) === null) setLoading(true)
     fn()
       .then((d) => {
         store.set(key, { data: d, at: Date.now() })
