@@ -382,6 +382,18 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 9. Ukuran halaman: Produk 15, Stok 10, Transaksi 10 (cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Produk.tsx` (`PAGE_SIZE = 15`),
+  `web/src/pages/Stok.tsx` (`PAGE_SIZE = 10`, stok + riwayat),
+  `web/src/pages/Transaksi.tsx` (`PAGE = 10`, server-side existing).
+- **File offline terkait (BELUM diubah):** `OfflineProduk.tsx`,
+  `offline/Stok.tsx`, `OfflineTransaksi.tsx` — ikut rewrite/porting
+  masing-masing item (6 untuk Stok).
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -393,3 +405,5 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 | 5  | Paging produk 15/halaman (`Pager` di `lib/ui.tsx` paylaş) | `web/src/pages/offline/OfflineProduk.tsx` (state/slice/`Pager`) | Belum |
 | 6  | Paging status stok 15/halaman | `web/src/pages/offline/Stok.tsx` (state/slice/`Pager`) | Belum |
 | 7  | Redesign Stok (kartu+tab+toolbar+3-dot) | `web/src/pages/offline/Stok.tsx` (rewrite ikut cloud) | Belum |
+| 8  | Revisi Stok (item 8 di atas) | `web/src/pages/offline/Stok.tsx` (bagian rewrite) | Belum |
+| 9  | Ukuran halaman 15/10/10 | `OfflineProduk.tsx`, `offline/Stok.tsx`, `OfflineTransaksi.tsx` | Belum |
