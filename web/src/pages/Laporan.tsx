@@ -150,28 +150,34 @@ export default function Laporan() {
         right={<Button variant="ghost" onClick={exportTab}>Export CSV</Button>}
       />
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {PERIODS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setPeriod(p.id)}
-            className={`rounded-full border px-3.5 py-1.5 text-xs ${period === p.id ? 'border-jet bg-jet text-paper' : 'border-dove text-muted hover:border-jet'}`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <div>
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Periode laporan">
+          {PERIODS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              aria-pressed={period === p.id}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] transition ${period === p.id ? 'border-jet bg-jet font-medium text-paper' : 'border-dove bg-paper text-muted hover:border-jet hover:text-fg'}`}
+            >
+              {period === p.id && <span className="size-1.5 shrink-0 rounded-full bg-paper" aria-hidden="true" />}
+              {p.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {(['sales', 'products', 'profit', 'stock'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-full border px-3.5 py-1.5 text-xs ${tab === t ? 'border-jet bg-jet text-paper' : 'border-dove text-muted hover:border-jet'}`}
-          >
-            {t === 'sales' ? 'Penjualan' : t === 'products' ? 'Produk' : t === 'profit' ? 'Profit' : 'Stok'}
-          </button>
-        ))}
+        <div className="mt-2.5 inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Jenis laporan">
+          {(['sales', 'products', 'profit', 'stock'] as const).map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${tab === t ? 'bg-paper font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
+            >
+              {t === 'sales' ? 'Penjualan' : t === 'products' ? 'Produk' : t === 'profit' ? 'Profit' : 'Stok'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {!data ? (

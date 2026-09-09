@@ -480,6 +480,35 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 
 ---
 
+## 13. Laporan — redesign header/filter/tab global (prompt 1/5, cloud saja)
+
+- **Status:** selesai, sudah push ke `main`.
+- **File diubah:** `web/src/pages/Laporan.tsx` (blok header saja;
+  KPI/chart/tabel isi tak disentuh).
+- **File offline terkait (BELUM diubah):**
+  `web/src/pages/offline/Laporan.tsx` (terapkan blok header sama;
+  impor data ikut pola offline).
+
+### Isi perubahan
+
+- Header: `PageHead` existing (Laporan + sub + Export CSV ghost).
+- Period: pill prominent + dot aktif (`[● Hari ini]`), scroll
+  horizontal + scrollbar hidden di mobile, `aria-pressed`.
+- Report tabs: segmented compact dalam container `bg-surface`,
+  aktif `bg-paper shadow-sm`; `role=tablist/tab` + `aria-selected`.
+- Period state sudah global per komponen (pindah tab tak reset) —
+  dipertahankan, tanpa routing baru. Satu implementasi untuk 4 report.
+- Sticky DICOBA lalu DIBATALKAN: `overflow-x: hidden` di html/body
+  mematikan `position: sticky` (terbukti di screenshot); prompt
+  membolehkan skip bila mengganggu.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos. Detector — bersih.
+- Edge headless + CDP: desktop + mobile + scroll sesuai.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
@@ -495,3 +524,5 @@ existing, tanpa palet/identitas baru, tanpa chart tambahan.
 | 9  | Ukuran halaman 15/10/10 | `OfflineProduk.tsx`, `offline/Stok.tsx`, `OfflineTransaksi.tsx` | Belum |
 | 10 | Pager angka transaksi | `web/src/pages/offline/OfflineTransaksi.tsx` | Belum |
 | 11 | Redesign Transaksi | `web/src/pages/offline/OfflineTransaksi.tsx` (rewrite ikut cloud) | Belum |
+| 12 | DatePicker kalender | — (paylaş `lib/ui.tsx`, tanpa porting) | Done |
+| 13 | Header/filter/tab Laporan | `web/src/pages/offline/Laporan.tsx` (blok header saja) | Belum |
