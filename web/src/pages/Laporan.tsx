@@ -304,10 +304,12 @@ export default function Laporan() {
                           <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-omzet)' }} />
                           Penjualan
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-1)' }} />
-                          Transaksi
-                        </span>
+                        {!needHourly && (
+                          <span className="flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-full" style={{ background: 'var(--chart-1)' }} />
+                            Transaksi
+                          </span>
+                        )}
                       </div>
                       <ChartContainer config={salesChartConfig} className="h-64 w-full [&_:focus]:outline-none">
                         <ComposedChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} barCategoryGap="30%">
@@ -319,7 +321,9 @@ export default function Laporan() {
                           <Bar yAxisId="left" dataKey="omzet" name="Penjualan" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                             {daily.length <= 14 && <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />}
                           </Bar>
-                          <Line yAxisId="right" type="monotone" dataKey="trx" name="Transaksi" stroke="var(--chart-1)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--chart-1)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                          {!needHourly && (
+                            <Line yAxisId="right" type="monotone" dataKey="trx" name="Transaksi" stroke="var(--chart-1)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 3, fill: 'var(--chart-1)', strokeWidth: 0 }} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out" />
+                          )}
                         </ComposedChart>
                       </ChartContainer>
                     </>
