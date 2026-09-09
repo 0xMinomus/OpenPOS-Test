@@ -42,17 +42,6 @@ function dayLabel(iso: string): string {
   return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]}`
 }
 
-// ponytail: teks polos tanpa box, cukup untuk 1 bar; ganti ke box styled bila butuh info lebih.
-function SalesTip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="border-0 bg-transparent p-0 text-center shadow-none">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-xs font-medium tabular-nums text-foreground">{fmtRp(Number(payload[0].value))}</p>
-    </div>
-  )
-}
-
 export default function Dashboard() {
   const db = useDB()
   const s = db.session!
@@ -194,7 +183,7 @@ export default function Dashboard() {
                 <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="color-mix(in oklch, var(--foreground) 18%, transparent)" />
                 <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={16} tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} width={44} domain={[0, 'auto']} tickFormatter={(v: number) => fmtShort(v)} tick={{ fontSize: 11 }} className="font-mono text-xs" />
-                <ChartTooltip cursor={{ fill: 'transparent', stroke: 'transparent' }} content={<SalesTip />} />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => fmtRp(Number(v))} />} />
                 <Bar dataKey="omzet" fill="var(--color-omzet)" radius={[6, 6, 0, 0]} maxBarSize={38} isAnimationActive={animate} animationDuration={650} animationEasing="ease-out">
                   <LabelList dataKey="omzet" position="top" formatter={(v) => fmtShort(Number(v))} fontSize={11} className="fill-muted-foreground" />
                 </Bar>
