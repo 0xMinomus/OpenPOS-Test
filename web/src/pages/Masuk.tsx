@@ -15,6 +15,8 @@ export default function Masuk() {
   const [needOtp, setNeedOtp] = useState(false)
   const [otpMsg, setOtpMsg] = useState('')
   const [cooldown, setCooldown] = useState(0)
+  const [googleCred, setGoogleCred] = useState('')
+  const [googlePin, setGooglePin] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -113,13 +115,32 @@ export default function Masuk() {
       }
     } catch (x) {
       if (x instanceof ApiError && x.code === 'passcode_required') {
-        // Backend lama masih menagih passcode di Google. Passcode kini
-        // hanya diminta di menu pilih akun (switch) — kontrak
-        // docs/API-CONTRACT-LOGIN-OTP.md.
-        setErr('Server masih meminta passcode untuk login Google. Sementara, masuk dengan email dan kata sandi.')
+        // Akun Google ber-passcode: minta PIN, ulangi dengan credential sama.
+        setGoogleCred(credential)
+        setErr('')
       } else {
         setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
       }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitGooglePasscode(e: React.FormEvent) {
+    e.preventDefault()
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiGoogleLogin(googleCred, undefined, googlePin)
+      setSession(toSession(r.user))
+      const age = r.user.created_at ? Date.now() - new Date(r.user.created_at).getTime() : Infinity
+      if (age < 2 * 60 * 1000) {
+        nav('/daftar?google=onboard', { replace: true })
+      } else {
+        nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
+      }
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Passcode salah. Coba lagi.')
+      setGooglePin('')
     } finally {
       setBusy(false)
     }
@@ -189,6 +210,26 @@ export default function Masuk() {
               >
                 {cooldown > 0 ? `Kirim ulang dalam ${cooldown} detik` : 'Kirim ulang kode'}
               </button>
+            </form>
+          ) : googleCred ? (
+            <form onSubmit={submitGooglePasscode} className="flex flex-col gap-4" noValidate>
+              <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
+                Akun Google ini dilindungi passcode. Masukkan 5 angka untuk melanjutkan.
+              </div>
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+                Passcode
+                <input
+                  value={googlePin}
+                  onChange={(e) => setGooglePin(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  type="password" inputMode="numeric" autoFocus
+                  placeholder="•••••"
+                  className="rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-lg tracking-[0.5em] focus:border-jet focus:outline-none"
+                />
+              </label>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setGoogleCred(''); setGooglePin(''); setErr('') }} className="flex-1 rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet">Batal</button>
+                <button type="submit" disabled={googlePin.length !== 5 || busy} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">Masuk</button>
+              </div>
             </form>
           ) : (
             <div className="flex flex-col gap-4">

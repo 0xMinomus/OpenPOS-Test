@@ -1,11 +1,11 @@
-# API Contract — Login Tanpa Passcode (OTP email + Google), Passcode Pindah ke Pilih Akun
+# API Contract — Login Email/Sandi dengan OTP (pengganti passcode di login)
 
 > Diserahkan ke backend developer (`adrr-dev/openPOS`) untuk diimplementasikan.
 > Status: **diajukan**, belum tersedia di backend produksi.
-> Tujuan: faktor kedua di halaman login **bukan** passcode —
-> login email/sandi memakai **OTP email**, login Google langsung masuk.
-> Passcode tetap dipakai di `/auth/switch` (menu pilih admin/kasir).
-> Frontend sudah siap: menerima `OTP_REQUIRED`, dan tetap fallback ke form PIN
+> Tujuan: login manual (email + kata sandi) memakai **OTP email** sebagai faktor
+> kedua, bukan passcode. Passcode tetap dipakai di `/auth/switch` (pilih akun)
+> dan Google login **tidak berubah**.
+> Frontend sudah siap: menerima `OTP_REQUIRED` dan tetap fallback ke form PIN
 > bila backend belum diperbarui.
 
 ---
@@ -52,27 +52,11 @@ Akun **tanpa** passcode: tetap seperti sekarang (langsung token pair).
 
 **Yang tidak berubah:**
 - Rate limit login `5/menit/IP` → `429`.
+- `POST /auth/google` tetap `401 PASSCODE_REQUIRED` bila akun Google punya passcode.
 - `POST /auth/switch` tetap wajib passcode.
 - OTP login **tidak** menandai `email_verified_at` (verifikasi registrasi lewat `/auth/otp/verify` tidak tersentuh).
 
 **Catatan implementasi (saran):** `SendOTP` sekarang menolak email terdaftar (`ErrEmailTaken`) — pisahkan helper kirim (mis. `SendLoginOTP`) yang melewati cek itu, lalu di `Login`: bila `passcode_hash` ada dan `passcode == ""` dan `otp == ""` → `ErrOTPRequired`; bila `otp != ""` → verifikasi kode persis seperti `VerifyOTP` lalu `RevokeOTP`.
-
-## 3. `POST /auth/google` — hapus tagihan passcode
-
-**Perilaku baru:** akun lama yang punya passcode **langsung login** (token pair),
-passcode tidak diminta di sini. Passcode baru diminta saat `/auth/switch`
-(memilih akun di menu pilih admin/kasir).
-
-**Request:** `{ id_token, storeName? }` — field `passcode` boleh tetap diterima
-untuk kompatibilitas, tapi **jangan** diwajibkan.
-
-**Error yang dihapus:** `401 PASSCODE_REQUIRED` / `PASSCODE_WRONG` dari
-`GoogleLogin` (hapus blok cek `user.PasscodeHash` di `GoogleLogin`).
-Sisa error Google (token invalid, email belum diverifikasi, akun nonaktif)
-tidak berubah.
-
-> Akun baru via Google tetap menyelesaikan onboarding seperti sekarang
-> (nama toko + passcode admin di halaman daftar) — tidak berubah.
 
 ---
 
@@ -83,10 +67,6 @@ tidak berubah.
 2. POST /auth/otp/send {email, purpose:"login"}           → OTP dikirim
 3. POST /auth/login {email, password, otp}                → token pair
 4. /pilih-akun → POST /auth/switch (+passcode bila perlu)
-
-Google:
-1. POST /auth/google {id_token}                           → token pair
-2. /pilih-akun → POST /auth/switch (+passcode bila perlu)
 ```
 
 Frontend menampilkan form OTP otomatis pada langkah 1, tombol "Kirim ulang"
@@ -94,10 +74,6 @@ dengan cooldown 60 detik, dan membersihkan input saat `OTP_WRONG`.
 
 ## Fallback backend lama
 
-- Login email/sandi: bila backend masih membalas `PASSCODE_REQUIRED`,
-  frontend **tetap menampilkan form PIN** seperti sekarang — login tidak rusak.
-- Login Google: frontend **tidak lagi** menampilkan form PIN. Bila backend
-  masih membalas `PASSCODE_REQUIRED`, frontend menampilkan pesan agar memakai
-  login email/sandi sampai backend diperbarui.
-- Setelah kontrak ini live, form PIN di halaman login tidak pernah muncul lagi;
-  passcode hanya di `/pilih-akun`.
+Bila backend belum diperbarui (login masih membalas `PASSCODE_REQUIRED`),
+frontend **tetap menampilkan form PIN** seperti sekarang — login tidak rusak.
+Setelah kontrak ini live, form PIN di jalur login email/sandi tidak pernah muncul lagi.
