@@ -762,6 +762,35 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 22. Notifikasi stok (bel header, cloud saja)
+
+- **Status:** UI selesai + push; MENUNGGU backend deploy
+  (`GET /notifications` prod masih 404 — kode ada di repo backend,
+  belum live).
+- **File diubah:** `web/src/lib/api.ts` (tipe + 3 helper sesuai
+  `frontend_notifications.ts` backend), `web/src/pages/AppShell.tsx`
+  (`NotifBell` di header kanan).
+- **Kontrak dipakai:** `GET /notifications` (page/limit/unread),
+  `PATCH /:id/read`, `PATCH /read-all`. Tanpa websocket/push.
+
+### Isi
+
+- Ikon lonceng + badge unread (99+) di header kanan semua halaman app.
+- Panel: list 20 terbaru (judul, pesan, waktu, dot merah low_stock /
+  kuning lain), klik item = tandai dibaca (+ ke `/app/stok` untuk
+  low_stock), "Tandai semua dibaca", tutup klik-luar/Escape.
+- Poll 60 detik (bukan realtime). Optimistic update + best-effort
+  (diselaraskan poll berikut). Empty state jujur.
+
+### Verifikasi
+
+- `npx tsc -b` + `npm run build` — lolos.
+- Edge headless + CDP: bel + panel + empty state sesuai. State isi /
+  badge / tandai-baca IKUT KONTRAK tapi belum bisa diuji (endpoint
+  404) — verifikasi ulang setelah backend deploy.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |

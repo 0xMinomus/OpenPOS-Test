@@ -382,6 +382,30 @@ export function apiAdjustStock(productId: string, direction: 'plus' | 'minus', q
   return request<{ product: Product }>('POST', '/stock/adjustments', { productId, direction, qty, reason })
 }
 
+// ── notifikasi ─────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: number
+  title: string
+  message: string
+  type: 'info' | 'warning' | 'alert' | 'low_stock'
+  read: boolean
+  reference_id?: number
+  created_at: string
+}
+
+export function apiListNotifications(f: { unread?: boolean; page?: number; limit?: number } = {}) {
+  return request<Page<Notification>>('GET', '/notifications' + qs({ ...f }))
+}
+
+export function apiMarkNotifRead(id: number) {
+  return request<{ status: string }>('PATCH', `/notifications/${id}/read`)
+}
+
+export function apiMarkAllNotifsRead() {
+  return request<{ status: string }>('PATCH', '/notifications/read-all')
+}
+
 // ── transaksi ────────────────────────────────────────────────────────
 
 export function apiCheckout(body: {
