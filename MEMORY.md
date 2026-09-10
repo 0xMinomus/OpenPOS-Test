@@ -139,7 +139,9 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - Untuk test visual end-to-end: bisa pakai Edge headless + CDP (port 9222/9223, `--remote-debugging-port`), inject token ke localStorage (`op_access`/`op_refresh`), screenshot. Vercel auto-deploy ±90–110 detik setelah push — tunggu sebelum verify.
 - **Jebakan harness CDP (terbukti)**: dev server hanya listen `::1` (pakai `localhost:`, bukan `127.0.0.1`); `/json/new` butuh PUT; `localStorage` hanya setelah navigasi komit (poll `location.href`); backend **preflight CORS dari localhost:5173 sedang 403** → browser butuh `--disable-web-security`; token access 15 mnt (login ulang tiap sesi uji); target baru kadang blank (profil fresh + tanpa poll-hammer).
 - Skrip CDP reusable di `C:\Users\Andika\AppData\Local\Temp\opencode\cdp_*.js` (login, klik, baca DOM, screenshot).
-- Akun test produksi: `akun-demo@example.com` / password `REDACTED` / passcode `REDACTED` (akun demo, role admin, terverifikasi).
+- Akun test produksi: kredensial TIDAK disimpan di repo (repo publik).
+  Hubungi owner untuk akses akun demo. Rotasi sandi + passcode akun demo
+  bila pernah terekspos.
 - Ganti ke kasir: buat kasir via `POST /users` lalu `POST /auth/switch` (tanpa passcode kalau kasir baru), injek token ke browser.
 
 ---
