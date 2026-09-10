@@ -104,7 +104,7 @@ async function request<T>(method: string, path: string, body?: unknown, auth = t
       continue
     }
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new ApiError(res.status, data.error ?? 'Terjadi kesalahan.', data.error ?? '')
+    if (!res.ok) throw new ApiError(res.status, data.error ?? 'Terjadi kesalahan.', data.code ?? data.error ?? '')
     return data as T
   }
   throw new ApiError(401, 'Sesi berakhir. Silakan masuk kembali.')
@@ -342,9 +342,14 @@ export function apiVerifyOtp(email: string, code: string) {
 // ── Google login (GIS ID-token flow) ───────────────────────────────────
 // Kontrak: FRONTEND_AUTH.md di repo backend (adrr-dev/openPOS)
 
-export function apiGoogleLogin(idToken: string, storeName?: string) {
-  return request<AuthResp>('POST', '/auth/google', storeName ? { id_token: idToken, storeName } : { id_token: idToken }, false)
-    .then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
+// Google login. Akun ber-passcode: backend balas passcode_required →
+// pemanggil menampilkan form PIN lalu memanggil ulang dengan passcode.
+export function apiGoogleLogin(idToken: string, storeName?: string, passcode?: string) {
+  return request<AuthResp>('POST', '/auth/google', {
+    id_token: idToken,
+    ...(storeName ? { storeName } : {}),
+    ...(passcode ? { passcode } : {}),
+  }, false).then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
 }
 
 // ── users ────────────────────────────────────────────────────────────

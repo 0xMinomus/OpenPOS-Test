@@ -15,8 +15,10 @@ const STEPS = [
 export default function Daftar() {
   const nav = useNavigate()
   const [params] = useSearchParams()
-  const [mode, setMode] = useState<'choice' | 'email' | 'google-onboard'>('choice')
+  const [mode, setMode] = useState<'choice' | 'email' | 'google-onboard' | 'google-pin'>('choice')
   const [googleUser, setGoogleUser] = useState<User | null>(null)
+  const [googleCred, setGoogleCred] = useState('')
+  const [googlePin, setGooglePin] = useState('')
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -141,7 +143,37 @@ export default function Daftar() {
         nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
       }
     } catch (x) {
-      setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
+      if (x instanceof ApiError && x.code === 'passcode_required') {
+        // Akun Google ber-passcode: minta PIN, ulangi dengan credential sama.
+        setGoogleCred(credential)
+        setMode('google-pin')
+        setErr('')
+      } else {
+        setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitGooglePasscode(e: React.FormEvent) {
+    e.preventDefault()
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiGoogleLogin(googleCred, undefined, googlePin)
+      setSession(toSession(r.user))
+      const age = r.user.created_at ? Date.now() - new Date(r.user.created_at).getTime() : Infinity
+      if (age < 2 * 60 * 1000) {
+        setGoogleUser(r.user)
+        setStore(r.user.store_name)
+        setMode('google-onboard')
+        setStep(3)
+      } else {
+        nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
+      }
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Passcode salah. Coba lagi.')
+      setGooglePin('')
     } finally {
       setBusy(false)
     }
@@ -220,6 +252,28 @@ export default function Daftar() {
             </div>
           )}
 
+          {mode === 'google-pin' && (
+            <form onSubmit={submitGooglePasscode} className="flex flex-col gap-4" noValidate>
+              <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
+                Akun Google ini dilindungi passcode. Masukkan 5 angka untuk melanjutkan.
+              </div>
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+                Passcode
+                <input
+                  value={googlePin}
+                  onChange={(e) => setGooglePin(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  type="password" inputMode="numeric" autoFocus
+                  placeholder="•••••"
+                  className="rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-lg tracking-[0.5em] focus:border-jet focus:outline-none"
+                />
+              </label>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setMode('choice'); setGoogleCred(''); setGooglePin(''); setErr('') }} className="flex-1 rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet">Batal</button>
+                <button type="submit" disabled={googlePin.length !== 5 || busy} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">Masuk</button>
+              </div>
+            </form>
+          )}
+
           {mode === 'email' && step === 1 && (
             <form onSubmit={step1Next} className="flex flex-col gap-4" noValidate>
               <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
@@ -247,6 +301,10 @@ export default function Daftar() {
               <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
                 {otpMsg || 'Mengirim kode OTP…'}
                 <span className="mt-1 block text-xs text-fog">Kode berlaku 10 menit dan hanya bisa dicoba 3 kali.</span>
+                <span className="mt-2 block text-xs text-fog">
+                  Belum menerima kode? Jika email ini sudah terdaftar,{' '}
+                  <Link to="/masuk" className="font-medium text-jet hover:underline">masuk di sini</Link>.
+                </span>
               </div>
               <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
                 Kode OTP

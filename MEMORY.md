@@ -228,3 +228,22 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
   membuat `sessionStorage` "Access denied" di `about:blank` (artefak, bukan bug app).
 - Uji migrasi per-tab lolos di dev: SS terisi, LS legacy bersih, tab baru
   tidak mewarisi sesi.
+
+## 15. Sesi 10 Sep 2026 — hardening keamanan (audit privat)
+
+- Audit keamanan penuh dijalankan (Playwright + API); laporan detail
+  disimpan **privat** di luar repo (repo publik — jangan commit detail celah).
+- Backend deploy `e69f7d1`: rate limit login/switch/forgot, ActiveCheck
+  per-request, header keamanan API, revoke sesi saat reset sandi, passcode
+  wajib untuk switch ke admin, respons anti-enumerasi, clamp limit transaksi.
+  Terverifikasi live (termasuk X-Forwarded-For tidak bisa bypass).
+- Frontend: header keamanan `web/vercel.json` (XFO/CSP frame-ancestors/
+  nosniff/Referrer/Permissions), route guard `AdminOnly` di `App.tsx`,
+  `ApiError.code` baca `data.code ?? data.error`, alur passcode Google di
+  `Masuk.tsx` + `Daftar.tsx` (PIN lalu ulangi `apiGoogleLogin(cred, store, pin)`),
+  hint "email sudah terdaftar → masuk" di langkah OTP `Daftar.tsx`.
+- Backend belum push/deploy perbaikan `code:"PASSCODE_REQUIRED"` dan
+  GoogleLogin-passcode (diverifikasi prod masih lama) — frontend sudah siap
+  dua arah.
+- Sisa item backend (rate-limit cache Redis, perf ActiveCheck, enumerasi
+  `otp/send` pesan beda) ada di laporan privat.
