@@ -54,9 +54,10 @@ diganti; tidak ada palet atau identitas visual baru.
 
 - Repo frontend aktif, branch `main`; backend Go repo terpisah (kontrak API
   di README-nya).
-- Akun uji produksi tersedia untuk verifikasi visual (kredensial di
-  `MEMORY.md`, bukan di sini).
-- Dokumen sesi: `MEMORY.md`, `PROJECT.md`, `docs/`, `updatelist9sep.MD`.
+- Akun uji produksi tersedia untuk verifikasi visual (kredensial di catatan
+  lokal `MEMORY.md` — gitignored, tidak ada di repo ini).
+- Dokumen sesi: `PROJECT.md`, `docs/`, `updatelist9sep.MD`; catatan lokal
+  `MEMORY.md` (tidak ikut repo).
 
 ## Product Principles
 

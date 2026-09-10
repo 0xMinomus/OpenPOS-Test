@@ -24,3 +24,6 @@ Thumbs.db
 .env.local
 .env.*.local
 *.local
+
+# Catatan sesi lokal - berisi kredensial, JANGAN di-push
+MEMORY.md

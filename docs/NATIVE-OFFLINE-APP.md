@@ -2,7 +2,7 @@
 
 > Dokumen pengetahuan & memori khusus aplikasi **desktop Windows** OpenPOS
 > (Electron), versi offline penuh yang 1:1 dengan webapp cloud.
-> Ringkasan cepat di `MEMORY.md` §3; detail di file ini.
+> Ringkasan cepat di catatan lokal `MEMORY.md` §3 (tidak ikut repo); detail di file ini.
 
 ---
 

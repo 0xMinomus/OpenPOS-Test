@@ -10,8 +10,8 @@ Mengganti nama akun kasir dalam toko yang sama.
 
 - **Auth:** Bearer Token (Hanya Admin, seperti endpoint `/users` lain).
 - **Path params:** `id` — ID angka akun kasir (lihat catatan tabrakan ID
-  `users` vs `cashiers` di MEMORY.md §10; disambiguasi seperti endpoint
-  `/users/{id}` lain yang sudah ada).
+  `users` vs `cashiers` di catatan lokal `MEMORY.md` §10; disambiguasi seperti
+  endpoint `/users/{id}` lain yang sudah ada).
 - **Request:**
 
 ```json
