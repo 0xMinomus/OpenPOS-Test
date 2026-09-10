@@ -29,15 +29,18 @@ const MAX_PER_TYPE = 10
 
 const STOK_TYPES = new Set(['low_stock', 'out_of_stock', 'restock', 'stock_low', 'stock_out'])
 
-// Kategori turunan untuk payload lama yang belum kirim `category`.
+// Kategori: tipe menang atas `category` — backend sempat kirim
+// low_stock berlabel category=sistem (sumber wajib dibetulkan,
+// kontrak §2). Lalu fallback kata kunci sebelum pasrah ke sistem.
 export function categoryOf(n: Notification): NotifCategory {
-  if (n.category) return n.category
   const t = (n.type ?? '').toLowerCase()
-  if (STOK_TYPES.has(t) || t.startsWith('stock') || t.startsWith('stok')) return 'stok'
   if (
     t.startsWith('transaction') || t.startsWith('transaksi') || t.startsWith('refund') ||
     t.startsWith('void') || t.startsWith('discount') || t === 'large_transaction'
   ) return 'transaksi'
+  if (STOK_TYPES.has(t) || t.startsWith('stock') || t.startsWith('stok')) return 'stok'
+  if (n.category) return n.category
+  if (/stok|stock|tersisa|restock|menipis|persediaan/i.test(`${n.title ?? ''} ${n.message ?? ''}`)) return 'stok'
   return 'sistem'
 }
 

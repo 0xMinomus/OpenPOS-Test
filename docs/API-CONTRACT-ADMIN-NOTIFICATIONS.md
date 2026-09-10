@@ -139,13 +139,21 @@ Keduanya admin-only (403 untuk kasir).
 | `out_of_stock` | stok = 0 |
 | `restock` | stok kembali aman setelah penyesuaian/restock |
 
-### Sistem
+### Sistem (khusus peristiwa akun — BUKAN stok/transaksi)
 
 | `type` | Pemicu |
 |---|---|
-| `admin_login` | login admin (opsional, low priority) |
-| `sync_failed` | sinkronisasi gagal |
-| `system_error` | error penting |
+| `passcode_changed` | passcode akun diganti |
+| `cashier_online` | kasir mulai dipakai (transisi offline → online) |
+| `cashier_offline` | kasir berhenti dipakai (transisi online → offline) |
+| `account_enabled` | akun diaktifkan kembali |
+| `account_disabled` | akun dinonaktifkan |
+
+> **Bug sumber 10 Sep 2026:** `low_stock` terkirim dengan
+> `category: "sistem"` — betulkan ke `"stok"` di server. Frontend kini
+> memprioritaskan `type` di atas `category` agar salah label tak bocor
+> ke tab Sistem, tapi sumber tetap wajib benar.
+> Notifikasi on/off kirim saat transisi saja (debounce ±5 mnt) agar tak spam.
 
 **Aturan emit:**
 - Satu event = satu notifikasi per admin toko (fan-out ke semua admin toko itu).
