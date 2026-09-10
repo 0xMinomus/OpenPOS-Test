@@ -1,0 +1,141 @@
+diff --git a/handler/auth.go b/handler/auth.go
+index 85f9b80..fea835b 100644
+--- a/handler/auth.go
++++ b/handler/auth.go
+@@ -194,12 +194,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
+ 		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token wajib diisi"})
+ 		return
+ 	}
+-	user, pair, err := h.auth.Refresh(c.Request.Context(), req.RefreshToken)
++	pubUser, pair, err := h.auth.Refresh(c.Request.Context(), req.RefreshToken)
+ 	if err != nil {
+ 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+ 		return
+ 	}
+-	c.JSON(http.StatusOK, authResponse{User: user.Public(), TokenPair: *pair})
++	c.JSON(http.StatusOK, authResponse{User: *pubUser, TokenPair: *pair})
+ }
+ 
+ func (h *AuthHandler) Logout(c *gin.Context) {
+diff --git a/model/models.go b/model/models.go
+index 528c720..d195e46 100644
+--- a/model/models.go
++++ b/model/models.go
+@@ -137,6 +137,9 @@ type RefreshToken struct {
+ 	TokenHash string    `gorm:"not null;unique" json:"token_hash"`
+ 	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`
+ 	Revoked   bool      `gorm:"not null;default:false" json:"revoked"`
++	// Sesi kasir disimpan eksplisit: refresh wajib mempertahankan identitas
++	// acting-as, kalau tidak sesi kasir berubah jadi admin tiap refresh.
++	ActingAsCashierID *uint `gorm:"index" json:"-"`
+ }
+ 
+ func (RefreshToken) TableName() string {
+diff --git a/repo/refresh.go b/repo/refresh.go
+index ee07c02..3bd6aa8 100644
+--- a/repo/refresh.go
++++ b/repo/refresh.go
+@@ -15,12 +15,13 @@ type RefreshRepo struct {
+ 
+ func NewRefreshRepo(db *gorm.DB) *RefreshRepo { return &RefreshRepo{db: db} }
+ 
+-func (r *RefreshRepo) Create(ctx context.Context, userID uint, tokenHash string, expiresAt time.Time) error {
++func (r *RefreshRepo) Create(ctx context.Context, userID uint, actingAsCashierID *uint, tokenHash string, expiresAt time.Time) error {
+ 	rt := model.RefreshToken{
+-		UserID:    userID,
+-		TokenHash: tokenHash,
+-		ExpiresAt: expiresAt,
+-		Revoked:   false,
++		UserID:            userID,
++		ActingAsCashierID: actingAsCashierID,
++		TokenHash:         tokenHash,
++		ExpiresAt:         expiresAt,
++		Revoked:           false,
+ 	}
+ 	return r.db.WithContext(ctx).Create(&rt).Error
+ }
+diff --git a/service/auth.go b/service/auth.go
+index 505d288..521c943 100644
+--- a/service/auth.go
++++ b/service/auth.go
+@@ -523,26 +523,39 @@ func (s *AuthService) Me(ctx context.Context, claims *Claims) (*model.PublicUser
+ 	return &pub, nil
+ }
+ 
+-func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.User, *model.TokenPair, error) {
++func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.PublicUser, *model.TokenPair, error) {
+ 	hash := hashToken(refreshToken)
+ 	rt, err := s.refresh.GetActiveByHash(ctx, hash)
+ 	if err != nil || rt.Revoked || time.Now().After(rt.ExpiresAt) {
+ 		return nil, nil, ErrTokenInvalid
+ 	}
+ 
+-	user, err := s.users.GetByID(ctx, rt.UserID)
+-	if err != nil || !user.Active {
++	owner, err := s.users.GetByID(ctx, rt.UserID)
++	if err != nil || !owner.Active {
+ 		return nil, nil, ErrTokenInvalid
+ 	}
+ 
++	// Konteks sesi wajib bertahan lintas refresh: kasir tetap kasir,
++	// admin tetap admin. Tanpa ini sesi kasir berubah jadi admin.
++	var pub model.PublicUser
++	if rt.ActingAsCashierID != nil {
++		c, err := s.cashiers.GetByID(ctx, *rt.ActingAsCashierID)
++		if err != nil || !c.Active || c.StoreID != owner.StoreID {
++			return nil, nil, ErrTokenInvalid
++		}
++		pub = c.Public(owner.StoreName)
++	} else {
++		pub = owner.Public()
++	}
++
+ 	if err := s.refresh.Revoke(ctx, hash); err != nil {
+ 		return nil, nil, err
+ 	}
+-	pair, err := s.issueTokens(ctx, user.ID, nil)
++	pair, err := s.issueTokens(ctx, owner.ID, rt.ActingAsCashierID)
+ 	if err != nil {
+ 		return nil, nil, err
+ 	}
+-	return user, pair, nil
++	return &pub, pair, nil
+ }
+ 
+ func (s *AuthService) RecordHeartbeat(ctx context.Context, claims *Claims, now time.Time) error {
+@@ -556,7 +569,12 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string, claims ..
+ 	if refreshToken != "" {
+ 		hash := hashToken(refreshToken)
+ 		if rt, err := s.refresh.GetActiveByHash(ctx, hash); err == nil && !rt.Revoked && !time.Now().After(rt.ExpiresAt) {
+-			_ = s.users.UpdateLastSeenAt(ctx, rt.UserID, nil)
++			// Tandai entity sesi yang benar offline (kasir vs owner).
++			if rt.ActingAsCashierID != nil {
++				_ = s.cashiers.UpdateLastSeenAt(ctx, *rt.ActingAsCashierID, nil)
++			} else {
++				_ = s.users.UpdateLastSeenAt(ctx, rt.UserID, nil)
++			}
+ 		}
+ 		_ = s.refresh.Revoke(ctx, hash)
+ 	}
+@@ -763,7 +781,7 @@ func (s *AuthService) issueTokens(ctx context.Context, ownerID uint, actingAsCas
+ 	}
+ 	refresh := hex.EncodeToString(raw)
+ 
+-	if err := s.refresh.Create(ctx, owner.ID, hashToken(refresh), now.Add(s.refreshTTL)); err != nil {
++	if err := s.refresh.Create(ctx, owner.ID, actingAsCashierID, hashToken(refresh), now.Add(s.refreshTTL)); err != nil {
+ 		return nil, err
+ 	}
+ 
+diff --git a/service/interfaces.go b/service/interfaces.go
+index a8c7554..56fd31a 100644
+--- a/service/interfaces.go
++++ b/service/interfaces.go
+@@ -32,7 +32,7 @@ type CashierRepository interface {
+ }
+ 
+ type RefreshRepository interface {
+-	Create(ctx context.Context, userID uint, tokenHash string, expiresAt time.Time) error
++	Create(ctx context.Context, userID uint, actingAsCashierID *uint, tokenHash string, expiresAt time.Time) error
+ 	GetActiveByHash(ctx context.Context, tokenHash string) (*model.RefreshToken, error)
+ 	Revoke(ctx context.Context, tokenHash string) error
+ 	RevokeAllForUser(ctx context.Context, userID uint) error

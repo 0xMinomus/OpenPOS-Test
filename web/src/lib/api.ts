@@ -3,6 +3,28 @@ import { useEffect, useState } from 'react'
 const BASE = import.meta.env.VITE_API_URL ?? '/api/v1'
 const ACCESS_KEY = 'op_access'
 const REFRESH_KEY = 'op_refresh'
+const ACCOUNTS_KEY = 'op_accounts'
+
+// Sesi per-tab (sessionStorage): dua tab/akun di browser yang sama tidak
+// saling menimpa token (bug "pindah akun tiap refresh"). Token lama di
+// localStorage dimigrasikan sekali lalu dihapus agar tak jadi sesi bayangan.
+function migrateLegacySession() {
+  try {
+    if (sessionStorage.getItem(ACCESS_KEY) || sessionStorage.getItem(REFRESH_KEY)) return
+    const access = localStorage.getItem(ACCESS_KEY)
+    const refresh = localStorage.getItem(REFRESH_KEY)
+    if (access) sessionStorage.setItem(ACCESS_KEY, access)
+    if (refresh) sessionStorage.setItem(REFRESH_KEY, refresh)
+    localStorage.removeItem(ACCESS_KEY)
+    localStorage.removeItem(REFRESH_KEY)
+    // Cache akun lama juga dibuang: sudah tak dibaca (kini per-tab)
+    // dan jangan menyisakan daftar akun di penyimpanan global.
+    localStorage.removeItem(ACCOUNTS_KEY)
+  } catch {
+    // storage diblokir (mode privat) — sesi tetap jalan tanpa persistensi
+  }
+}
+migrateLegacySession()
 
 export class ApiError extends Error {
   status: number
@@ -15,7 +37,7 @@ export class ApiError extends Error {
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(ACCESS_KEY)
+  return sessionStorage.getItem(ACCESS_KEY)
 }
 
 export function hasToken(): boolean {
@@ -23,13 +45,18 @@ export function hasToken(): boolean {
 }
 
 export function clearTokens() {
+  sessionStorage.removeItem(ACCESS_KEY)
+  sessionStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(ACCESS_KEY)
   localStorage.removeItem(REFRESH_KEY)
+  // Cache daftar akun ikut dibersihkan: jangan bocor ke sesi berikutnya.
+  sessionStorage.removeItem(ACCOUNTS_KEY)
+  localStorage.removeItem(ACCOUNTS_KEY)
 }
 
 function saveTokens(access: string, refresh: string) {
-  localStorage.setItem(ACCESS_KEY, access)
-  localStorage.setItem(REFRESH_KEY, refresh)
+  sessionStorage.setItem(ACCESS_KEY, access)
+  sessionStorage.setItem(REFRESH_KEY, refresh)
 }
 
 let refreshing: Promise<string> | null = null
@@ -37,7 +64,7 @@ let refreshing: Promise<string> | null = null
 async function refreshTokens(): Promise<string> {
   if (!refreshing) {
     refreshing = (async () => {
-      const rt = localStorage.getItem(REFRESH_KEY)
+      const rt = sessionStorage.getItem(REFRESH_KEY)
       if (!rt) throw new ApiError(401, 'Sesi berakhir. Silakan masuk kembali.')
       const res = await fetch(`${BASE}/auth/refresh`, {
         method: 'POST',
@@ -224,9 +251,20 @@ export function apiRegister(name: string, email: string, password: string, store
 }
 
 export async function apiLogout() {
-  const rt = localStorage.getItem(REFRESH_KEY)
+  const rt = sessionStorage.getItem(REFRESH_KEY)
+  const token = getToken()
   try {
-    await request('POST', '/auth/logout', rt ? { refresh_token: rt } : undefined, false)
+    // Manual fetch (bukan request()): logout tak boleh memicu auto-refresh.
+    // Authorization ikut dikirim agar backend tahu sesi kasir mana yang
+    // harus ditandai offline (kontrak presence), tanpa bocor ke body.
+    await fetch(`${BASE}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        ...(rt ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: rt ? JSON.stringify({ refresh_token: rt }) : undefined,
+    })
   } catch {
     // best-effort
   }
@@ -269,11 +307,11 @@ export async function apiHasActiveCashiers(): Promise<boolean> {
   }
 }
 
-const ACCOUNTS_KEY = 'op_accounts'
-
+// Cache akun per-tab: cegah daftar akun admin terbaca sesi lain
+// di browser yang sama setelah ganti akun/logout.
 export function getCachedAccounts(): User[] {
   try {
-    const raw = localStorage.getItem(ACCOUNTS_KEY)
+    const raw = sessionStorage.getItem(ACCOUNTS_KEY)
     return raw ? (JSON.parse(raw) as User[]) : []
   } catch {
     return []
@@ -282,7 +320,7 @@ export function getCachedAccounts(): User[] {
 
 export function setCachedAccounts(users: User[]) {
   try {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(users))
+    sessionStorage.setItem(ACCOUNTS_KEY, JSON.stringify(users))
   } catch {
     // abaikan — cache hanya akselerator menu ganti akun
   }

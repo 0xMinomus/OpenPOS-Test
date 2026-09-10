@@ -185,3 +185,46 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - Installer di `web/release-out/` (gitignored), didistribusikan via GitHub Releases;
   `/unduh` menunjuk daftar rilis.
 - Dokumentasi lengkap: `docs/NATIVE-OFFLINE-APP.md`. Verifikasi: `npm run electron:smoke`.
+
+---
+
+## 14. Sesi 10 Sep 2026 — notifikasi, Users, auth (BUG PENTING)
+
+### Notifikasi admin (redesign)
+- Komponen pindah ke `web/src/lib/notifications.tsx` (bell admin-only, tab
+  Semua/Stok/Transaksi/Sistem, muat lebih banyak, tandai baca, batas 10 per
+  jenis hapus-terlama best-effort). Kontrak: `docs/API-CONTRACT-ADMIN-NOTIFICATIONS.md`.
+- Kategori: `type` menang atas label `category` (backend sempat kirim
+  `low_stock` berlabel `sistem`). Sistem khusus event akun (passcode, kasir on/off).
+
+### User Management (redesign)
+- `web/src/pages/Users.tsx` rewrite: 4 kartu, toolbar search/status/sort,
+  tabel 7 kolom + kartu mobile, aksi 3-dot, aktivitas + kasir teraktif,
+  Export CSV semua akun. Filter role & tulisan passcode dihapus (permintaan).
+- Status tunggal Online/Offline (presence). Heartbeat 30 dtk di `AppShell` →
+  `POST /presence/heartbeat`. Kontrak: `docs/API-CONTRACT-PRESENCE.md`.
+  Interim tanpa data: semua tampil Offline (jujur).
+- Audit log user menunggu `docs/API-CONTRACT-USER-ACTIVITY.md`; section
+  aktivitas sementara dari data turunan (akun dibuat + transaksi).
+
+### BUG sesi/auth (root cause + fix)
+- **Backend**: refresh token tak menyimpan `acting_as` → `POST /auth/refresh`
+  selalu terbitkan sesi admin; sesi kasir berubah jadi admin tiap access
+  token kedaluwarsa (≤15 mnt). Tereproduksi live di produksi.
+  Laporan: `docs/BUG-REPORT-AUTH-REFRESH-CASHIER.md`,
+  patch siap `git apply`: `docs/patches/fix-refresh-acting-as.patch`
+  (kolom `acting_as_cashier_id` di refresh_tokens + validasi + Logout benar).
+  **Menunggu Adrr terapkan + deploy.**
+- **Frontend** (sudah jalan): token pindah ke `sessionStorage` per-tab →
+  dua akun di satu browser tak saling menimpa; `localStorage` legacy
+  dimigrasikan sekali lalu dibersihkan; `op_accounts` per-tab + dibersihkan
+  saat logout; `apiLogout` kirim header Authorization (presence benar).
+- Konsekuensi: sesi tidak lagi bertahan setelah tab/browser ditutup
+  (trade-off keamanan; login ulang). Bila ingin persist, bahas ulang desain.
+
+### Catatan verifikasi
+- Harness CDP: `/json/new` TIDAK otomatis navigasi — selalu `Page.navigate`
+  + poll `location.href` sebelum inject storage. `--disable-web-security`
+  membuat `sessionStorage` "Access denied" di `about:blank` (artefak, bukan bug app).
+- Uji migrasi per-tab lolos di dev: SS terisi, LS legacy bersih, tab baru
+  tidak mewarisi sesi.
