@@ -50,14 +50,14 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 - **Nomor transaksi `TRX-XXXX`** dihitung GLOBAL di backend (bug PK conflict antar toko sudah diperbaiki backend dengan seq global — JANGAN ubah).
 
 ### File frontend penting (`web/src/`)
-- `lib/api.ts` — semua helper API + tipe server (`snake_case`) + `request()` (auto-refresh) + `fetchAll()` + `useFetch()`.
-- `lib/cache.ts` — `useCache(key, fn)` stale-while-revalidate (TTL 60 dtk, key wajib identitas sesi); semua halaman data memakainya agar navigasi balik instan.
+- `lib/api.ts` — semua helper API + tipe server (`snake_case`) + `request()` (auto-refresh) + `fetchAll()` + `useFetch()`. Notifikasi: `Notification` + `apiListNotifications`/`apiMarkNotifRead`/`apiMarkAllNotifsRead` (kontrak `frontend_notifications.ts` backend; prod masih 404 — pending deploy).
+- `lib/cache.ts` — `useCache(key, fn)` stale-while-revalidate (TTL 60 dtk, key wajib identitas sesi); **ganti key kini set `loading:true` jujur** (mount/back-nav tak berubah; filter/paging dapat indikator).
 - **Aplikasi native offline (Electron)** — lihat `docs/NATIVE-OFFLINE-APP.md` (dokumen khusus). Ringkas: `lib/localdb.ts` (data `localStorage` `op_offline_db`) + `lib/local-api.ts` (adapter signature `api.ts`, baca via `getLocalDB()` — jangan `useLocalDB` di fungsi non-hook). Halaman `pages/offline/*` = salinan cloud (impor data diganti `../../lib/local-api`). Entry `offline.html` + `offline-main.tsx` (HashRouter, base `./`, `dist-offline/`). Onboarding nama pemilik+toko di `OfflineShell`. Shell `web/electron/`. Build: `npm run electron:build` → `release-out/`. `/unduh` → link GitHub Releases. Kendala mesin Andika: app "Orca" mengunci dir build → EPERM (tutup Orca / build ke temp).
-- `lib/store.ts` — sesi (`useDB()`, `setSession`, `toSession`), theme, format (`fmtRp/fmtShort/fmtDate/fmtTime`), `exportCSV`.
-- `lib/ui.tsx` — komponen internal (Button, Input, **NumInput** (angka: autospacing ribuan 1000→1.000, titik/koma manual diabaikan, `allowDecimal` untuk pajak), Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis).
+- `lib/store.ts` — sesi (`useDB()`, `setSession`, `toSession`), theme, format (`fmtRp/fmtShort/fmtDate/fmtTime`, **`fmtInv`** `#TRX-00050`), `exportCSV`.
+- `lib/ui.tsx` — komponen internal (Button, Input, **NumInput** (angka: autospacing ribuan 1000→1.000, titik/koma manual diabaikan, `allowDecimal` untuk pajak), Modal, Pill, Td/Th, PageHead, Empty, StatusPill) + **`TrxItems`** (chip produk + badge qty untuk list transaksi) + **`SkeletonRows`** (baris skeleton dalam `<thead>` asli agar kolom sama persis) + **`Pager`** (angka + ‹ › ringkas, window >7, `page/total/onChange/className?`, null bila 1 halaman — dipakai Produk/Stok/Transaksi) + **`DatePicker`** (kalender popover tanpa dep baru: trigger + nav bulan + Sen–Min + today/selected + Hari ini/Hapus; nilai `YYYY-MM-DD`; panel `right-0` anti-overflow; dipakai filter tanggal Transaksi).
 - `lib/google.tsx` — `GoogleButton` (Google Identity Services / GIS), `getGoogleClientId`.
 - `lib/ErrorBoundary.tsx` — tampil pesan error, bukan blank.
-- `pages/` — Landing, Masuk, Daftar, AppShell, Dashboard, Pos, Produk, Stok, Transaksi, Laporan, Users, Pengaturan.
+- `pages/` — Landing, Masuk, Daftar, AppShell (menu + **`NotifBell`** bel notifikasi header kanan), Dashboard, Pos, Produk, Stok, Transaksi, Laporan, **Karyawan** (`/app/karyawan`, menu admin setelah Laporan, ikon IdCard), Users, Pengaturan.
 - `vite.config.ts` — proxy dev `/api` → `http://localhost:8080`.
 - `.env.local` — `VITE_API_URL` + `VITE_GOOGLE_CLIENT_ID` (tidak ikut git; `*.local` di gitignore).
 
@@ -76,12 +76,13 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 ## 5. Fitur & Halaman (status terkini)
 
 - **Landing** — selalu light (class `.landing-light` menimpa token tema); demo POS + grafik random; tombol window di card demo sudah dihapus; tanpa menu Shift.
-- **Dashboard** — admin: KPI (Omzet/Transaksi/Produk/Stok menipis, tanpa tren), chart "Penjualan" (label tanggal asli `3 Sep` dari `sales7[].date`), donut metode + legenda %, tabel Transaksi Terbaru (invoice `#TRX-00046` dari `id`; `seq` tak dikirim list), ranking Produk Terlaris + revenue. donut metode bayar, produk terlaris, list "Transaksi Terbaru" (produk + qty via `TrxItems`). Kasir: sapaan, kartu "Kasir siap" + Buka POS, 3 KPI hari ini, "Transaksi Saya".
+- **Dashboard** — admin: KPI (Omzet/Transaksi/Produk/Stok menipis, tanpa tren), chart "Penjualan" (label tanggal asli `3 Sep` dari `sales7[].date`; bar biru `--chart-1`; tooltip `cursor={false}` + box kecil; `[&_:focus]:outline-none` anti-outline klik), donut metode + legenda %, tabel Transaksi Terbaru statis tanpa hover (invoice `#TRX-00046` dari `id`; `seq` tak dikirim list), ranking Produk Terlaris + revenue. donut metode bayar, produk terlaris, list "Transaksi Terbaru" (produk + qty via `TrxItems`). Kasir: sapaan, kartu "Kasir siap" + Buka POS, 3 KPI hari ini, "Transaksi Saya".
 - **POS Kasir** — katalog server, keranjang stok efektif, diskon/pajak dari settings, 5 metode bayar, **Uang Pas** (checkbox di metode Cash → paid=total, tanpa input), checkout ke server, struk redesigned (`#receipt`; print CSS di `index.css` — jangan `inset:0`/width:auto supaya tidak melebar A4).
-- **Produk** — CRUD server, search server-side, filter kategori client + badge jumlah, import/export CSV, kategori dikelola di modal toolbar (hapus = pindahkan produk ke Tanpa Kategori dulu agar hard-delete tanpa popup).
-- **Stok** — status + penyesuaian (alasan wajib, cegah negatif) + riwayat movement.
-- **Transaksi** — list server-side (filter q/method/date), kolom **Produk** (`TrxItems`), detail, refund (admin), export CSV. Field waktu = **`created_at`** (backend GORM — JANGAN pakai `time`).
-- **Laporan** — tab Penjualan/Produk/Profit/Stok + 5 periode + Export CSV; KPI + bar chart omzet harian (agregat frontend dari `transactions[].date`), donut metode, status, top produk, profit trx, nilai stok.
+- **Produk** — CRUD server, search server-side, filter kategori client + badge jumlah, import/export CSV, kategori dikelola di modal toolbar (hapus = pindahkan produk ke Tanpa Kategori dulu agar hard-delete tanpa popup). Paging 15/halaman (`Pager` angka + ‹ ›, kanan).
+- **Stok** — REDESIGN jadi inventory workspace: 4 kartu (Total/Aman/Menipis/Habis, threshold existing 0/<=5), toolbar search + dropdown kategori proper, tab Stok Saat Ini (15→10/halaman via `Pager`) | Riwayat, baris statis, kolom Stok tengah, aksi teks Penyesuaian, modal penyesuaian utuh (alasan wajib, cegah negatif). Deep-link `?tab=riwayat`.
+- **Transaksi** — REDESIGN jadi workspace: 4 kartu (Total, Omzet, Hari Ini via dashboard, Rata-rata; fetch-all ikut filter), toolbar search + **`DatePicker`** + pill metode, tabel (Invoice `#TRX-`, tanggal compact, Pelanggan dari `t.customer`, Kasir admin-only, Produk chips, Total menonjol, aksi teks Detail/Refund, baris statis), mobile kartu, detail modal + Pelanggan, 10/halaman `Pager`, export CSV. Field waktu = **`created_at`** (backend GORM — JANGAN pakai `time`).
+- **Laporan** — REDESIGN 5 tab (Penjualan/Produk/Profit/Stok/**Karyawan**) + 5 periode + Export CSV. Header: pill periode + segmented tab + loading jujur (dim + "Memuat…", tanpa layout shift; sticky dibatalkan — `overflow-x:hidden` global mematikan sticky). Penjualan: KPI + komparasi kemarin (khusus Hari ini), chart Bar+Line (slot Pagi/Siang/Sore/Malam untuk 1 hari; tooltip range jam), donut center+%, tabel invoice+status, top5 revenue. Produk: KPI (Qty/Unik/Pendapatan/Aktif x-dari-y), bar horizontal, donut kategori (join katalog), tabel + Selengkapnya, Perlu Perhatian. Profit: KPI + komparasi (HPP invert panah), chart Pendapatan+HPP+Profit, line margin %, tabel profit, insight valid ≤5. Stok: KPI, bar nilai/kategori, donut status, tabel menipis, movement 5 global. **Karyawan** (tab ke-5, data = bundle laporan): KPI, bar per kasir (selector Nilai/Transaksi/Rata-rata), donut proporsi, tren 5 garis, ranking inisial, transaksi 8, Perubahan vs kemarin.
+- **Notifikasi (baru, pending backend deploy)** — `NotifBell` header kanan: badge unread, panel 20 terbaru, klik = tandai baca (+ ke `/app/stok` untuk low_stock), tandai semua, poll 60 dtk, empty jujur.
 - **Users** — tambah kasir (cukup nama), aktif/nonaktif, **hapus kasir** (modal minta ketik "Konfirmasi" → `DELETE /users/{id}`). Passcode via Pengaturan.
 - **Pengaturan** — tab Akun/Toko/Struk/Pajak/Passcode (Akun: profil sesi + keluar + tema; timezone select WIB/WITA/WIT; passcode per akun tombol Ganti/Pasang + badge Aktif •••••/Mati dari `has_passcode` server; section dummy Informasi dihapus).
 - **Tema** — default light; dark hanya kalau user memilih (`op_theme`).
@@ -102,6 +103,7 @@ Browser (React SPA) ──REST/JSON──▶ Backend Go (Vercel) ──▶ Postg
 | Transaksi | `POST /transactions` `{items:[{productId,qty}],discount,method,paid,customer}` · `GET /transactions` (q/method/date/page/limit) · `POST /transactions/{id}/refund` |
 | Settings | `GET|PUT /settings` |
 | Analitik | `GET /dashboard` (role-aware) · `GET /reports?period=today|yesterday|week|month|all` |
+| Notifikasi (PENDING deploy — prod masih 404) | `GET /notifications` (page/limit/unread) · `PATCH /notifications/{id}/read` · `PATCH /notifications/read-all` · `DELETE /notifications/{id}` |
 
 Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{items,total,page,limit}` (page 1-based, limit max 200). Field `snake_case`.
 
@@ -123,12 +125,20 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - **`sendOtp()` di Daftar** harus `throw` setelah `setErr` (kalau tidak, `.then(setStep(2))` tetap jalan walau 409).
 - **Vite env**: hanya `VITE_*` yang kebaca frontend.
 - **Landing** force light via `.landing-light` CSS (menimpa token) — jangan hapus.
+- **Recharts tooltip cursor**: CSS `ChartContainer` (`[&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted`) mengalahkan prop `fill` — untuk matikan highlight pakai `cursor={false}`, bukan `fill:'transparent'`.
+- **Outline klik chart (Recharts 3)**: fokus jatuh ke `g.recharts-zIndex-layer_*` dalam state `:focus` (BUKAN `:focus-visible`) + outline default browser — varian `[&_:focus-visible]` GAGAL; pakai `[&_:focus]:outline-none` scoped ke chart.
+- **Bar hitam karena salah nama var**: `fill="var(--color-x)"` harus cocok dengan key config ChartContainer (`--color-<key>`); salah nama = hitam pekat (ketahuan via screenshot, bukan tsc).
+- **Headless full-page capture** kadang tak merender bar/donut (artefak harness); verifikasi via screenshot viewport + geometri DOM (`getBoundingClientRect` + jumlah path).
+- **Laporan `t.date` hanya tanggal** (`YYYY-MM-DD`) — agregat per jam ambil dari `created_at` daftar transaksi (`Trx.items[].buy_price` untuk HPP/slot).
+- **Report transactions tak ada**: `customer` (kolom Pelanggan laporan dibatalkan), `created_at`/`status` per baris (pakai `date`/tanpa status), `min_stock`, movement `SKU`/`before`/`after`.
 
 ---
 
 ## 9. Verifikasi & Testing
 
 - Untuk test visual end-to-end: bisa pakai Edge headless + CDP (port 9222/9223, `--remote-debugging-port`), inject token ke localStorage (`op_access`/`op_refresh`), screenshot. Vercel auto-deploy ±90–110 detik setelah push — tunggu sebelum verify.
+- **Jebakan harness CDP (terbukti)**: dev server hanya listen `::1` (pakai `localhost:`, bukan `127.0.0.1`); `/json/new` butuh PUT; `localStorage` hanya setelah navigasi komit (poll `location.href`); backend **preflight CORS dari localhost:5173 sedang 403** → browser butuh `--disable-web-security`; token access 15 mnt (login ulang tiap sesi uji); target baru kadang blank (profil fresh + tanpa poll-hammer).
+- Skrip CDP reusable di `C:\Users\Andika\AppData\Local\Temp\opencode\cdp_*.js` (login, klik, baca DOM, screenshot).
 - Akun test produksi: `akun-demo@example.com` / password `REDACTED` / passcode `REDACTED` (akun demo, role admin, terverifikasi).
 - Ganti ke kasir: buat kasir via `POST /users` lalu `POST /auth/switch` (tanpa passcode kalau kasir baru), injek token ke browser.
 
@@ -148,6 +158,21 @@ Pola: error `{error: "pesan Indonesia"}` langsung ditampilkan. Pagination `{item
 - Komunikasi AI sesi ini: caveman/ponytail (tersingkat). Kode tetap normal.
 - Push tiap perubahan, commit jelas (feat:/fix:/style:/docs:/revert:).
 - Jangan sentuh backend repo (hanya frontend `OpenPOS-Test`).
+- Skill `impeccable` dipakai untuk redesign (Stok/Transaksi/Laporan/Karyawan): Q&ACollege dulu untuk gap data, `PRODUCT.md` (root) wajib ada, detector `scripts/detect.mjs` bersih tiap selesai, reviewer bawaan tak ada di harness → ronde screenshot jadi pengganti (disclose).
+
+---
+
+## 13. Sesi 9 Sep 2026 — ringkasan perubahan (detail: `updatelist9sep.MD` 22 item)
+
+1. Dashboard: tooltip tanpa box besar (undo → box kecil + `cursor={false}`), bar biru, outline klik mati, baris Transaksi statis.
+2. Produk: baris statis + paging 15 (`Pager` angka).
+3. Stok: redesign workspace + 5 revisi (statis, stok tengah, aksi teks, tanpa angka tab, dropdown kategori, 10/halaman).
+4. Transaksi: redesign + `DatePicker` kalender + baris statis + 10/halaman.
+5. Laporan: header global (tanpa dot, tanpa sticky) + loading jujur + tab Penjualan/Produk/Profit/Stok + slot jam Pagi–Malam + komparasi kemarin + `fmtInv`.
+6. Karyawan: subpage baru (menu mandiri, ikon IdCard) — rencana tab di-undo.
+7. Notifikasi: bel header (pending backend deploy).
+8. File bersama: `PRODUCT.md` (baru), `Pager`/`DatePicker`/`fmtInv`, `useCache` loading jujur.
+9. Porting offline BELUM dikerjakan — checklist di `updatelist9sep.MD`.
 
 ---
 
