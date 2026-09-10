@@ -15,10 +15,8 @@ const STEPS = [
 export default function Daftar() {
   const nav = useNavigate()
   const [params] = useSearchParams()
-  const [mode, setMode] = useState<'choice' | 'email' | 'google-onboard' | 'google-pin'>('choice')
+  const [mode, setMode] = useState<'choice' | 'email' | 'google-onboard'>('choice')
   const [googleUser, setGoogleUser] = useState<User | null>(null)
-  const [googleCred, setGoogleCred] = useState('')
-  const [googlePin, setGooglePin] = useState('')
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -144,36 +142,12 @@ export default function Daftar() {
       }
     } catch (x) {
       if (x instanceof ApiError && x.code === 'passcode_required') {
-        // Akun Google ber-passcode: minta PIN, ulangi dengan credential sama.
-        setGoogleCred(credential)
-        setMode('google-pin')
-        setErr('')
+        // Passcode kini hanya diminta di menu pilih akun (switch) — kontrak
+        // docs/API-CONTRACT-LOGIN-OTP.md.
+        setErr('Server masih meminta passcode untuk login Google. Sementara, masuk dengan email dan kata sandi.')
       } else {
         setErr(x instanceof Error ? x.message : 'Login Google gagal. Coba lagi.')
       }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function submitGooglePasscode(e: React.FormEvent) {
-    e.preventDefault()
-    setErr(''); setBusy(true)
-    try {
-      const r = await apiGoogleLogin(googleCred, undefined, googlePin)
-      setSession(toSession(r.user))
-      const age = r.user.created_at ? Date.now() - new Date(r.user.created_at).getTime() : Infinity
-      if (age < 2 * 60 * 1000) {
-        setGoogleUser(r.user)
-        setStore(r.user.store_name)
-        setMode('google-onboard')
-        setStep(3)
-      } else {
-        nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
-      }
-    } catch (x) {
-      setErr(x instanceof Error ? x.message : 'Passcode salah. Coba lagi.')
-      setGooglePin('')
     } finally {
       setBusy(false)
     }
@@ -250,28 +224,6 @@ export default function Daftar() {
                 Daftar dengan Email
               </button>
             </div>
-          )}
-
-          {mode === 'google-pin' && (
-            <form onSubmit={submitGooglePasscode} className="flex flex-col gap-4" noValidate>
-              <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
-                Akun Google ini dilindungi passcode. Masukkan 5 angka untuk melanjutkan.
-              </div>
-              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
-                Passcode
-                <input
-                  value={googlePin}
-                  onChange={(e) => setGooglePin(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                  type="password" inputMode="numeric" autoFocus
-                  placeholder="•••••"
-                  className="rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-lg tracking-[0.5em] focus:border-jet focus:outline-none"
-                />
-              </label>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => { setMode('choice'); setGoogleCred(''); setGooglePin(''); setErr('') }} className="flex-1 rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet">Batal</button>
-                <button type="submit" disabled={googlePin.length !== 5 || busy} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">Masuk</button>
-              </div>
-            </form>
           )}
 
           {mode === 'email' && step === 1 && (
