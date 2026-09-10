@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Bell, Boxes, ChevronRight, Info, ReceiptText } from 'lucide-react'
+import { Bell, Boxes, ChevronRight, Info, PackageX, ReceiptText } from 'lucide-react'
 import {
   apiGetNotifUnreadCount,
   apiListNotifications,
@@ -52,9 +52,27 @@ function timeAgo(iso: string): string {
 }
 
 const CAT_STYLE: Record<NotifCategory, { icon: typeof Boxes; box: string }> = {
-  stok: { icon: Boxes, box: 'bg-ember/10 text-ember' },
+  stok: { icon: Boxes, box: 'bg-sunbeam/15 text-sunbeam' },
   transaksi: { icon: ReceiptText, box: 'bg-success-bg text-sprout' },
   sistem: { icon: Info, box: 'bg-sand text-steel' },
+}
+
+// Derajat stok: backend belum bedakan menipis/habis (selalu
+// `low_stock` + judul sama) — turunkan dari sisa di pesan
+// ("tersisa 0 unit" = habis). Hapus bila kontrak §6 live.
+// ponytail: regex spesifik format backend; fallback menipis.
+const OUT_TYPES = new Set(['out_of_stock', 'stock_out'])
+export function stockSeverity(n: Notification): 'habis' | 'menipis' {
+  const t = (n.type ?? '').toLowerCase()
+  if (OUT_TYPES.has(t)) return 'habis'
+  const m = /tersisa\s+(\d+)/i.exec(n.message ?? '')
+  if (m && Number(m[1]) === 0) return 'habis'
+  return 'menipis'
+}
+
+export function displayTitle(n: Notification): string {
+  if (categoryOf(n) === 'stok') return stockSeverity(n) === 'habis' ? 'Stok habis' : 'Stok menipis'
+  return n.title
 }
 
 const EMPTY_SUB: Record<NotifTab, string> = {
@@ -71,6 +89,7 @@ export function NotifBell() {
   const [tab, setTab] = useState<NotifTab>('all')
   const [items, setItems] = useState<Notification[]>([])
   const [total, setTotal] = useState(0)
+  const [fetched, setFetched] = useState(0)
   const [page, setPage] = useState(1)
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -108,8 +127,12 @@ export function NotifBell() {
     apiListNotifications({ page, limit: PAGE_SIZE, category: tab === 'all' ? undefined : tab })
       .then((d) => {
         if (dead) return
-        setItems((xs) => (first ? d.items : [...xs, ...d.items]))
+        // Backend lama abaikan param `category` (semua tab dapat semua
+        // item) — saring di client. No-op bila backend kontrak §2 live.
+        const shown = tab === 'all' ? d.items : d.items.filter((x) => categoryOf(x) === tab)
+        setItems((xs) => (first ? shown : [...xs, ...shown]))
         setTotal(d.total)
+        setFetched((c) => (first ? d.items.length : c + d.items.length))
       })
       .catch((e) => { if (!dead && first) setErr(e instanceof Error ? e.message : 'Gagal memuat notifikasi.') })
       .finally(() => { if (!dead) { setLoading(false); setMore(false) } })
@@ -134,6 +157,7 @@ export function NotifBell() {
     if (t === tab) return
     setTab(t)
     setPage(1)
+    setFetched(0)
   }
 
   function toggle() {
@@ -141,6 +165,7 @@ export function NotifBell() {
       if (!o) {
         // buka = segarkan halaman pertama tab aktif
         setPage(1)
+        setFetched(0)
         setTick((t) => t + 1)
       }
       return !o
@@ -173,7 +198,7 @@ export function NotifBell() {
     }
   }
 
-  const hasMore = items.length < total
+  const hasMore = fetched < total
 
   return (
     <div ref={box} className="relative">
@@ -277,7 +302,7 @@ export function NotifBell() {
                   disabled={more}
                   className="w-full rounded-lg py-1.5 text-center text-[13px] font-medium text-fg transition outline-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 >
-                  {more ? 'Memuat…' : `Muat lebih banyak (${total - items.length} lagi)`}
+                  {more ? 'Memuat…' : `Muat lebih banyak (${total - fetched} lagi)`}
                 </button>
               ) : (
                 <button
@@ -297,12 +322,16 @@ export function NotifBell() {
 
 function NotifItem({ n, onOpen }: { n: Notification; onOpen: () => void }) {
   const cat = categoryOf(n)
-  const { icon: Icon, box } = CAT_STYLE[cat]
+  const sev = cat === 'stok' ? stockSeverity(n) : null
+  const { icon: Icon, box } = sev === 'habis'
+    ? { icon: PackageX, box: 'bg-ember/10 text-ember' }
+    : CAT_STYLE[cat]
+  const title = displayTitle(n)
   return (
     <li>
       <button
         onClick={onOpen}
-        aria-label={`${n.title}${n.read ? '' : ', belum dibaca'}`}
+        aria-label={`${title}${n.read ? '' : ', belum dibaca'}`}
         className={`group flex w-full items-start gap-3 px-4 py-3 text-left transition outline-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
           n.read ? '' : 'bg-surface/60'
         }`}
@@ -312,7 +341,7 @@ function NotifItem({ n, onOpen }: { n: Notification; onOpen: () => void }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className={`block truncate text-sm ${n.read ? 'text-fg' : 'font-medium text-fg'}`}>
-            {n.title}
+            {title}
           </span>
           <span className="mt-0.5 line-clamp-2 block text-[13px] leading-snug text-muted">
             {n.actor_name ? `${n.actor_name} — ${n.message}` : n.message}
