@@ -791,6 +791,17 @@ butuh detik). Jadi lag server tak terlihat: "delay misterius".
 
 ---
 
+## 23. Users — opsi Ganti nama kasir (cloud saja, MENUNGGU backend)
+
+- **Status:** UI + kontrak selesai + push; endpoint belum ada
+  (cek router + handler backend: hanya List/Create/SetActive/Delete).
+- **File:** `web/src/lib/api.ts` (`apiRenameUser` → `PATCH /users/{id}`
+  `{name}`), `Users.tsx` (item "Ganti nama" + modal),
+  `docs/API-CONTRACT-USER-RENAME.md` (untuk Adrr).
+- Sampai live, aksi 404 dan error tampil apa adanya.
+
+---
+
 ## Checklist porting native
 
 | No | Perubahan cloud | File offline tujuan | Sudah diporting |
