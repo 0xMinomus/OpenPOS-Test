@@ -441,6 +441,29 @@ export function apiDeleteNotif(id: number | string) {
   return request<{ status: string }>('DELETE', `/notifications/${id}`)
 }
 
+// ── activity log (audit akun, admin-only) ─────────────────────────────
+// Kontrak: docs/API-CONTRACT-USER-ACTIVITY.md (diajukan ke backend).
+// Null bila endpoint belum live — pemanggil wajib fallback data turunan.
+
+export interface ActivityItem {
+  id: number | string
+  actor_id: string
+  actor_name: string
+  action: string
+  detail: string
+  reference_type?: string
+  reference_id?: string
+  created_at: string
+}
+
+export async function apiListActivity(f: { page?: number; limit?: number } = {}): Promise<Page<ActivityItem> | null> {
+  try {
+    return await request<Page<ActivityItem>>('GET', '/activity' + qs({ ...f }))
+  } catch {
+    return null
+  }
+}
+
 // ── transaksi ────────────────────────────────────────────────────────
 
 export function apiCheckout(body: {
