@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings, IdCard,
   Moon, Sun, LogOut, ChevronsUpDown, Check, UserRound,
 } from 'lucide-react'
-import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
+import { ApiError, apiHeartbeat, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
 import { setSession, toSession, useDB, useTheme } from '../lib/store'
 import { NotifBell } from '../lib/notifications'
 import { Logo } from '../lib/ui'
@@ -44,6 +44,15 @@ export default function AppShell() {
       .finally(() => { if (!dead) setBoot(true) })
     return () => { dead = true }
   }, [s])
+
+  // Heartbeat presence tiap 30 dtk selagi sesi ada (kontrak presence).
+  // ponytail: interval polos; browser throttle otomatis saat tab hidden.
+  useEffect(() => {
+    if (!s) return
+    apiHeartbeat()
+    const timer = setInterval(apiHeartbeat, 30_000)
+    return () => clearInterval(timer)
+  }, [s?.id, s?.role])
 
   if (!s) {
     if (hasToken() && !boot) return null

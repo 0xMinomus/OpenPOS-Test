@@ -39,6 +39,27 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
+// Presence: online bila flag server true atau last_seen < 2 mnt.
+// Null = backend lama tanpa field → badge tak tampil (interim).
+// ponytail: ambang client 2 mnt (interval heartbeat 30 dtk + toleransi).
+function presenceOf(u: User): boolean | null {
+  if (typeof u.online === 'boolean') return u.online
+  if (!u.last_seen_at) return null
+  const t = +new Date(u.last_seen_at)
+  return isNaN(t) ? null : Date.now() - t < 120_000
+}
+
+function Presence({ u }: { u: User }) {
+  const p = presenceOf(u)
+  if (p === null) return null
+  return (
+    <span className={`mt-1 flex items-center gap-1 text-[11px] font-medium ${p ? 'text-sprout' : 'text-ember'}`}>
+      <span className={`size-1.5 rounded-full ${p ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
+      {p ? 'Online' : 'Offline'}
+    </span>
+  )
+}
+
 function todayStr() {
   const t = new Date()
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
@@ -455,6 +476,7 @@ export default function Users() {
                             <span className={`size-1.5 rounded-full ${u.active ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
                             {u.active ? 'Aktif' : 'Nonaktif'}
                           </span>
+                          <Presence u={u} />
                         </Td>
                         <Td mono>{u.created_at ? fmtDate(u.created_at) : '—'}</Td>
                         <Td><span className="whitespace-nowrap text-muted">{lastAct(u)}</span></Td>
@@ -487,6 +509,7 @@ export default function Users() {
                           <span className={`size-1.5 rounded-full ${u.active ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
                           {u.active ? 'Aktif' : 'Nonaktif'}
                         </span>
+                        <Presence u={u} />
                       </div>
                       <dl className="mt-3 space-y-1.5 text-[13px]">
                         <div className="flex justify-between gap-3"><dt className="text-fog">Bergabung</dt><dd className="font-mono text-xs text-fg">{u.created_at ? fmtDate(u.created_at) : '—'}</dd></div>

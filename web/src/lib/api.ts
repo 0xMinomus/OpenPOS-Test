@@ -98,6 +98,9 @@ export interface User {
   store_name: string
   has_passcode: boolean
   created_at?: string
+  // Presence (kontrak docs/API-CONTRACT-PRESENCE.md; absen = backend lama).
+  online?: boolean
+  last_seen_at?: string
 }
 
 export interface AuthResp {
@@ -232,6 +235,17 @@ export async function apiLogout() {
 
 export function apiMe() {
   return request<{ user: User }>('GET', '/auth/me')
+}
+
+// Heartbeat presence: dipanggil tiap 30 dtk selagi login.
+// Best-effort — 404 di backend lama bukan error.
+// ponytail: tanpa retry/tracking; server yang hitung online dari last_seen.
+export async function apiHeartbeat(): Promise<void> {
+  try {
+    await request<{ status: string }>('POST', '/presence/heartbeat')
+  } catch {
+    // abaikan; presence tak tampil sampai kontrak live
+  }
 }
 
 // ── ganti akun cepat (admin ⇄ kasir, dalam toko yang sama) ────────────
