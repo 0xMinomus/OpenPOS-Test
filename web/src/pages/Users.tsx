@@ -618,10 +618,6 @@ export default function Users() {
         </div>
       </div>
 
-      <p className="mt-4 text-[13px] text-muted">
-        Passcode tiap akun diatur di <Link to="/app/pengaturan" className="font-medium text-jet hover:underline">Pengaturan</Link>.
-      </p>
-
       <Modal open={open} title="Tambah Kasir" onClose={() => setOpen(false)}>
         <div className="space-y-4">
           {formErr && <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{formErr}</p>}
