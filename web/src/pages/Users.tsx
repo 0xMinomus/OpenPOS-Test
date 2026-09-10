@@ -23,7 +23,6 @@ import {
 
 const PAGE_SIZE = 10
 
-type RoleF = '' | 'admin' | 'cashier'
 type StatusF = '' | 'active' | 'inactive'
 type SortId = 'new' | 'old' | 'az' | 'za'
 
@@ -77,7 +76,6 @@ export default function Users() {
   const data = list.data ?? null
 
   const [q, setQ] = useState('')
-  const [roleF, setRoleF] = useState<RoleF>('')
   const [statusF, setStatusF] = useState<StatusF>('')
   const [sort, setSort] = useState<SortId>('new')
   const [page, setPage] = useState(0)
@@ -100,7 +98,7 @@ export default function Users() {
   const [actAll, setActAll] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(0) }, [q, roleF, statusF, sort])
+  useEffect(() => { setPage(0) }, [q, statusF, sort])
   useEffect(() => { if (list.data) setCachedAccounts(list.data) }, [list.data])
 
   // Kinerja hari ini per nama kasir (pola Karyawan: agregat transaksi laporan).
@@ -127,7 +125,6 @@ export default function Users() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
     const rows = (data ?? []).filter((u) => {
-      if (roleF && u.role !== roleF) return false
       if (statusF && (u.active ? 'active' : 'inactive') !== statusF) return false
       if (needle && !`${u.name} ${u.email}`.toLowerCase().includes(needle)) return false
       return true
@@ -137,7 +134,7 @@ export default function Users() {
       if (sort === 'az' || sort === 'za') return sort === 'az' ? a.name.localeCompare(b.name, 'id') : b.name.localeCompare(a.name, 'id')
       return sort === 'new' ? ts(b) - ts(a) : ts(a) - ts(b)
     })
-  }, [data, q, roleF, statusF, sort])
+  }, [data, q, statusF, sort])
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pg = Math.min(page, pages - 1)
@@ -195,7 +192,7 @@ export default function Users() {
   const activeCashiers = cashiers.filter((u) => u.active).length
   const admins = (data?.filter((u) => u.role === 'admin') ?? []).length
   const inactive = (data?.filter((u) => !u.active) ?? []).length
-  const hasFilter = q.trim() !== '' || roleF !== '' || statusF !== ''
+  const hasFilter = q.trim() !== '' || statusF !== ''
   const boot = !data || todayRep.data === null || allRep.data === null || actRep.loading
   const loadErr = err || list.err || todayRep.err || allRep.err
 
@@ -268,7 +265,7 @@ export default function Users() {
   }
 
   function resetFilter() {
-    setQ(''); setRoleF(''); setStatusF(''); setSort('new')
+    setQ(''); setStatusF(''); setSort('new')
   }
 
   function exportAll() {
@@ -415,19 +412,6 @@ export default function Users() {
               </div>
               <div className="flex flex-wrap gap-2.5 lg:ml-auto">
                 <DropdownMenu>
-                  <DropdownMenuTrigger aria-label="Filter role" className="flex items-center justify-between gap-2 rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm transition outline-none hover:border-jet focus-visible:ring-2 focus-visible:ring-ring">
-                    <span>{roleF === 'admin' ? 'Admin' : roleF === 'cashier' ? 'Kasir' : 'Semua Role'}</span>
-                    <ChevronDown className="size-4 shrink-0 text-fog" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    {([['', 'Semua Role'], ['admin', 'Admin'], ['cashier', 'Kasir']] as [RoleF, string][]).map(([v, l]) => (
-                      <DropdownMenuItem key={l} onClick={() => setRoleF(v)}>
-                        <Check className={`size-4 ${roleF === v ? 'opacity-100' : 'opacity-0'}`} />{l}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
                   <DropdownMenuTrigger aria-label="Filter status" className="flex items-center justify-between gap-2 rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm transition outline-none hover:border-jet focus-visible:ring-2 focus-visible:ring-ring">
                     <span>{statusF === 'active' ? 'Aktif' : statusF === 'inactive' ? 'Nonaktif' : 'Semua Status'}</span>
                     <ChevronDown className="size-4 shrink-0 text-fog" />
@@ -490,7 +474,7 @@ export default function Users() {
                               <span className="block truncate font-medium text-fg">
                                 {u.name}{u.id === s.id && <span className="ml-1.5 font-normal text-fog">(Anda)</span>}
                               </span>
-                              <span className="block truncate text-xs text-fog">{u.email || 'Tanpa email'}</span>
+                              {u.email ? <span className="block truncate text-xs text-fog">{u.email}</span> : null}
                             </span>
                           </span>
                         </Td>
@@ -523,7 +507,7 @@ export default function Users() {
                           <span className="block truncate font-medium text-fg">
                             {u.name}{u.id === s.id && <span className="ml-1.5 font-normal text-fog">(Anda)</span>}
                           </span>
-                          <span className="block truncate text-xs text-fog">{u.email || 'Tanpa email'}</span>
+                          {u.email ? <span className="block truncate text-xs text-fog">{u.email}</span> : null}
                         </span>
                         {actionMenu(u)}
                       </div>
