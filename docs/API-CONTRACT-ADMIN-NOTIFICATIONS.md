@@ -170,4 +170,18 @@ Keduanya admin-only (403 untuk kasir).
 - [ ] `GET /notifications` dukung `category` + `status`, scope admin, 403 kasir
 - [ ] `GET /notifications/unread-count` live
 - [ ] Event §6 ter-emit ke semua admin toko yang sama (kasir tak menerima)
+- [ ] Retensi §9 jalan (tipe `low_stock` lama ikut dibatasi)
 - [ ] Prod deploy (frontend + backend) lalu verifikasi badge + tab + tandai baca
+
+---
+
+## 9. Retensi — maksimal 10 per jenis (BARU)
+
+Server menyimpan maksimal **10 notifikasi terbaru per `type`** per toko
+(mis. 10 `low_stock` + 10 `transaction_created` + …).
+Saat event baru masuk dan jumlah tipe itu sudah 10, hapus yang terlama
+(`created_at` terkecil) dulu — FIFO per jenis, per toko.
+
+Frontend menegakkan best-effort saat panel dibuka (scan + `DELETE`
+kelebihan via `DELETE /notifications/{id}` yang sudah ada), tapi
+enforcement beneran wajib di server agar berlaku lintas perangkat dan sesi.

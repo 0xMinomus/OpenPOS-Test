@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Bell, Boxes, ChevronRight, Info, PackageX, ReceiptText } from 'lucide-react'
 import {
+  apiDeleteNotif,
   apiGetNotifUnreadCount,
   apiListNotifications,
   apiMarkAllNotifsRead,
@@ -22,6 +23,9 @@ const TABS: { id: NotifTab; label: string }[] = [
 ]
 
 const PAGE_SIZE = 10
+
+// Batas simpan per jenis notifikasi.
+const MAX_PER_TYPE = 10
 
 const STOK_TYPES = new Set(['low_stock', 'out_of_stock', 'restock', 'stock_low', 'stock_out'])
 
@@ -97,14 +101,52 @@ export function NotifBell() {
   const [err, setErr] = useState('')
   const [tick, setTick] = useState(0)
   const box = useRef<HTMLDivElement>(null)
+  const cleaning = useRef(false)
 
   // Admin saja; kasir tak punya panel ini.
   const isAdmin = session?.role === 'admin'
+
+  // Batas 10 per jenis: hapus kelebihan terlama. Best-effort client;
+  // enforcement beneran di server (kontrak §9).
+  async function enforceCap() {
+    if (cleaning.current) return
+    cleaning.current = true
+    try {
+      // ponytail: scan max 5 halaman (1000 item); volume UMKM jauh di bawah.
+      const pool: Notification[] = []
+      for (let page = 1; page <= 5; page++) {
+        const d = await apiListNotifications({ page, limit: 200 })
+        pool.push(...d.items)
+        if (d.items.length === 0 || pool.length >= d.total) break
+      }
+      pool.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+      const kept = new Map<string, number>()
+      const del: (number | string)[] = []
+      for (const n of pool) {
+        const k = (n.type ?? '').toLowerCase() || 'unknown'
+        const c = kept.get(k) ?? 0
+        if (c < MAX_PER_TYPE) kept.set(k, c + 1)
+        else del.push(n.id)
+      }
+      for (const id of del) {
+        try { await apiDeleteNotif(id) } catch { /* best-effort */ }
+      }
+      if (del.length > 0) {
+        setTick((t) => t + 1)
+        apiGetNotifUnreadCount().then((c) => setUnread(c)).catch(() => {})
+      }
+    } catch {
+      // best-effort; panel tetap tampil apa adanya
+    } finally {
+      cleaning.current = false
+    }
+  }
 
   // Badge unread, poll 60 dtk (bukan realtime).
   useEffect(() => {
     if (!isAdmin) return
     let dead = false
+    enforceCap()
     let timer: ReturnType<typeof setTimeout>
     const poll = () => {
       apiGetNotifUnreadCount()
@@ -163,10 +205,11 @@ export function NotifBell() {
   function toggle() {
     setOpen((o) => {
       if (!o) {
-        // buka = segarkan halaman pertama tab aktif
+        // buka = segarkan halaman pertama tab aktif + tegakkan batas 10/jenis
         setPage(1)
         setFetched(0)
         setTick((t) => t + 1)
+        enforceCap()
       }
       return !o
     })

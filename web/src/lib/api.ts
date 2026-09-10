@@ -437,6 +437,10 @@ export function apiMarkAllNotifsRead() {
   return request<{ status: string }>('PATCH', '/notifications/read-all')
 }
 
+export function apiDeleteNotif(id: number | string) {
+  return request<{ status: string }>('DELETE', `/notifications/${id}`)
+}
+
 // ── transaksi ────────────────────────────────────────────────────────
 
 export function apiCheckout(body: {
