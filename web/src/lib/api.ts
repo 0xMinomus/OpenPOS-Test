@@ -32,7 +32,9 @@ export class ApiError extends Error {
   constructor(status: number, message: string, code = '') {
     super(message)
     this.status = status
-    this.code = code
+    // Backend mengirim code uppercase (PASSCODE_REQUIRED/OTP_REQUIRED),
+    // sedangkan pemanggil membandingkan lowercase. Normalkan sekali di sini.
+    this.code = code.toLowerCase()
   }
 }
 
@@ -240,9 +242,15 @@ export interface ReportBundle {
 
 // ── auth ─────────────────────────────────────────────────────────────
 
-export function apiLogin(email: string, password: string, passcode?: string) {
-  return request<AuthResp>('POST', '/auth/login', { email, password, ...(passcode ? { passcode } : {}) }, false)
-    .then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
+// Faktor kedua login email/sandi: `passcode` (lama) atau `otp` (baru,
+// kontrak docs/API-CONTRACT-LOGIN-OTP.md). Google & switch tidak berubah.
+export function apiLogin(email: string, password: string, opts: { passcode?: string; otp?: string } = {}) {
+  return request<AuthResp>('POST', '/auth/login', {
+    email,
+    password,
+    ...(opts.passcode ? { passcode: opts.passcode } : {}),
+    ...(opts.otp ? { otp: opts.otp } : {}),
+  }, false).then((r) => { saveTokens(r.access_token, r.refresh_token); return r })
 }
 
 export function apiRegister(name: string, email: string, password: string, storeName: string) {
@@ -331,8 +339,10 @@ export function setCachedAccounts(users: User[]) {
 // ── verifikasi email OTP ─────────────────────────────────────────────
 // Kontrak: docs/API-CONTRACT-EMAIL-OTP.md (diajukan ke backend developer)
 
-export function apiSendOtp(email: string) {
-  return request<{ message: string }>('POST', '/auth/otp/send', { email }, false)
+// purpose "login": email terdaftar tetap dikirim OTP (kontrak LOGIN-OTP).
+// Tanpa purpose: perilaku registrasi lama (email terdaftar tidak dikirim).
+export function apiSendOtp(email: string, purpose?: 'login') {
+  return request<{ message: string }>('POST', '/auth/otp/send', { email, ...(purpose ? { purpose } : {}) }, false)
 }
 
 export function apiVerifyOtp(email: string, code: string) {

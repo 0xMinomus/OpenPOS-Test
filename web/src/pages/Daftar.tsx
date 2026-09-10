@@ -345,7 +345,7 @@ export default function Daftar() {
               {step === 4 && (
                 <>
                   <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
-                    Terakhir, buat <strong className="text-fg">passcode 5 angka</strong> untuk akun admin Anda. Passcode diminta setiap kali login.
+                    Terakhir, buat <strong className="text-fg">passcode 5 angka</strong> untuk akun admin Anda. Passcode dipakai saat berpindah akun di toko.
                   </div>
                   <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
                     Passcode admin

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ApiError, apiGoogleLogin, apiHasActiveCashiers, apiLogin } from '../lib/api'
+import { ApiError, apiGoogleLogin, apiHasActiveCashiers, apiLogin, apiSendOtp } from '../lib/api'
 import { setSession, toSession } from '../lib/store'
 import { GoogleButton } from '../lib/google'
 import Navbar from './Navbar'
@@ -11,10 +11,34 @@ export default function Masuk() {
   const [password, setPassword] = useState('')
   const [passcode, setPasscode] = useState('')
   const [needPasscode, setNeedPasscode] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [needOtp, setNeedOtp] = useState(false)
+  const [otpMsg, setOtpMsg] = useState('')
+  const [cooldown, setCooldown] = useState(0)
   const [googleCred, setGoogleCred] = useState('')
   const [googlePin, setGooglePin] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
+
+  async function sendLoginOtp() {
+    const em = email.trim().toLowerCase()
+    setOtpMsg(''); setErr(''); setOtp('')
+    try {
+      await apiSendOtp(em, 'login')
+      setOtpMsg(`Kode OTP 6 digit terkirim ke ${em}.`)
+      setCooldown(60)
+    } catch (x) {
+      if (x instanceof ApiError && x.status === 429) setCooldown(60)
+      setOtpMsg('')
+      setErr(x instanceof Error ? x.message : 'Gagal mengirim kode. Coba lagi.')
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,7 +51,13 @@ export default function Masuk() {
       setSession(toSession(r.user))
       nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
     } catch (x) {
-      if (x instanceof ApiError && x.code === 'passcode_required') {
+      if (x instanceof ApiError && x.code === 'otp_required') {
+        // Faktor kedua = OTP email (passcode tetap untuk pilih akun/switch).
+        setNeedOtp(true)
+        setErr('')
+        sendLoginOtp()
+      } else if (x instanceof ApiError && x.code === 'passcode_required') {
+        // Backend lama belum dukung OTP login — fallback form PIN.
         setNeedPasscode(true)
         setErr('')
       } else {
@@ -38,11 +68,28 @@ export default function Masuk() {
     }
   }
 
+  async function submitOtp(e: React.FormEvent) {
+    e.preventDefault()
+    if (otp.length !== 6) return setErr('Masukkan kode OTP 6 digit.')
+    setErr(''); setBusy(true)
+    try {
+      const r = await apiLogin(email.trim().toLowerCase(), password, { otp })
+      setSession(toSession(r.user))
+      nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
+    } catch (x) {
+      if (x instanceof ApiError && (x.status === 410 || x.status === 429)) setCooldown(0)
+      if (x instanceof ApiError && x.code === 'otp_wrong') setOtp('')
+      setErr(x instanceof Error ? x.message : 'Kode salah. Coba lagi.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function submitPasscode(e: React.FormEvent) {
     e.preventDefault()
     setErr(''); setBusy(true)
     try {
-      const r = await apiLogin(email.trim().toLowerCase(), password, passcode)
+      const r = await apiLogin(email.trim().toLowerCase(), password, { passcode })
       setSession(toSession(r.user))
       nav((await apiHasActiveCashiers()) ? '/pilih-akun' : '/app', { replace: true })
     } catch (x) {
@@ -134,6 +181,35 @@ export default function Masuk() {
                 <button type="button" onClick={() => { setNeedPasscode(false); setErr('') }} className="flex-1 rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet">Kembali</button>
                 <button type="submit" disabled={passcode.length !== 5 || busy} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">Masuk</button>
               </div>
+            </form>
+          ) : needOtp ? (
+            <form onSubmit={submitOtp} className="flex flex-col gap-4" noValidate>
+              <div className="rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
+                {otpMsg || 'Mengirim kode OTP…'}
+                <span className="mt-1 block text-xs text-fog">Kode berlaku 10 menit dan hanya bisa dicoba 3 kali.</span>
+              </div>
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-steel">
+                Kode OTP
+                <input
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus
+                  placeholder="••••••"
+                  className="rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-xl tracking-[0.5em] focus:border-jet focus:outline-none"
+                />
+              </label>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setNeedOtp(false); setOtp(''); setOtpMsg(''); setErr('') }} className="flex-1 rounded-full border border-dove py-3 text-[15px] font-medium text-jet hover:border-jet">Kembali</button>
+                <button type="submit" disabled={otp.length !== 6 || busy} className="flex-1 rounded-full bg-jet py-3 text-[15px] font-medium text-paper hover:opacity-85 disabled:opacity-40">{busy ? 'Memverifikasi…' : 'Masuk'}</button>
+              </div>
+              <button
+                type="button"
+                onClick={() => sendLoginOtp()}
+                disabled={cooldown > 0 || busy}
+                className="text-center text-[13px] text-muted hover:underline disabled:opacity-50"
+              >
+                {cooldown > 0 ? `Kirim ulang dalam ${cooldown} detik` : 'Kirim ulang kode'}
+              </button>
             </form>
           ) : googleCred ? (
             <form onSubmit={submitGooglePasscode} className="flex flex-col gap-4" noValidate>
