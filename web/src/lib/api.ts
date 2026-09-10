@@ -382,23 +382,54 @@ export function apiAdjustStock(productId: string, direction: 'plus' | 'minus', q
   return request<{ product: Product }>('POST', '/stock/adjustments', { productId, direction, qty, reason })
 }
 
-// ── notifikasi ─────────────────────────────────────────────────────────
+// ── notifikasi (admin-only) ────────────────────────────────────────────
+// Kontrak: docs/API-CONTRACT-ADMIN-NOTIFICATIONS.md (diajukan ke backend).
+// Server wajib scope ke role admin; kasir tidak menerima panel ini.
+
+export type NotifCategory = 'stok' | 'transaksi' | 'sistem'
 
 export interface Notification {
-  id: number
+  id: number | string
   title: string
   message: string
-  type: 'info' | 'warning' | 'alert' | 'low_stock'
+  // widened ke string: tipe lama ('info'|'warning'|'alert'|'low_stock')
+  // + tipe baru kontrak ('transaction_created', 'refund_created', …).
+  type: string
+  category?: NotifCategory
+  actor_name?: string
+  reference_type?: string
+  reference_id?: number | string
   read: boolean
-  reference_id?: number
   created_at: string
 }
 
-export function apiListNotifications(f: { unread?: boolean; page?: number; limit?: number } = {}) {
-  return request<Page<Notification>>('GET', '/notifications' + qs({ ...f }))
+export function apiListNotifications(f: {
+  unread?: boolean
+  category?: NotifCategory
+  status?: 'all' | 'unread' | 'read'
+  page?: number
+  limit?: number
+} = {}) {
+  const { status, ...rest } = f
+  return request<Page<Notification>>(
+    'GET',
+    '/notifications' + qs({ ...rest, unread: status === 'unread' ? true : status === 'read' ? false : rest.unread }),
+  )
 }
 
-export function apiMarkNotifRead(id: number) {
+// Badge unread; fallback ke list bila endpoint count belum live.
+// ponytail: satu endpoint kecil, fallback hapus bila count stabil live.
+export async function apiGetNotifUnreadCount(): Promise<number> {
+  try {
+    const d = await request<{ total: number }>('GET', '/notifications/unread-count')
+    return d.total
+  } catch {
+    const d = await apiListNotifications({ unread: true, limit: 1 })
+    return d.total
+  }
+}
+
+export function apiMarkNotifRead(id: number | string) {
   return request<{ status: string }>('PATCH', `/notifications/${id}/read`)
 }
 

@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import {
   LayoutDashboard, Store, Package, Boxes, ReceiptText, BarChart3, Users, Settings, IdCard,
-  Moon, Sun, LogOut, ChevronsUpDown, Check, UserRound, Bell,
+  Moon, Sun, LogOut, ChevronsUpDown, Check, UserRound,
 } from 'lucide-react'
-import { ApiError, apiListNotifications, apiListUsers, apiLogout, apiMarkAllNotifsRead, apiMarkNotifRead, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type Notification, type User } from '../lib/api'
-import { fmtDate, fmtTime, setSession, toSession, useDB, useTheme } from '../lib/store'
+import { ApiError, apiListUsers, apiLogout, apiMe, apiSwitchAccount, getCachedAccounts, hasToken, setCachedAccounts, type User } from '../lib/api'
+import { setSession, toSession, useDB, useTheme } from '../lib/store'
+import { NotifBell } from '../lib/notifications'
 import { Logo } from '../lib/ui'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
@@ -115,122 +116,6 @@ export default function AppShell() {
         </main>
       </SidebarInset>
     </SidebarProvider>
-  )
-}
-
-function NotifBell() {
-  const nav = useNavigate()
-  const [open, setOpen] = useState(false)
-  const [items, setItems] = useState<Notification[]>([])
-  const [unread, setUnread] = useState(0)
-  const box = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    let dead = false
-    let timer: ReturnType<typeof setTimeout>
-    // ponytail: poll 60 dtk (bukan realtime); cukup untuk peringatan stok.
-    const poll = () => {
-      Promise.all([
-        apiListNotifications({ unread: true, limit: 1 }),
-        apiListNotifications({ limit: 20 }),
-      ])
-        .then(([u, all]) => {
-          if (dead) return
-          setUnread(u.total)
-          setItems(all.items)
-        })
-        .catch(() => {})
-        .finally(() => { if (!dead) timer = setTimeout(poll, 60_000) })
-    }
-    poll()
-    return () => { dead = true; clearTimeout(timer) }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    const close = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    document.addEventListener('pointerdown', close)
-    document.addEventListener('keydown', esc)
-    return () => {
-      document.removeEventListener('pointerdown', close)
-      document.removeEventListener('keydown', esc)
-    }
-  }, [open ])
-
-  async function readOne(n: Notification) {
-    if (!n.read) {
-      setItems((xs) => xs.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
-      setUnread((c) => Math.max(0, c - 1))
-      try {
-        await apiMarkNotifRead(n.id)
-      } catch {
-        // best-effort; badge diselaraskan saat poll berikutnya
-      }
-    }
-    if (n.type === 'low_stock') nav('/app/stok')
-  }
-
-  async function readAll() {
-    setItems((xs) => xs.map((x) => ({ ...x, read: true })))
-    setUnread(0)
-    try {
-      await apiMarkAllNotifsRead()
-    } catch {
-      // best-effort
-    }
-  }
-
-  return (
-    <div ref={box} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-label={unread > 0 ? `${unread} notifikasi belum dibaca` : 'Notifikasi'}
-        aria-expanded={open}
-        title="Notifikasi"
-        className="relative inline-flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Bell className="size-4" />
-        {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-ember px-1 font-mono text-[10px] font-medium leading-5 text-paper">
-            {unread > 99 ? '99+' : unread}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div role="dialog" aria-label="Notifikasi" className="absolute right-0 top-full z-50 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-dove bg-paper shadow-lg">
-          <div className="flex items-center justify-between gap-2 border-b border-dove px-4 py-3">
-            <p className="text-sm font-medium">Notifikasi</p>
-            {unread > 0 && (
-              <button onClick={readAll} className="text-xs text-muted hover:text-fg hover:underline">
-                Tandai semua dibaca
-              </button>
-            )}
-          </div>
-          {items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-fog">Tidak ada notifikasi.</p>
-          ) : (
-            <div>
-              {items.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => readOne(n)}
-                  className={`flex w-full items-start gap-2.5 border-b border-dove px-4 py-3 text-left transition last:border-0 hover:bg-surface ${n.read ? '' : 'bg-surface/60'}`}
-                >
-                  <span className={`mt-1.5 size-2 shrink-0 rounded-full ${n.read ? 'bg-dove' : n.type === 'low_stock' ? 'bg-ember' : 'bg-sunbeam'}`} aria-hidden="true" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{n.title}</span>
-                    <span className="mt-0.5 block text-[13px] leading-snug text-muted">{n.message}</span>
-                    <span className="mt-1 block font-mono text-[11px] text-fog">{fmtDate(n.created_at)} {fmtTime(n.created_at)}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 
