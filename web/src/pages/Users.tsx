@@ -23,7 +23,7 @@ import {
 
 const PAGE_SIZE = 10
 
-type StatusF = '' | 'active' | 'inactive'
+type StatusF = '' | 'online' | 'offline'
 type SortId = 'new' | 'old' | 'az' | 'za'
 
 const SORTS: { id: SortId; label: string }[] = [
@@ -38,23 +38,22 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
-// Presence: online bila flag server true atau last_seen < 2 mnt.
-// Null = backend lama tanpa field → badge tak tampil (interim).
+// Satu-satunya status: Online bila flag server true atau last_seen < 2 mnt,
+// selebihnya Offline (tak terlihat = tak memakai akun, definisi kontrak).
 // ponytail: ambang client 2 mnt (interval heartbeat 30 dtk + toleransi).
-function presenceOf(u: User): boolean | null {
-  if (typeof u.online === 'boolean') return u.online
-  if (!u.last_seen_at) return null
+function isOnline(u: User): boolean {
+  if (u.online === true) return true
+  if (!u.last_seen_at) return false
   const t = +new Date(u.last_seen_at)
-  return isNaN(t) ? null : Date.now() - t < 120_000
+  return !isNaN(t) && Date.now() - t < 120_000
 }
 
 function Presence({ u }: { u: User }) {
-  const p = presenceOf(u)
-  if (p === null) return null
+  const on = isOnline(u)
   return (
-    <span className={`mt-1 flex items-center gap-1 text-[11px] font-medium ${p ? 'text-sprout' : 'text-ember'}`}>
-      <span className={`size-1.5 rounded-full ${p ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
-      {p ? 'Online' : 'Offline'}
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${on ? 'bg-success-bg text-sprout' : 'bg-ember/10 text-ember'}`}>
+      <span className={`size-1.5 rounded-full ${on ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
+      {on ? 'Online' : 'Offline'}
     </span>
   )
 }
@@ -125,7 +124,7 @@ export default function Users() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
     const rows = (data ?? []).filter((u) => {
-      if (statusF && (u.active ? 'active' : 'inactive') !== statusF) return false
+      if (statusF && (isOnline(u) ? 'online' : 'offline') !== statusF) return false
       if (needle && !`${u.name} ${u.email}`.toLowerCase().includes(needle)) return false
       return true
     })
@@ -413,11 +412,11 @@ export default function Users() {
               <div className="flex flex-wrap gap-2.5 lg:ml-auto">
                 <DropdownMenu>
                   <DropdownMenuTrigger aria-label="Filter status" className="flex items-center justify-between gap-2 rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm transition outline-none hover:border-jet focus-visible:ring-2 focus-visible:ring-ring">
-                    <span>{statusF === 'active' ? 'Aktif' : statusF === 'inactive' ? 'Nonaktif' : 'Semua Status'}</span>
+                    <span>{statusF === 'online' ? 'Online' : statusF === 'offline' ? 'Offline' : 'Semua Status'}</span>
                     <ChevronDown className="size-4 shrink-0 text-fog" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
-                    {([['', 'Semua Status'], ['active', 'Aktif'], ['inactive', 'Nonaktif']] as [StatusF, string][]).map(([v, l]) => (
+                    {([['', 'Semua Status'], ['online', 'Online'], ['offline', 'Offline']] as [StatusF, string][]).map(([v, l]) => (
                       <DropdownMenuItem key={l} onClick={() => setStatusF(v)}>
                         <Check className={`size-4 ${statusF === v ? 'opacity-100' : 'opacity-0'}`} />{l}
                       </DropdownMenuItem>
@@ -479,13 +478,7 @@ export default function Users() {
                           </span>
                         </Td>
                         <Td><Pill tone={u.role === 'admin' ? 'ok' : 'muted'}>{u.role === 'admin' ? 'Admin' : 'Kasir'}</Pill></Td>
-                        <Td>
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.active ? 'bg-success-bg text-sprout' : 'bg-sand text-steel'}`}>
-                            <span className={`size-1.5 rounded-full ${u.active ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
-                            {u.active ? 'Aktif' : 'Nonaktif'}
-                          </span>
-                          <Presence u={u} />
-                        </Td>
+                        <Td><Presence u={u} /></Td>
                         <Td mono>{u.created_at ? fmtDate(u.created_at) : '—'}</Td>
                         <Td><span className="whitespace-nowrap text-muted">{lastAct(u)}</span></Td>
                         <Td>{perfCell(u)}</Td>
@@ -513,10 +506,6 @@ export default function Users() {
                       </div>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         <Pill tone={u.role === 'admin' ? 'ok' : 'muted'}>{u.role === 'admin' ? 'Admin' : 'Kasir'}</Pill>
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.active ? 'bg-success-bg text-sprout' : 'bg-sand text-steel'}`}>
-                          <span className={`size-1.5 rounded-full ${u.active ? 'bg-sprout' : 'bg-ember'}`} aria-hidden="true" />
-                          {u.active ? 'Aktif' : 'Nonaktif'}
-                        </span>
                         <Presence u={u} />
                       </div>
                       <dl className="mt-3 space-y-1.5 text-[13px]">
