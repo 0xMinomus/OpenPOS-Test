@@ -9,7 +9,7 @@ import {
   Search, ShieldCheck, UserPlus, UserRound, UserX, UsersRound,
 } from 'lucide-react'
 import {
-  apiCreateUser, apiDeleteUser, apiGetReport, apiListActivity, apiListUsers, apiSetUserActive,
+  apiCreateUser, apiDeleteUser, apiGetReport, apiListActivity, apiListUsers, apiRenameUser, apiSetUserActive,
   setCachedAccounts, type ActivityItem, type Page, type ReportBundle, type User,
 } from '../lib/api'
 import { useCache } from '../lib/cache'
@@ -93,6 +93,10 @@ export default function Users() {
   const [deleteTyped, setDeleteTyped] = useState('')
   const [deleteErr, setDeleteErr] = useState('')
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const [renameFor, setRenameFor] = useState<User | null>(null)
+  const [renameName, setRenameName] = useState('')
+  const [renameErr, setRenameErr] = useState('')
+  const [renameBusy, setRenameBusy] = useState(false)
   const [actAll, setActAll] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,6 +250,23 @@ export default function Users() {
     }
   }
 
+  async function rename() {
+    if (!renameFor) return
+    const n = renameName.trim()
+    if (!n) return setRenameErr('Nama kasir wajib diisi.')
+    if (n === renameFor.name) return setRenameFor(null)
+    setRenameErr(''); setRenameBusy(true)
+    try {
+      await apiRenameUser(renameFor.id, n)
+      setRenameFor(null)
+      reload()
+    } catch (e) {
+      setRenameErr(e instanceof Error ? e.message : 'Gagal mengganti nama.')
+    } finally {
+      setRenameBusy(false)
+    }
+  }
+
   function resetFilter() {
     setQ(''); setRoleF(''); setStatusF(''); setSort('new')
   }
@@ -285,8 +306,8 @@ export default function Users() {
   }
 
   function actionMenu(u: User) {
-    // Backend hanya dukung aktif/nonaktif + hapus untuk kasir —
-    // menu tak tampil untuk admin maupun diri sendiri.
+    // Ganti nama menunggu endpoint backend (docs/API-CONTRACT-USER-RENAME.md).
+    // Menu tak tampil untuk admin maupun diri sendiri.
     if (u.role !== 'cashier' || u.id === s.id) return null
     return (
       <DropdownMenu>
@@ -297,6 +318,9 @@ export default function Users() {
           <Ellipsis className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => { setRenameFor(u); setRenameName(u.name); setRenameErr('') }}>
+            Ganti nama
+          </DropdownMenuItem>
           {u.active ? (
             <DropdownMenuItem onClick={() => setOffFor(u)}>Nonaktifkan</DropdownMenuItem>
           ) : (
@@ -633,6 +657,17 @@ export default function Users() {
             <Button variant="danger" onClick={() => offFor && setActive(offFor, false)} disabled={offBusy}>
               {offBusy ? '…' : 'Nonaktifkan'}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!renameFor} title={`Ganti nama · ${renameFor?.name ?? ''}`} onClose={() => setRenameFor(null)}>
+        <div className="space-y-4">
+          {renameErr && <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{renameErr}</p>}
+          <Input label="Nama baru" value={renameName} onChange={setRenameName} placeholder="cth: Andi" />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRenameFor(null)}>Batal</Button>
+            <Button onClick={rename} disabled={!renameName.trim() || renameBusy}>{renameBusy ? 'Menyimpan…' : 'Simpan'}</Button>
           </div>
         </div>
       </Modal>

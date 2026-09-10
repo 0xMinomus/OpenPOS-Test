@@ -323,6 +323,11 @@ export function apiSetUserActive(id: string, active: boolean) {
   return request<{ message: string }>('PATCH', `/users/${id}/active`, { active })
 }
 
+// Backend belum implement (404 sampai di-deploy) — lihat docs/API-CONTRACT-USER-RENAME.md.
+export function apiRenameUser(id: string, name: string) {
+  return request<{ message: string }>('PATCH', `/users/${id}`, { name })
+}
+
 export function apiDeleteUser(id: string) {
   return request<{ message: string }>('DELETE', `/users/${id}`)
 }
