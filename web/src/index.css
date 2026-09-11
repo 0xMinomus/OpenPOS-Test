@@ -282,9 +282,9 @@ button { cursor: pointer; }
     background: #fff !important;
     height: auto !important;
   }
-  /* Sembunyikan semua kecuali struk + rantai induknya:
+  /* Sembunyikan semua kecuali struk, isi struk, + rantai induknya:
      tidak ada UI aplikasi, tidak ada halaman kosong. */
-  body *:not(#receipt):not(:has(#receipt)) {
+  body *:not(#receipt):not(#receipt *):not(:has(#receipt)) {
     display: none !important;
   }
   /* Netralkan modal saat cetak: judul + tombol tak ikut, kartu jadi polos. */
@@ -297,6 +297,7 @@ button { cursor: pointer; }
   }
   div[role="dialog"] > div {
     max-width: none !important;
+    width: fit-content !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -304,11 +305,17 @@ button { cursor: pointer; }
     border-radius: 0 !important;
     box-shadow: none !important;
   }
+  div[role="dialog"] div:has(> #receipt) {
+    display: block !important;
+    width: fit-content !important;
+  }
   div[role="dialog"] > div > div:has(h3) {
     display: none !important;
   }
   #receipt {
     padding: 3mm !important;
+    border: none !important;
+    border-radius: 0 !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }

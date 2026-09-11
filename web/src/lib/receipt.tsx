@@ -39,7 +39,7 @@ function ReceiptPaper({ trx, settings }: { trx: Trx; settings: StoreSettings | n
   const st = settings ?? { storeName: '', address: '', phone: '', receiptHeader: '', receiptFooter: '', paper: '58mm' } as StoreSettings
   const payLabel = trx.method.trim().toUpperCase() === 'CASH' ? 'TUNAI' : trx.method.toUpperCase()
   return (
-    <div id="receipt" className="bg-white font-mono text-[12px] leading-relaxed text-black" style={{ width: st.paper }}>
+    <div id="receipt" className="rounded-lg border border-dove bg-white px-4 py-5 font-mono text-[12px] leading-relaxed text-black" style={{ width: st.paper }}>
       <p className="text-center text-[15px] font-bold uppercase leading-snug">{st.storeName}</p>
       {st.address && <p className="mt-0.5 text-center text-[11px] leading-snug">{st.address}</p>}
       {st.phone && <p className="text-center text-[11px] leading-snug">{st.phone}</p>}
