@@ -100,7 +100,8 @@ export default function Users() {
   useEffect(() => { setPage(0) }, [q, statusF, sort])
   useEffect(() => { if (list.data) setCachedAccounts(list.data) }, [list.data])
 
-  // Kinerja hari ini per nama kasir (pola Karyawan: agregat transaksi laporan).
+  // Kinerja hari ini per nama pengguna — kasir & admin (admin kini mencatat
+  // transaksinya sendiri sebagai cashier_id=0, nama tetap dari JWT).
   const perf = useMemo(() => {
     const m = new Map<string, { omzet: number; trx: number }>()
     for (const t of todayRep.data?.transactions ?? []) {
@@ -290,7 +291,6 @@ export default function Users() {
   }
 
   function perfCell(u: User) {
-    if (u.role === 'admin') return <span className="text-fog">—</span>
     const p = perf.get(u.name)
     if (!p || p.trx === 0) return <span className="text-fog">Belum ada transaksi</span>
     return (
