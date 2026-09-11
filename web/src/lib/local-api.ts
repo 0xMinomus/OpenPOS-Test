@@ -13,10 +13,6 @@ export type {
   Category, DashboardAdmin, Movement, Page, PayMethod, Product, ReportBundle, StoreSettings, Trx, TrxItem,
 } from './api'
 
-function nowLocal(): string {
-  return new Date().toISOString()
-}
-
 function page<T>(items: T[], f: { page?: number; limit?: number }): Page<T> {
   const page = Math.max(1, f.page ?? 1)
   const limit = Math.min(200, Math.max(1, f.limit ?? 20))
@@ -185,7 +181,7 @@ export function apiListTransactions(f: { q?: string; method?: string; date?: str
   const q = (f.q ?? '').trim().toLowerCase()
   if (q) items = items.filter((t) => t.id.toLowerCase().includes(q) || t.cashier_name.toLowerCase().includes(q))
   if (f.method) items = items.filter((t) => t.method === f.method)
-  if (f.date) items = items.filter((t) => t.created_at.slice(0, 10) === f.date)
+  if (f.date) items = items.filter((t) => dayKey(t.created_at) === f.date)
   return Promise.resolve(page(items, f))
 }
 
@@ -216,11 +212,14 @@ export function apiUpdateSettings(s: StoreSettings): Promise<StoreSettings> {
 // ── dashboard / laporan ─────────────────────────────────────────────
 
 function dayKey(iso: string): string {
-  return iso.slice(0, 10)
+  // Bucket tanggal pakai zona lokal perangkat (zona toko), BUKAN slice UTC —
+  // slice UTC menggeser transaksi 00:00–07:59 WITA ke hari sebelumnya.
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function todayKey(): string {
-  return dayKey(nowLocal())
+  return dayKey(new Date().toISOString())
 }
 
 export function apiGetDashboard(): Promise<DashboardAdmin> {
