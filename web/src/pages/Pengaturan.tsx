@@ -4,7 +4,7 @@ import {
   Check, Clock, Eye, EyeOff, ImagePlus, Info, KeyRound, Lock, LogOut, Mail, MapPin, Phone, Printer, ShieldCheck, Users,
 } from 'lucide-react'
 import {
-  apiChangePassword, apiGetSettings, apiListTransactions, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings,
+  ApiError, apiGetSettings, apiListTransactions, apiListUsers, apiLogout, apiResetPassword, apiSendPasswordResetOtp, apiSetPasscode, apiUpdateSettings,
   type Page, type StoreSettings, type Trx, type User,
 } from '../lib/api'
 import { useCache } from '../lib/cache'
@@ -148,11 +148,20 @@ export default function Pengaturan() {
   const [resetOpen, setResetOpen] = useState(false)
   const [confirmResetId, setConfirmResetId] = useState<string | null>(null)
 
-  // Ganti kata sandi (section khusus di tab Akun).
-  const [showOld, setShowOld] = useState(false)
+  // Ganti kata sandi (section khusus di tab Akun): kata sandi baru +
+  // verifikasi kode OTP yang dikirim ke email.
   const [showNew, setShowNew] = useState(false)
   const [showNew2, setShowNew2] = useState(false)
-  const [oldPw, setOldPw] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpMsg, setOtpMsg] = useState('')
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
   const [newPw, setNewPw] = useState('')
   const [newPw2, setNewPw2] = useState('')
   const [pwdBusy, setPwdBusy] = useState(false)
@@ -226,19 +235,39 @@ export default function Pengaturan() {
     }
   }
 
-  async function changePw() {
+  async function sendPwOtp() {
+    const email = session?.email.trim().toLowerCase() ?? ''
+    if (!email) return setPwdErr('Email akun tidak ditemukan.')
+    setPwdErr(''); setOtpMsg(''); setOtp('')
+    try {
+      await apiSendPasswordResetOtp(email)
+      setOtpSent(true)
+      setOtpMsg(`Kode 6 digit terkirim ke ${email}.`)
+      setCooldown(60)
+    } catch (x) {
+      if (x instanceof ApiError && x.status === 429) setCooldown(60)
+      setOtpSent(false); setOtpMsg('')
+      setPwdErr(x instanceof Error ? x.message : 'Gagal mengirim kode. Coba lagi.')
+    }
+  }
+
+  async function submitPwReset() {
+    const email = session?.email.trim().toLowerCase() ?? ''
     setPwdErr('')
     if (newPw.length < 8) return setPwdErr('Kata sandi baru minimal 8 karakter.')
     if (newPw !== newPw2) return setPwdErr('Konfirmasi kata sandi tidak cocok.')
+    if (otp.length !== 6) return setPwdErr('Masukkan kode 6 digit dari email.')
     setPwdBusy(true)
     try {
-      await apiChangePassword(oldPw, newPw)
-      setOldPw(''); setNewPw(''); setNewPw2('')
+      await apiResetPassword(email, otp, newPw)
+      setNewPw(''); setNewPw2(''); setOtp(''); setOtpSent(false)
       await apiLogout()
       setSession(null)
       nav('/masuk', { replace: true })
-    } catch (e) {
-      setPwdErr(e instanceof Error ? e.message : 'Gagal mengganti kata sandi.')
+    } catch (x) {
+      if (x instanceof ApiError && (x.status === 410 || x.status === 429)) setCooldown(0)
+      if (x instanceof ApiError && x.status === 400) setOtp('')
+      setPwdErr(x instanceof Error ? x.message : 'Gagal mengganti kata sandi.')
     } finally {
       setPwdBusy(false)
     }
@@ -419,7 +448,6 @@ export default function Pengaturan() {
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-4">
                 {pwdErr && <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember" role="alert">{pwdErr}</p>}
-                <PwField label="Kata sandi saat ini" value={oldPw} onChange={setOldPw} show={showOld} onToggle={() => setShowOld((v) => !v)} auto="current-password" />
                 <PwField label="Kata sandi baru" value={newPw} onChange={setNewPw} show={showNew} onToggle={() => setShowNew((v) => !v)} auto="new-password" />
                 {newPw !== '' && (
                   <div aria-live="polite">
@@ -444,20 +472,44 @@ export default function Pengaturan() {
                   </div>
                 )}
                 <PwField label="Ulangi kata sandi baru" value={newPw2} onChange={setNewPw2} show={showNew2} onToggle={() => setShowNew2((v) => !v)} auto="new-password" />
-                <Button onClick={changePw} disabled={pwdBusy || !oldPw || newPw.length < 8 || newPw !== newPw2} className="w-full sm:w-auto">
-                  {pwdBusy ? 'Menyimpan…' : 'Simpan kata sandi'}
+                <div className="rounded-xl border border-dove p-4">
+                  <p className="text-[13px] font-medium text-fg">Verifikasi email</p>
+                  <p className="mt-0.5 text-xs text-muted">Kami mengirim kode 6 digit ke email Anda. Kode berlaku 10 menit.</p>
+                  {otpMsg && <p className="mt-2 text-[13px] text-muted">{otpMsg}</p>}
+                  {otpSent && (
+                    <input
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      type="text" inputMode="numeric" autoComplete="one-time-code"
+                      placeholder="••••••"
+                      aria-label="Kode verifikasi 6 digit"
+                      className="mt-2.5 w-full rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-xl tracking-[0.5em] focus:border-jet focus:outline-none"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => sendPwOtp()}
+                    disabled={cooldown > 0 || pwdBusy}
+                    className="mt-2.5 text-[13px] font-medium text-jet hover:underline disabled:opacity-50"
+                  >
+                    {otpSent ? (cooldown > 0 ? `Kirim ulang dalam ${cooldown} detik` : 'Kirim ulang kode') : 'Kirim kode verifikasi'}
+                  </button>
+                </div>
+                <Button onClick={submitPwReset} disabled={pwdBusy || newPw.length < 8 || newPw !== newPw2 || !otpSent || otp.length !== 6} className="w-full sm:w-auto">
+                  {pwdBusy ? 'Menyimpan…' : 'Simpan kata sandi baru'}
                 </Button>
               </div>
               <div className="h-fit rounded-xl bg-surface p-4 text-[13px]">
-                <p className="flex items-center gap-2 font-medium text-fg"><ShieldCheck className="size-4 text-steel" /> Jaga akun tetap aman</p>
-                <ul className="mt-2.5 list-disc space-y-1.5 pl-5 text-muted">
-                  <li>Jangan pakai ulang kata sandi dari aplikasi lain.</li>
-                  <li>Ganti berkala, terutama setelah perangkat dipakai bersama.</li>
-                  <li>Passcode kasir terpisah — mengganti kata sandi tidak mengubah passcode.</li>
-                </ul>
+                <p className="flex items-center gap-2 font-medium text-fg"><ShieldCheck className="size-4 text-steel" /> Cara mengganti kata sandi</p>
+                <ol className="mt-2.5 list-decimal space-y-1.5 pl-5 text-muted">
+                  <li>Tulis kata sandi baru di form sebelah kiri, lalu ulangi sekali lagi.</li>
+                  <li>Tekan Kirim kode verifikasi, lalu buka email Anda.</li>
+                  <li>Masukkan kode 6 digit yang Anda terima, lalu tekan Simpan kata sandi baru.</li>
+                  <li>Selesai. Anda akan keluar otomatis dan bisa masuk lagi dengan kata sandi yang baru.</li>
+                </ol>
                 <div className="mt-3 flex items-start gap-2 rounded-lg bg-paper px-3 py-2.5 text-muted">
                   <Info className="mt-0.5 size-4 shrink-0 text-steel" aria-hidden="true" />
-                  <p>Setelah berhasil, semua sesi termasuk perangkat lain dicabut dan Anda diminta masuk kembali.</p>
+                  <p>Tips: pakai kata sandi yang belum pernah dipakai di aplikasi lain. Kode hanya berlaku 10 menit, jadi langsung dipakai begitu diterima.</p>
                 </div>
               </div>
             </div>

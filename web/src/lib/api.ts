@@ -566,10 +566,15 @@ export function apiUpdateSettings(s: StoreSettings) {
   return request<StoreSettings>('PUT', '/settings', s)
 }
 
-// Ganti kata sandi saat login (kontrak README backend §PUT /auth/password).
-// Sukses mencabut semua refresh token → pemanggil wajib logout + login ulang.
-export function apiChangePassword(oldPassword: string, newPassword: string) {
-  return request<{ message: string }>('PUT', '/auth/password', { old_password: oldPassword, new_password: newPassword })
+// Ganti kata sandi via OTP email (kontrak README backend §forgot-password).
+// Alur: send → reset {email, code, new_password}. Sukses mencabut semua
+// refresh token → pemanggil wajib logout + login ulang.
+export function apiSendPasswordResetOtp(email: string) {
+  return request<{ message: string }>('POST', '/auth/forgot-password/send', { email }, false)
+}
+
+export function apiResetPassword(email: string, code: string, newPassword: string) {
+  return request<{ message: string }>('POST', '/auth/forgot-password/reset', { email, code, new_password: newPassword }, false)
 }
 
 export function apiGetDashboard() {
