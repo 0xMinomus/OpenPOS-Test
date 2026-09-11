@@ -3,8 +3,9 @@
 > Diserahkan ke backend developer (`adrr-dev/openPOS`) untuk diimplementasikan.
 > Status: **diajukan**, belum tersedia di backend produksi.
 > Frontend (`web/src/pages/Users.tsx` section Aktivitas Pengguna Terbaru)
-> kini memakai data turunan (akun dibuat + transaksi) dan otomatis memakai
-> endpoint ini bila sudah live — tanpa perubahan frontend.
+> memakai fallback turunan (akun dibuat + transaksi) sampai endpoint ini live;
+> setelah live, feed otomatis menampilkan **login / logout / switch** admin dan
+> kasir dengan ikon berbeda (tanpa perubahan frontend lagi).
 
 ---
 
@@ -65,23 +66,36 @@ Riwayat aktivitas akun dalam toko, terbaru dulu.
 
 | `action` | Pemicu | Contoh `detail` |
 |---|---|---|
-| `LOGIN` | login/switch akun sukses | "Andika login ke sistem" |
+| `LOGIN` | login email/sandi (setelah OTP benar), login Google, atau register sukses | "Andika login ke sistem" · "Andi login ke sistem (kasir)" |
+| `LOGOUT` | logout (semua role; dari body `refresh_token` atau header `Authorization`) | "Andika keluar dari sistem" · "Andi keluar dari sistem (kasir)" |
+| `SWITCH` | `/auth/switch` sukses (pindah akun admin ⇄ kasir) | "Andika beralih ke Andi (kasir)" · "Andi beralih ke Andika (admin)" |
 | `USER_CREATED` | kasir dibuat | "Anggra ditambahkan sebagai kasir" |
 | `PROFILE_UPDATED` | profil diubah | "Abi memperbarui profil" |
 | `ACCOUNT_DISABLED` | akun dinonaktifkan | "Sari dinonaktifkan" |
 | `ACCOUNT_ENABLED` | akun diaktifkan kembali | "Sari diaktifkan kembali" |
 | `PASSCODE_CHANGED` | passcode diganti | "Passcode Andi diperbarui" |
 
-**Aturan:**
+**Aturan identitas pelaku (penting):**
+- **Admin** (login email/Google/logout admin): `actor_id` = `users.id`,
+  `actor_name` = `users.name`.
+- **Kasir** (sesi `acting_as`, termasuk login/logout lewat switch): `actor_id` =
+  `cashiers.id`, `actor_name` = `cashiers.name`. Sumber: `refresh_tokens.
+  acting_as_cashier_id` / claims `acting_as` — jangan pakai nama admin.
+- `LOGOUT` tanpa token/refresh valid: jangan catat (pelaku tak diketahui).
+- Satu event = satu baris; login berulang tetap dicatat (bukan idempoten).
+
+**Aturan lain:**
 - Hanya untuk user dalam toko yang sama; kasir tak bisa membaca (403).
 - `detail` kalimat Indonesia siap tampil, max ±80 karakter.
-- Idempoten: retry request yang sama tidak boleh duplikat
-  (kunci = request/event id).
+- Retry request yang sama tidak boleh duplikat (kunci = event id).
 
 ---
 
 ## 4. Checklist accept backend
 
 - [ ] `GET /activity` live, admin-only, 403 kasir
-- [ ] Event §3 tercatat dengan `created_at` presisi detik
-- [ ] Prod deploy lalu verifikasi section Aktivitas (jam tampil, bukan tanggal saja)
+- [ ] `LOGIN` + `LOGOUT` admin tercatat (`users`), jam presisi detik
+- [ ] `LOGIN` + `LOGOUT` kasir tercatat (`cashiers`, bukan nama admin)
+- [ ] `SWITCH` tercatat arah kedua (admin ⇄ kasir)
+- [ ] Event §3 lain tercatat
+- [ ] Prod deploy lalu verifikasi feed Aktivitas: login/logout tampil dengan jam

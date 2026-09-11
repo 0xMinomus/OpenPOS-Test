@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import {
-  Check, ChevronDown, ChevronUp, Download, Ellipsis, Plus, ReceiptText,
+  ArrowLeftRight, Check, ChevronDown, ChevronUp, Download, Ellipsis, LogIn, LogOut, Plus, ReceiptText,
   Search, ShieldCheck, UserPlus, UserRound, UserX, UsersRound,
 } from 'lucide-react'
 import {
@@ -155,7 +155,14 @@ export default function Users() {
   // Feed aktivitas: audit log bila live, else turunan
   // (akun dibuat + 8 transaksi terakhir).
   const feed = useMemo(() => {
-    type Ev = { key: string; date: string; ts: number; kind: 'login' | 'user' | 'trx'; text: string; dateLabel: string; timeLabel: string }
+    type Ev = { key: string; date: string; ts: number; kind: 'login' | 'logout' | 'switch' | 'user' | 'trx'; text: string; dateLabel: string; timeLabel: string }
+    const kindOf = (action: string): Ev['kind'] => {
+      const a = action.toUpperCase()
+      if (a === 'LOGIN') return 'login'
+      if (a === 'LOGOUT') return 'logout'
+      if (a === 'SWITCH') return 'switch'
+      return 'user'
+    }
     const dLabel = (iso: string) => (iso.slice(0, 10) >= today ? 'Hari ini' : fmtDate(iso))
     const live = actRep.data?.items ?? []
     if (live.length > 0) {
@@ -165,7 +172,7 @@ export default function Users() {
           key: `a-${a.id}`,
           date: d,
           ts: +new Date(a.created_at),
-          kind: (a.action === 'LOGIN' ? 'login' : 'user') as Ev['kind'],
+          kind: kindOf(a.action),
           text: a.detail || `${a.actor_name} · ${a.action}`,
           dateLabel: dLabel(a.created_at),
           timeLabel: fmtTime(a.created_at),
@@ -574,7 +581,11 @@ export default function Users() {
                 {(actAll ? feed : feed.slice(0, 5)).map((e) => (
                   <li key={e.key} className="flex items-center gap-3 py-2.5">
                     <span className={`grid size-8 shrink-0 place-items-center rounded-full ${e.kind === 'user' ? 'bg-success-bg text-sprout' : 'bg-sand text-steel'}`} aria-hidden="true">
-                      {e.kind === 'user' ? <UserPlus className="size-4" /> : e.kind === 'login' ? <UserRound className="size-4" /> : <ReceiptText className="size-4" />}
+                      {e.kind === 'user' ? <UserPlus className="size-4" />
+                        : e.kind === 'login' ? <LogIn className="size-4" />
+                        : e.kind === 'logout' ? <LogOut className="size-4" />
+                        : e.kind === 'switch' ? <ArrowLeftRight className="size-4" />
+                        : <ReceiptText className="size-4" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{e.text}</span>
                     <span className="shrink-0 text-right leading-tight">
