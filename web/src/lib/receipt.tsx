@@ -79,13 +79,21 @@ function ReceiptPaper({ trx, settings }: { trx: Trx; settings: StoreSettings | n
 }
 
 // Stage di-portal ke body agar print hanya memuat struk
-// (tanpa UI aplikasi, tanpa halaman kosong).
+// (tanpa UI aplikasi, tanpa halaman kosong). Di layar tampil di atas
+// background aplikasi seperti modal biasa.
 export function Receipt({ trx, settings, onClose }: { trx: Trx; settings: StoreSettings | null; onClose: () => void }) {
   return createPortal(
-    <div id="receipt-stage" className="fixed inset-0 z-50 overflow-y-auto bg-white">
-      <div className="mx-auto flex min-h-full w-fit flex-col items-center px-4 py-8">
+    <div
+      id="receipt-stage"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Struk transaksi"
+    >
+      <div className="mx-auto flex min-h-full w-fit flex-col items-center px-4 py-8" onClick={(e) => e.stopPropagation()}>
         <ReceiptPaper trx={trx} settings={settings} />
-        <div className="mt-5 flex justify-center gap-3 print:hidden">
+        <div className="mt-5 flex justify-center gap-3 rounded-full bg-white/95 px-3 py-2 print:hidden">
           <Button onClick={() => window.print()}>Cetak Struk</Button>
           <Button variant="ghost" onClick={onClose}>Tutup</Button>
         </div>
