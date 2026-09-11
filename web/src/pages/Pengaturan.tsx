@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import {
   ApiError, apiGetSettings, apiListTransactions, apiListUsers, apiLogout, apiResetPassword, apiSendPasswordResetOtp, apiSetPasscode, apiUpdateSettings,
-  type Page, type StoreSettings, type Trx, type User,
+  type Page, type StoreHours, type StoreSettings, type Trx, type User,
 } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { fmtDate, fmtRp, fmtTime, getSession, setSession, useDB } from '../lib/store'
@@ -30,6 +30,37 @@ const TIMEZONES = [
 
 const INPUT_CLS = 'w-full rounded-md border border-border bg-paper px-3.5 py-2.5 text-[15px] text-fg placeholder:text-fog focus:border-jet focus:outline-2 focus:outline-accent-soft disabled:opacity-60'
 const LABEL_CLS = 'flex flex-col gap-1.5 text-[13px] font-medium text-steel'
+
+// Settings extended (kontrak docs/API-CONTRACT-SETTINGS-EXTENDED.md, live
+// backend 11 Sep): opsi + rumus pajak server (inclusive + rounding).
+const BUSINESS_TYPES = [
+  { value: '', label: 'Pilih jenis usaha…' },
+  { value: 'retail', label: 'Retail / Kelontong' },
+  { value: 'fnb', label: 'Makanan & Minuman' },
+  { value: 'fashion', label: 'Fashion' },
+  { value: 'jasa', label: 'Jasa' },
+  { value: 'lainnya', label: 'Lainnya' },
+]
+
+const HOURS_LABELS = ['Senin – Jumat', 'Sabtu', 'Minggu']
+
+// Rumus pajak = backend repo/transaction.go: inclusive → total tetap = base,
+// tax = base − base/(1+pct/100); rounding none = round_half_up, down = floor,
+// up = ceil.
+function calcTax(base: number, pct: number, inclusive: boolean, rounding: string) {
+  if (pct <= 0) return { tax: 0, total: base }
+  const raw = inclusive ? base - base / (1 + pct / 100) : (base * pct) / 100
+  const tax = rounding === 'down' ? Math.floor(raw) : rounding === 'up' ? Math.ceil(raw) : Math.round(raw)
+  return { tax, total: inclusive ? base : base + tax }
+}
+
+function defaultHours(): StoreHours[] {
+  return [
+    { days: HOURS_LABELS[0], open: '08:00', close: '21:00' },
+    { days: HOURS_LABELS[1], open: '08:00', close: '21:00' },
+    { days: HOURS_LABELS[2], open: null, close: null },
+  ]
+}
 
 function todayStr() {
   const t = new Date()
@@ -185,6 +216,10 @@ export default function Pengaturan() {
   }
 
   const set = (k: keyof StoreSettings) => (v: string) => setForm((f) => (f ? { ...f, [k]: v } : f))
+  const setV = <K extends keyof StoreSettings>(k: K, v: StoreSettings[K]) => setForm((f) => (f ? { ...f, [k]: v } : f))
+  // Dukungan backend dideteksi dari keberadaan key (kontrak §9): backend lama
+  // tanpa key → field tampil nonaktif "Segera" seperti semula.
+  const hasExt = !!saved && typeof saved === 'object' && 'businessType' in saved
   const dirty = !!form && !!saved && JSON.stringify(form) !== JSON.stringify(saved)
 
   async function save() {
@@ -303,8 +338,9 @@ export default function Pengaturan() {
     const taxOn = form?.taxEnabled ?? false
     const pct = form?.taxPct ?? 0
     const subtotal = SAMPLE_ITEMS.reduce((n, i) => n + i.qty * i.price, 0)
-    const tax = taxOn ? Math.round((subtotal * pct) / 100) : 0
-    return { subtotal, tax, total: subtotal + tax }
+    if (!taxOn) return { subtotal, tax: 0, total: subtotal }
+    const { tax, total } = calcTax(subtotal, pct, form?.taxInclusive ?? false, form?.taxRounding ?? 'none')
+    return { subtotal, tax, total }
   }, [form])
 
   const sampleTrx: Trx = useMemo(() => ({
@@ -540,6 +576,14 @@ export default function Pengaturan() {
             <CardHead title="Informasi Toko" sub="Lengkapi informasi toko Anda." />
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Nama Toko *" value={form.storeName} onChange={set('storeName')} placeholder="Toko Andika" />
+              {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Jenis Usaha *
+                  <select value={form.businessType ?? ''} onChange={(e) => setV('businessType', e.target.value)} className={INPUT_CLS}>
+                    {BUSINESS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </label>
+              ) : (
               <Soon>
                 <label className={LABEL_CLS}>
                   Jenis Usaha *
@@ -548,23 +592,44 @@ export default function Pengaturan() {
                   </select>
                 </label>
               </Soon>
+              )}
               <Input label="No. Telepon" value={form.phone} onChange={set('phone')} placeholder="0812…" />
+              {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Email
+                  <input type="email" value={form.email ?? ''} onChange={(e) => setV('email', e.target.value)} placeholder="toko@gmail.com" className={INPUT_CLS} />
+                </label>
+              ) : (
               <Soon>
                 <label className={LABEL_CLS}>
                   Email
                   <input disabled className={INPUT_CLS} value="" placeholder="Menunggu backend" onChange={() => {}} />
                 </label>
               </Soon>
+              )}
               <label className={`${LABEL_CLS} sm:col-span-2`}>
                 Alamat
                 <textarea value={form.address} onChange={(e) => set('address')(e.target.value)} rows={3} placeholder="Jl. …" className={INPUT_CLS} />
               </label>
+              {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Kota
+                  <input value={form.city ?? ''} onChange={(e) => setV('city', e.target.value)} placeholder="Makassar" className={INPUT_CLS} />
+                </label>
+              ) : (
               <Soon>
                 <label className={LABEL_CLS}>
                   Kota
                   <input disabled className={INPUT_CLS} value="" placeholder="Menunggu backend" onChange={() => {}} />
                 </label>
               </Soon>
+              )}
+              {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Provinsi
+                  <input value={form.province ?? ''} onChange={(e) => setV('province', e.target.value)} placeholder="Sulawesi Selatan" className={INPUT_CLS} />
+                </label>
+              ) : (
               <Soon>
                 <label className={LABEL_CLS}>
                   Provinsi
@@ -573,6 +638,13 @@ export default function Pengaturan() {
                   </select>
                 </label>
               </Soon>
+              )}
+              {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Mata Uang
+                  <input value={form.currency ?? 'IDR'} onChange={(e) => setV('currency', e.target.value.toUpperCase().slice(0, 3))} placeholder="IDR" maxLength={3} className={`${INPUT_CLS} font-mono uppercase`} />
+                </label>
+              ) : (
               <Soon>
                 <label className={LABEL_CLS}>
                   Mata Uang
@@ -581,6 +653,7 @@ export default function Pengaturan() {
                   </select>
                 </label>
               </Soon>
+              )}
               <label className={LABEL_CLS}>
                 Timezone
                 <select value={form.timezone} onChange={(e) => set('timezone')(e.target.value)} className={INPUT_CLS}>
@@ -603,8 +676,43 @@ export default function Pengaturan() {
             <div className="mt-5">
               <div className="mb-1 flex items-center gap-2">
                 <p className="text-[13px] font-medium text-steel">Jam Operasional</p>
-                <Pill tone="muted">Segera</Pill>
+                {!hasExt && <Pill tone="muted">Segera</Pill>}
               </div>
+              {hasExt ? (
+              <>
+              <p className="mb-2 text-xs text-fog">Atur jam operasional toko Anda. Hari tanpa centang = tutup.</p>
+              <div className="space-y-2">
+                {((form.hours?.length === 3 ? form.hours : defaultHours())).map((h, i) => {
+                  const on = h.open != null && h.close != null
+                  const upd = (patch: Partial<StoreHours>) => {
+                    const cur = form.hours?.length === 3 ? form.hours : defaultHours()
+                    setV('hours', cur.map((r, ix) => (ix === i ? { ...r, ...patch } : r)))
+                  }
+                  return (
+                  <div key={h.days} className="flex flex-wrap items-center gap-2 text-sm">
+                    <label className="flex min-w-32 cursor-pointer items-center gap-2 text-fg">
+                      <input
+                        type="checkbox" checked={on}
+                        onChange={(e) => upd(e.target.checked ? { open: '08:00', close: '21:00' } : { open: null, close: null })}
+                        className="h-4 w-4 accent-jet"
+                      /> {h.days}
+                    </label>
+                    {on ? (
+                      <>
+                        <input type="time" value={h.open ?? '08:00'} onChange={(e) => upd({ open: e.target.value })} aria-label="Jam buka" className="w-24 rounded-md border border-border bg-paper px-2 py-1.5 font-mono text-[13px] tabular-nums" />
+                        <span className="text-fog">—</span>
+                        <input type="time" value={h.close ?? '21:00'} onChange={(e) => upd({ close: e.target.value })} aria-label="Jam tutup" className="w-24 rounded-md border border-border bg-paper px-2 py-1.5 font-mono text-[13px] tabular-nums" />
+                      </>
+                    ) : (
+                      <span className="text-[13px] text-fog">Tutup</span>
+                    )}
+                  </div>
+                  )
+                })}
+              </div>
+              </>
+              ) : (
+              <>
               <p className="mb-2 text-xs text-fog">Atur jam operasional toko Anda. Segera hadir — menunggu backend.</p>
               <div className="space-y-2 opacity-80">
                 {[['Senin – Jumat', true], ['Sabtu', true], ['Minggu', false]].map(([day, on]) => (
@@ -624,6 +732,8 @@ export default function Pengaturan() {
                   </div>
                 ))}
               </div>
+              </>
+              )}
             </div>
             <FormActions dirty={dirty} busy={busy} onReset={resetForm} onSave={save} />
           </Card>
@@ -639,11 +749,13 @@ export default function Pengaturan() {
               </div>
               <div className="mt-4 space-y-1.5 text-[13px]">
                 <p className="flex items-center gap-2 text-muted"><Phone className="size-3.5 shrink-0" />{form.phone || '—'}</p>
-                <p className="flex items-center gap-2 text-muted"><Mail className="size-3.5 shrink-0" />—</p>
-                <p className="flex items-start gap-2 text-muted"><MapPin className="mt-0.5 size-3.5 shrink-0" /><span>{form.address || '—'}</span></p>
+                <p className="flex items-center gap-2 text-muted"><Mail className="size-3.5 shrink-0" />{form.email || '—'}</p>
+                <p className="flex items-start gap-2 text-muted"><MapPin className="mt-0.5 size-3.5 shrink-0" /><span>{[form.address, form.city, form.province].filter(Boolean).join(', ') || '—'}</span></p>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <Pill tone="muted">{form.timezone}</Pill>
+                {!!form.businessType && <Pill tone="muted">{BUSINESS_TYPES.find((t) => t.value === form.businessType)?.label ?? form.businessType}</Pill>}
+                {!!form.currency && <Pill tone="muted">{form.currency}</Pill>}
               </div>
             </Card>
             <div className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-[13px] ${storeComplete ? 'border-sprout/40 bg-success-bg text-sprout' : 'border-dove bg-surface text-muted'}`}>
@@ -669,6 +781,27 @@ export default function Pengaturan() {
               </label>
               <div>
                 <p className="mb-1 text-[13px] font-medium text-steel">Tampilan struk</p>
+                {hasExt ? (
+                <div className="divide-y divide-dove rounded-xl border border-dove px-4">
+                  {([
+                    ['Tampilkan Logo Toko', 'receiptShowLogo'],
+                    ['Tampilkan Nama Kasir', 'receiptShowCashier'],
+                    ['Tampilkan Metode Pembayaran', 'receiptShowMethod'],
+                    ['Tampilkan Pajak', 'receiptShowTax'],
+                    ['Tampilkan Diskon', 'receiptShowDiscount'],
+                    ['Tampilkan QRIS / Catatan', 'receiptShowNote'],
+                  ] as const).map(([l, k]) => (
+                    <label key={l} className="flex cursor-pointer items-center justify-between gap-3 py-2.5 text-sm text-fg">
+                      {l}
+                      <input
+                        type="checkbox" checked={form[k] ?? true}
+                        onChange={(e) => setV(k, e.target.checked)}
+                        className="h-4 w-4 accent-jet"
+                      />
+                    </label>
+                  ))}
+                </div>
+                ) : (
                 <div className="divide-y divide-dove rounded-xl border border-dove px-4 opacity-80">
                   {['Tampilkan Logo Toko', 'Tampilkan Nama Kasir', 'Tampilkan Metode Pembayaran', 'Tampilkan Pajak', 'Tampilkan Diskon', 'Tampilkan QRIS / Catatan'].map((l) => (
                     <label key={l} className="flex cursor-not-allowed items-center justify-between gap-3 py-2.5 text-sm text-fg">
@@ -680,6 +813,7 @@ export default function Pengaturan() {
                     </label>
                   ))}
                 </div>
+                )}
               </div>
               <label className={LABEL_CLS}>
                 Lebar Kertas
@@ -713,7 +847,7 @@ export default function Pengaturan() {
                   {form.phone && <p className="text-center text-[10px]">{form.phone}</p>}
                   <div className="receipt-hr my-2" aria-hidden="true" />
                   <p>No. #TRX-00001</p>
-                  <p>Kasir: {session?.name ?? '—'}</p>
+                  {(form.receiptShowCashier ?? true) && <p>Kasir: {session?.name ?? '—'}</p>}
                   <p>Tanggal: {today}</p>
                   <div className="receipt-hr my-2" aria-hidden="true" />
                   {SAMPLE_ITEMS.map((i) => (
@@ -727,11 +861,11 @@ export default function Pengaturan() {
                   ))}
                   <div className="receipt-hr my-2" aria-hidden="true" />
                   <div className="flex justify-between tabular-nums"><span>Subtotal</span><span>{fmtRp(sample.subtotal)}</span></div>
-                  {form.taxEnabled && <div className="flex justify-between tabular-nums"><span>Pajak</span><span>{fmtRp(sample.tax)}</span></div>}
+                  {form.taxEnabled && (form.receiptShowTax ?? true) && <div className="flex justify-between tabular-nums"><span>Pajak{form.taxInclusive ? ' (inklusif)' : ''}</span><span>{fmtRp(sample.tax)}</span></div>}
                   <div className="flex justify-between font-bold tabular-nums"><span>TOTAL</span><span>{fmtRp(sample.total)}</span></div>
                   <div className="receipt-hr my-2" aria-hidden="true" />
-                  {form.receiptHeader && <p className="text-center text-[10px]">{form.receiptHeader}</p>}
-                  {form.receiptFooter && <p className="mt-1 text-center text-[10px]">{form.receiptFooter}</p>}
+                  {(form.receiptShowNote ?? true) && form.receiptHeader && <p className="text-center text-[10px]">{form.receiptHeader}</p>}
+                  {(form.receiptShowNote ?? true) && form.receiptFooter && <p className="mt-1 text-center text-[10px]">{form.receiptFooter}</p>}
                 </div>
               </div>
               <Button variant="ghost" className="mt-3 w-full" onClick={() => setPrintTest(true)}>
@@ -747,8 +881,8 @@ export default function Pengaturan() {
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             {[
               { label: 'Pajak Aktif', value: form.taxEnabled ? 'Ya' : 'Tidak', sub: 'Pajak sedang digunakan' },
-              { label: 'Tarif Pajak', value: `${form.taxPct}%`, sub: 'Tarif pajak saat ini' },
-              { label: 'Harga Sudah Termasuk Pajak', value: '—', sub: 'Segera hadir' },
+              { label: 'Tarif Pajak', value: `${form.taxPct}%`, sub: form.taxName || 'Tarif pajak saat ini' },
+              { label: 'Harga Sudah Termasuk Pajak', value: !hasExt ? '—' : form.taxInclusive ? 'Ya' : 'Tidak', sub: !hasExt ? 'Segera hadir' : form.taxInclusive ? 'Pajak di dalam harga' : 'Pajak di luar harga' },
               { label: 'Transaksi Kena Pajak Hari Ini', value: String(taxed), sub: `Dari ${trxTotal} transaksi` },
             ].map((k) => (
               <div key={k.label} className="rounded-2xl bg-cream p-4">
@@ -763,19 +897,43 @@ export default function Pengaturan() {
             <Card className="lg:col-span-2">
               <CardHead title="Pengaturan Pajak" sub="Atur konfigurasi pajak untuk transaksi di toko Anda." />
               <div className="space-y-4">
+                {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Nama Pajak
+                  <input value={form.taxName ?? ''} onChange={(e) => setV('taxName', e.target.value.slice(0, 20))} placeholder="cth: PPN" maxLength={20} className={INPUT_CLS} />
+                </label>
+                ) : (
                 <Soon>
                   <label className={LABEL_CLS}>
                     Nama Pajak
                     <input disabled className={INPUT_CLS} value="" placeholder="cth: PPN" onChange={() => {}} />
                   </label>
                 </Soon>
+                )}
                 <NumInput allowDecimal label="Tarif Pajak (%)" value={form.taxPct} onValue={(r) => setForm((f) => (f ? { ...f, taxPct: r === '' ? 0 : Number(r.replace(',', '.')) } : f))} />
+                {hasExt ? (
+                <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-fg">
+                  Harga Sudah Termasuk Pajak
+                  <input type="checkbox" checked={!!form.taxInclusive} onChange={(e) => setV('taxInclusive', e.target.checked)} className="h-4 w-4 accent-jet" />
+                </label>
+                ) : (
                 <Soon>
                   <label className="flex cursor-not-allowed items-center justify-between gap-3 text-sm text-fg">
                     Harga Sudah Termasuk Pajak
                     <input type="checkbox" disabled className="h-4 w-4 accent-jet" />
                   </label>
                 </Soon>
+                )}
+                {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Pembulatan Pajak
+                  <select value={form.taxRounding ?? 'none'} onChange={(e) => setV('taxRounding', e.target.value)} className={INPUT_CLS}>
+                    <option value="none">Normal (setengah ke atas)</option>
+                    <option value="down">Ke bawah (floor)</option>
+                    <option value="up">Ke atas (ceil)</option>
+                  </select>
+                </label>
+                ) : (
                 <Soon>
                   <label className={LABEL_CLS}>
                     Pembulatan Pajak
@@ -784,6 +942,15 @@ export default function Pengaturan() {
                     </select>
                   </label>
                 </Soon>
+                )}
+                {hasExt ? (
+                <label className={LABEL_CLS}>
+                  Terapkan Pajak Pada
+                  <select value={form.taxApplyTo ?? 'all'} onChange={(e) => setV('taxApplyTo', e.target.value)} className={INPUT_CLS}>
+                    <option value="all">Semua produk</option>
+                  </select>
+                </label>
+                ) : (
                 <Soon>
                   <label className={LABEL_CLS}>
                     Terapkan Pajak Pada
@@ -792,6 +959,7 @@ export default function Pengaturan() {
                     </select>
                   </label>
                 </Soon>
+                )}
                 <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-fg">
                   Status Pajak
                   <input type="checkbox" checked={form.taxEnabled} onChange={(e) => setForm((f) => (f ? { ...f, taxEnabled: e.target.checked } : f))} className="h-4 w-4 accent-jet" />
@@ -804,16 +972,23 @@ export default function Pengaturan() {
             <div className="space-y-4">
               <Card>
                 <CardHead title="Contoh Perhitungan Pajak" sub="Simulasi perhitungan pada transaksi." />
-                <div className="space-y-1 font-mono text-[13px] tabular-nums">
-                  <div className="flex justify-between"><span className="font-sans text-muted">Harga Produk</span><span>{fmtRp(100000)}</span></div>
-                  <div className="flex justify-between"><span className="font-sans text-muted">Pajak ({form.taxPct}%)</span><span>{fmtRp(Math.round((100000 * form.taxPct) / 100))}</span></div>
-                  <div className="my-2 border-t border-dashed border-dove" />
-                  <div className="flex justify-between font-bold"><span className="font-sans">Total</span><span>{fmtRp(100000 + Math.round((100000 * form.taxPct) / 100))}</span></div>
-                </div>
-                <div className="mt-4 flex items-start gap-2 rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
-                  <Info className="mt-0.5 size-4 shrink-0 text-steel" aria-hidden="true" />
-                  <p>Karena harga belum termasuk pajak, maka pajak akan ditambahkan ke total transaksi.</p>
-                </div>
+                {(() => {
+                  const ex = calcTax(100000, form.taxPct, !!form.taxInclusive, form.taxRounding ?? 'none')
+                  return (
+                  <>
+                  <div className="space-y-1 font-mono text-[13px] tabular-nums">
+                    <div className="flex justify-between"><span className="font-sans text-muted">Harga Produk</span><span>{fmtRp(100000)}</span></div>
+                    <div className="flex justify-between"><span className="font-sans text-muted">Pajak{form.taxName ? ` (${form.taxName} ${form.taxPct}%)` : ` (${form.taxPct}%)`}</span><span>{fmtRp(ex.tax)}</span></div>
+                    <div className="my-2 border-t border-dashed border-dove" />
+                    <div className="flex justify-between font-bold"><span className="font-sans">Total</span><span>{fmtRp(ex.total)}</span></div>
+                  </div>
+                  <div className="mt-4 flex items-start gap-2 rounded-lg bg-surface px-3.5 py-3 text-[13px] text-muted">
+                    <Info className="mt-0.5 size-4 shrink-0 text-steel" aria-hidden="true" />
+                    <p>{form.taxInclusive ? 'Harga sudah termasuk pajak: total tetap, pajak dihitung dari dalam harga.' : 'Karena harga belum termasuk pajak, maka pajak akan ditambahkan ke total transaksi.'}</p>
+                  </div>
+                  </>
+                  )
+                })()}
               </Card>
               <Card>
                 <CardHead title="Aktivitas Pajak Terkini" sub="Log perubahan pengaturan pajak." />

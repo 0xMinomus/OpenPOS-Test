@@ -38,6 +38,13 @@ function SumRow({ label, value, strong }: { label: string; value: string; strong
 function ReceiptPaper({ trx, settings }: { trx: Trx; settings: StoreSettings | null }) {
   const st = settings ?? { storeName: '', address: '', phone: '', receiptHeader: '', receiptFooter: '', paper: '58mm' } as StoreSettings
   const payLabel = trx.method.trim().toUpperCase() === 'CASH' ? 'TUNAI' : trx.method.toUpperCase()
+  // Flag receiptShow* (kontrak settings-extended §6): false = sembunyikan
+  // elemen, perhitungan tetap jalan. Default true untuk settings lama.
+  const showCashier = st.receiptShowCashier ?? true
+  const showMethod = st.receiptShowMethod ?? true
+  const showTax = st.receiptShowTax ?? true
+  const showDiscount = st.receiptShowDiscount ?? true
+  const showNote = st.receiptShowNote ?? true
   return (
     <div id="receipt" className="rounded-lg border border-dove bg-white px-4 py-5 font-mono text-[12px] leading-relaxed text-black" style={{ width: st.paper }}>
       <p className="text-center text-[15px] font-bold uppercase leading-snug">{st.storeName}</p>
@@ -45,9 +52,9 @@ function ReceiptPaper({ trx, settings }: { trx: Trx; settings: StoreSettings | n
       {st.phone && <p className="text-center text-[11px] leading-snug">{st.phone}</p>}
       <Hr />
       <MetaRow label="Tanggal" value={fmtTrxDateTime(trx.created_at)} />
-      <MetaRow label="Kasir" value={trx.cashier_name} />
+      {showCashier && <MetaRow label="Kasir" value={trx.cashier_name} />}
       <MetaRow label="No Trx" value={fmtInv(trx.id)} />
-      <MetaRow label="Metode" value={trx.method} />
+      {showMethod && <MetaRow label="Metode" value={trx.method} />}
       {trx.customer && <MetaRow label="Pelanggan" value={trx.customer} />}
       <Hr />
       <div className="space-y-1.5">
@@ -64,15 +71,15 @@ function ReceiptPaper({ trx, settings }: { trx: Trx; settings: StoreSettings | n
       <Hr />
       <div className="space-y-1">
         <SumRow label="Subtotal" value={fmtRp(trx.subtotal)} />
-        {trx.discount > 0 && <SumRow label="Diskon" value={`-${fmtRp(trx.discount)}`} />}
-        {trx.tax > 0 && <SumRow label="Pajak" value={fmtRp(trx.tax)} />}
+        {showDiscount && trx.discount > 0 && <SumRow label="Diskon" value={`-${fmtRp(trx.discount)}`} />}
+        {showTax && trx.tax > 0 && <SumRow label="Pajak" value={fmtRp(trx.tax)} />}
         <SumRow label="TOTAL" value={fmtRp(trx.total)} strong />
-        <SumRow label={payLabel} value={fmtRp(trx.paid)} strong />
+        {showMethod && <SumRow label={payLabel} value={fmtRp(trx.paid)} strong />}
         {trx.change > 0 && <SumRow label="Kembalian" value={fmtRp(trx.change)} />}
       </div>
       <Hr />
-      {st.receiptHeader && <p className="text-center text-[11px] leading-snug">{st.receiptHeader}</p>}
-      {st.receiptFooter && <p className="mt-1 text-center text-[11px] leading-snug">{st.receiptFooter}</p>}
+      {showNote && st.receiptHeader && <p className="text-center text-[11px] leading-snug">{st.receiptHeader}</p>}
+      {showNote && st.receiptFooter && <p className="mt-1 text-center text-[11px] leading-snug">{st.receiptFooter}</p>}
     </div>
   )
 }

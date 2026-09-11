@@ -196,6 +196,12 @@ export interface Movement {
   created_at: string
 }
 
+export interface StoreHours {
+  days: string
+  open: string | null
+  close: string | null
+}
+
 export interface StoreSettings {
   storeName: string
   address: string
@@ -206,6 +212,27 @@ export interface StoreSettings {
   receiptFooter: string
   paper: string
   timezone: string
+  // Extended (kontrak docs/API-CONTRACT-SETTINGS-EXTENDED.md, live backend
+  // 11 Sep commit 605550d). Opsional agar respons backend lama + adapter
+  // offline (tanpa key baru) tetap kompatibel; deteksi dukungan via
+  // `'businessType' in settings`. logoUrl & passcodeUpdatedAt sengaja
+  // tidak ada (dibatalkan/ditunda di sisi backend).
+  businessType?: string
+  email?: string
+  city?: string
+  province?: string
+  currency?: string
+  hours?: StoreHours[]
+  receiptShowLogo?: boolean
+  receiptShowCashier?: boolean
+  receiptShowMethod?: boolean
+  receiptShowTax?: boolean
+  receiptShowDiscount?: boolean
+  receiptShowNote?: boolean
+  taxName?: string
+  taxInclusive?: boolean
+  taxRounding?: string
+  taxApplyTo?: string
 }
 
 export interface Page<T> {
@@ -376,7 +403,7 @@ export function apiSetUserActive(id: string, active: boolean) {
   return request<{ message: string }>('PATCH', `/users/${id}/active`, { active })
 }
 
-// Backend belum implement (404 sampai di-deploy) — lihat docs/API-CONTRACT-USER-RENAME.md.
+// Ganti nama kasir (live backend 10 Sep) — lihat docs/API-CONTRACT-USER-RENAME.md.
 export function apiRenameUser(id: string, name: string) {
   return request<{ message: string }>('PATCH', `/users/${id}`, { name })
 }
