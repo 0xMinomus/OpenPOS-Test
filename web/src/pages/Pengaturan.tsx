@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import {
-  Check, Clock, Eye, EyeOff, ImagePlus, Info, KeyRound, Lock, LogOut, Mail, MapPin, Phone, Printer, ShieldCheck, Users,
+  Check, Eye, EyeOff, ImagePlus, Info, KeyRound, Lock, LogOut, Mail, MapPin, Phone, Printer, ShieldCheck, Users,
 } from 'lucide-react'
 import {
   ApiError, apiGetSettings, apiListTransactions, apiListUsers, apiLogout, apiResetPassword, apiSendPasswordResetOtp, apiSetPasscode, apiUpdateSettings,
@@ -635,17 +635,14 @@ export default function Pengaturan() {
                 <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-surface text-fog"><ImagePlus className="size-5" /></span>
                 <div className="min-w-0">
                   <p className="truncate text-[15px] font-medium text-fg">{form.storeName || '—'}</p>
-                  <p className="text-[13px] text-muted">Retail</p>
                 </div>
               </div>
               <div className="mt-4 space-y-1.5 text-[13px]">
                 <p className="flex items-center gap-2 text-muted"><Phone className="size-3.5 shrink-0" />{form.phone || '—'}</p>
                 <p className="flex items-center gap-2 text-muted"><Mail className="size-3.5 shrink-0" />—</p>
                 <p className="flex items-start gap-2 text-muted"><MapPin className="mt-0.5 size-3.5 shrink-0" /><span>{form.address || '—'}</span></p>
-                <p className="flex items-center gap-2 text-muted"><Clock className="size-3.5 shrink-0" />Buka Senin – Sabtu · 08:00 – 21:00</p>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <Pill tone="muted">Rupiah (IDR)</Pill>
                 <Pill tone="muted">{form.timezone}</Pill>
               </div>
             </Card>
