@@ -1,0 +1,27 @@
+diff --git a/service/transaction.go b/service/transaction.go
+index 749dd26..efffba0 100644
+--- a/service/transaction.go
++++ b/service/transaction.go
+@@ -59,14 +59,15 @@ func (s *TrxService) Checkout(ctx context.Context, storeID uint, actingAsCashier
+ 		Paid: cmd.Paid, Customer: cmd.Customer,
+ 	})
+ 	if err == nil && s.notif != nil {
+-		actorIDStr := ""
+-		if cashierID != 0 {
+-			actorIDStr = fmt.Sprintf("%d", cashierID)
++		// Notifikasi transaksi hanya untuk checkout kasir — admin tahu
++		// transaksinya sendiri, tidak perlu dikabari ulang. (cek stok tetap
++		// untuk semua checkout.)
++		if actingAsCashierID != nil {
++			refIDStr := fmt.Sprintf("%d", resTrx.ID)
++			title := "Transaksi baru"
++			message := fmt.Sprintf("Rp%d · %s", resTrx.Total, resTrx.Method)
++			_ = s.notif.Emit(ctx, storeID, title, message, model.CategoryTransaksi, "transaction_created", fmt.Sprintf("%d", cashierID), cashierName, "transaction", refIDStr)
+ 		}
+-		refIDStr := fmt.Sprintf("%d", resTrx.ID)
+-		title := "Transaksi baru"
+-		message := fmt.Sprintf("Rp%d · %s", resTrx.Total, resTrx.Method)
+-		_ = s.notif.Emit(ctx, storeID, title, message, model.CategoryTransaksi, "transaction_created", actorIDStr, cashierName, "transaction", refIDStr)
+ 
+ 		if s.prods != nil {
+ 			for _, it := range cmd.Items {
