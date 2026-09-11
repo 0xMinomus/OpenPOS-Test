@@ -265,9 +265,7 @@ export default function Pos() {
         </div>
       </Modal>
 
-      <Modal open={!!receipt} title="Transaksi berhasil" onClose={() => setReceipt(null)}>
-        {receipt && <Receipt trx={receipt} settings={settings} onClose={() => setReceipt(null)} />}
-      </Modal>
+      {receipt && <Receipt trx={receipt} settings={settings} onClose={() => setReceipt(null)} />}
     </>
   )
 }

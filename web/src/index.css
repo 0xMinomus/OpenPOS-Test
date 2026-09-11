@@ -272,18 +272,53 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .auth-card { animation: none; } }
 
 @media print {
-  body * { visibility: hidden; }
-  #receipt, #receipt * { visibility: visible; }
-  #receipt {
-    position: absolute;
-    top: 0;
-    left: 0;
+  @page {
+    size: auto;
     margin: 0;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
   }
-  .print\:hidden { display: none !important; }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    height: auto !important;
+  }
+  body > *:not(#receipt-stage) {
+    display: none !important;
+  }
+  #receipt-stage {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: #fff !important;
+  }
+  #receipt-stage > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+  #receipt {
+    padding: 3mm !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .receipt-hr {
+    border-top: 1px dashed #000 !important;
+    margin-top: 2.5mm !important;
+    margin-bottom: 2.5mm !important;
+  }
+  .receipt-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
+
+/* Garis pemisah struk thermal: dashed di layar, hitam pekat saat cetak. */
+.receipt-hr {
+  border-top: 1px dashed #a3a3a3;
 }
 
 /* ─── motion — landing (ported from prototype) ─────────────────────── */
