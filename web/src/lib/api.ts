@@ -566,6 +566,12 @@ export function apiUpdateSettings(s: StoreSettings) {
   return request<StoreSettings>('PUT', '/settings', s)
 }
 
+// Ganti kata sandi saat login (kontrak README backend §PUT /auth/password).
+// Sukses mencabut semua refresh token → pemanggil wajib logout + login ulang.
+export function apiChangePassword(oldPassword: string, newPassword: string) {
+  return request<{ message: string }>('PUT', '/auth/password', { old_password: oldPassword, new_password: newPassword })
+}
+
 export function apiGetDashboard() {
   return request<DashboardAdmin | DashboardCashier>('GET', '/dashboard')
 }
