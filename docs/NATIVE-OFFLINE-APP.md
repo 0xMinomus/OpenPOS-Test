@@ -12,7 +12,7 @@
 - **100% offline**: semua data di `localStorage` perangkat, tanpa backend.
 - **1:1 dengan webapp cloud** (UI, layout, dan fungsi sama persis), hanya sumber data
   yang diganti dari REST API → `lib/local-api.ts` (adapter lokal).
-- Versi saat ini: **0.2.3** (`web/release-out/OpenPOS Setup 0.2.3.exe`, installer ±99 MB, terpasang ±320 MB).
+- Versi saat ini: **1.0.1** (`web/release-out/OpenPOS Setup 1.0.1.exe`, installer ±99 MB, terpasang ±320 MB).
 - Installer **wizard** (pilih lokasi + rincian ukuran, `oneClick: false` + `allowToChangeInstallationDirectory`),
   hanya locale `id`+`en-US`, `npmRebuild: false`,
   semua dep di `devDependencies` (Vite sudah bundel — node_modules TIDAK ikut terpaket; app.asar ±2 MB).
@@ -139,7 +139,7 @@ Satu blok JSON `op_offline_db`:
 - **Distribusi**: upload installer ke GitHub Releases (`…/releases`); tombol
   "Unduh untuk Windows" di halaman `/unduh` menunjuk ke daftar rilis (selalu tampil
   rilis terbaru — tak perlu ubah URL tiap rilis).
-- **Release terakhir**: v0.1.0 (app offline awal, minim fitur) → v0.2.0 (1:1 webapp) → v0.2.3 (catch-up Stok/Transaksi/Laporan/Pengaturan + struk thermal).
+- **Release terakhir**: v0.1.0 (app offline awal, minim fitur) → v0.2.0 (1:1 webapp) → v0.2.3 (catch-up Stok/Transaksi/Laporan/Pengaturan + struk thermal) → v1.0.1 (fix zona waktu dashboard offline).
 
 ### ⚠️ Kendala build di mesin Andika
 App **"Orca"** (StablyAI, memonitor folder `Documents`) mengunci direktori build
