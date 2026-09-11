@@ -282,20 +282,30 @@ button { cursor: pointer; }
     background: #fff !important;
     height: auto !important;
   }
-  body > *:not(#receipt-stage) {
+  /* Sembunyikan semua kecuali struk + rantai induknya:
+     tidak ada UI aplikasi, tidak ada halaman kosong. */
+  body *:not(#receipt):not(:has(#receipt)) {
     display: none !important;
   }
-  #receipt-stage {
+  /* Netralkan modal saat cetak: judul + tombol tak ikut, kartu jadi polos. */
+  div[role="dialog"] {
     position: static !important;
     display: block !important;
-    overflow: visible !important;
-    height: auto !important;
-    background: #fff !important;
-  }
-  #receipt-stage > div {
     padding: 0 !important;
     margin: 0 !important;
-    min-height: 0 !important;
+    background: #fff !important;
+  }
+  div[role="dialog"] > div {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  div[role="dialog"] > div > div:has(h3) {
+    display: none !important;
   }
   #receipt {
     padding: 3mm !important;

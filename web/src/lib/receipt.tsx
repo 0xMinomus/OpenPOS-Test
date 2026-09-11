@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom'
 import type { StoreSettings, Trx } from './api'
 import { fmtInv, fmtRp } from './store'
 import { Button } from './ui'
@@ -78,27 +77,15 @@ function ReceiptPaper({ trx, settings }: { trx: Trx; settings: StoreSettings | n
   )
 }
 
-// Stage di-portal ke body agar print hanya memuat struk
-// (tanpa UI aplikasi, tanpa halaman kosong). Di layar tampil di atas
-// background aplikasi seperti modal biasa.
+// Render inline di dalam Modal seperti semula (desain kertas tetap baru).
 export function Receipt({ trx, settings, onClose }: { trx: Trx; settings: StoreSettings | null; onClose: () => void }) {
-  return createPortal(
-    <div
-      id="receipt-stage"
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/50"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Struk transaksi"
-    >
-      <div className="mx-auto flex min-h-full w-fit flex-col items-center px-4 py-8" onClick={(e) => e.stopPropagation()}>
-        <ReceiptPaper trx={trx} settings={settings} />
-        <div className="mt-5 flex justify-center gap-3 rounded-full bg-white/95 px-3 py-2 print:hidden">
-          <Button onClick={() => window.print()}>Cetak Struk</Button>
-          <Button variant="ghost" onClick={onClose}>Tutup</Button>
-        </div>
+  return (
+    <div className="flex flex-col items-center">
+      <ReceiptPaper trx={trx} settings={settings} />
+      <div className="mt-4 flex justify-center gap-3 print:hidden">
+        <Button onClick={() => window.print()}>Cetak Struk</Button>
+        <Button variant="ghost" onClick={onClose}>Tutup</Button>
       </div>
-    </div>,
-    document.body,
+    </div>
   )
 }
