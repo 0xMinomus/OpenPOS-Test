@@ -155,7 +155,6 @@ export default function Pengaturan() {
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [otpSending, setOtpSending] = useState(false)
-  const [otpMsg, setOtpMsg] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [otpRequested, setOtpRequested] = useState(false)
 
@@ -240,15 +239,14 @@ export default function Pengaturan() {
   const sendPwOtp = useCallback(async () => {
     const email = session?.email.trim().toLowerCase() ?? ''
     if (!email) return setPwdErr('Email akun tidak ditemukan.')
-    setPwdErr(''); setOtpMsg(''); setOtp(''); setOtpSending(true); setOtpRequested(true)
+    setPwdErr(''); setOtp(''); setOtpSending(true); setOtpRequested(true)
     try {
       await apiSendPasswordResetOtp(email)
       setOtpSent(true)
-      setOtpMsg(`Kode 6 digit terkirim ke ${email}.`)
       setCooldown(60)
     } catch (x) {
       if (x instanceof ApiError && x.status === 429) setCooldown(60)
-      setOtpSent(false); setOtpMsg('')
+      setOtpSent(false)
       setPwdErr(x instanceof Error ? x.message : 'Gagal mengirim kode. Coba lagi.')
     } finally {
       setOtpSending(false)
@@ -485,35 +483,35 @@ export default function Pengaturan() {
                   </div>
                 )}
                 <PwField label="Ulangi kata sandi baru" value={newPw2} onChange={setNewPw2} show={showNew2} onToggle={() => setShowNew2((v) => !v)} auto="new-password" />
-                <div className="rounded-xl border border-dove p-4">
-                  <p className="text-[13px] font-medium text-fg">Verifikasi email</p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {otpSent || otpSending
-                      ? 'Kami mengirim kode 6 digit ke email Anda. Kode berlaku 10 menit.'
-                      : 'Kode verifikasi dikirim otomatis setelah kata sandi baru valid.'}
-                  </p>
-                  {otpMsg && <p className="mt-2 text-[13px] text-muted">{otpMsg}</p>}
-                  {(otpSending || otpSent) && (
+                {(otpSending || otpSent) && (
+                  <div className="space-y-2" aria-live="polite">
+                    <p className="text-[13px] text-muted">
+                      {otpSent ? (
+                        <>Kode 6 digit terkirim ke <strong className="text-fg">{session?.email.trim().toLowerCase()}</strong>. Cek email lalu masukkan di bawah. Kode berlaku 10 menit.</>
+                      ) : (
+                        'Mengirim kode verifikasi ke email…'
+                      )}
+                    </p>
                     <input
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       type="text" inputMode="numeric" autoComplete="one-time-code"
-                      placeholder={otpSending && !otpSent ? 'Mengirim…' : '••••••'}
+                      placeholder="••••••"
                       aria-label="Kode verifikasi 6 digit"
-                      className="mt-2.5 w-full rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-xl tracking-[0.5em] focus:border-jet focus:outline-none"
+                      className="w-full rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-xl tracking-[0.5em] focus:border-jet focus:outline-none"
                     />
-                  )}
-                  {otpRequested && (
-                    <button
-                      type="button"
-                      onClick={() => sendPwOtp()}
-                      disabled={cooldown > 0 || pwdBusy || otpSending}
-                      className="mt-2.5 text-[13px] font-medium text-jet hover:underline disabled:opacity-50"
-                    >
-                      {cooldown > 0 ? `Kirim ulang dalam ${cooldown} detik` : 'Kirim ulang kode'}
-                    </button>
-                  )}
-                </div>
+                    {otpRequested && (
+                      <button
+                        type="button"
+                        onClick={() => sendPwOtp()}
+                        disabled={cooldown > 0 || pwdBusy || otpSending}
+                        className="text-[13px] font-medium text-jet hover:underline disabled:opacity-50"
+                      >
+                        {cooldown > 0 ? `Kirim ulang dalam ${cooldown} detik` : 'Kirim ulang kode'}
+                      </button>
+                    )}
+                  </div>
+                )}
                 <Button onClick={submitPwReset} disabled={pwdBusy || newPw.length < 8 || newPw !== newPw2 || !otpSent || otp.length !== 6} className="w-full sm:w-auto">
                   {pwdBusy ? 'Menyimpan…' : 'Simpan kata sandi baru'}
                 </Button>
