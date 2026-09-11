@@ -155,7 +155,8 @@ export default function Users() {
   // Feed aktivitas: audit log bila live, else turunan
   // (akun dibuat + 8 transaksi terakhir).
   const feed = useMemo(() => {
-    type Ev = { key: string; date: string; ts: number; kind: 'login' | 'user' | 'trx'; text: string; label: string }
+    type Ev = { key: string; date: string; ts: number; kind: 'login' | 'user' | 'trx'; text: string; dateLabel: string; timeLabel: string }
+    const dLabel = (iso: string) => (iso.slice(0, 10) >= today ? 'Hari ini' : fmtDate(iso))
     const live = actRep.data?.items ?? []
     if (live.length > 0) {
       return live.slice(0, 15).map((a) => {
@@ -166,7 +167,8 @@ export default function Users() {
           ts: +new Date(a.created_at),
           kind: (a.action === 'LOGIN' ? 'login' : 'user') as Ev['kind'],
           text: a.detail || `${a.actor_name} · ${a.action}`,
-          label: d >= today ? `Hari ini, ${fmtTime(a.created_at)}` : `${fmtDate(a.created_at)}, ${fmtTime(a.created_at)}`,
+          dateLabel: dLabel(a.created_at),
+          timeLabel: fmtTime(a.created_at),
         }
       })
     }
@@ -176,7 +178,8 @@ export default function Users() {
       ts: +new Date(u.created_at!),
       kind: 'user' as const,
       text: `${u.name} ditambahkan sebagai ${u.role === 'admin' ? 'admin' : 'kasir'}`,
-      label: u.created_at!.slice(0, 10) >= today ? `Hari ini, ${fmtTime(u.created_at!)}` : `${fmtDate(u.created_at!)}, ${fmtTime(u.created_at!)}`,
+      dateLabel: dLabel(u.created_at!),
+      timeLabel: fmtTime(u.created_at!),
     }))
     const trxs = [...(recentTrx.data?.items ?? [])]
       .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
@@ -188,7 +191,8 @@ export default function Users() {
         ts: +new Date(t.created_at),
         kind: 'trx',
         text: `${t.cashier_name} · Transaksi ${fmtInv(t.id)} · ${fmtRp(t.total)}`,
-        label: t.created_at.slice(0, 10) >= today ? `Hari ini, ${fmtTime(t.created_at)}` : `${fmtDate(t.created_at)}, ${fmtTime(t.created_at)}`,
+        dateLabel: dLabel(t.created_at),
+        timeLabel: fmtTime(t.created_at),
       })
     }
     return evs.sort((a, b) => b.date.localeCompare(a.date) || b.ts - a.ts).slice(0, 15)
@@ -297,9 +301,16 @@ export default function Users() {
     ])
   }
 
-  function lastAct(u: User): string {
+  function lastAct(u: User) {
     const iso = lastAt.get(u.name)
-    if (iso) return iso.slice(0, 10) >= today ? `Hari ini, ${fmtTime(iso)}` : `${fmtDate(iso)}, ${fmtTime(iso)}`
+    if (iso) {
+      return (
+        <span className="flex flex-col leading-tight">
+          <span>{iso.slice(0, 10) >= today ? 'Hari ini' : fmtDate(iso)}</span>
+          <span className="font-mono text-[11px] tabular-nums text-fog">{fmtTime(iso)}</span>
+        </span>
+      )
+    }
     const d = lastDate.get(u.name)
     if (!d) return '—'
     return d >= today ? 'Hari ini' : fmtDate(d)
@@ -525,7 +536,7 @@ export default function Users() {
                       </div>
                       <dl className="mt-3 space-y-1.5 text-[13px]">
                         <div className="flex justify-between gap-3"><dt className="text-fog">Bergabung</dt><dd className="font-mono text-xs text-fg">{u.created_at ? fmtDate(u.created_at) : '—'}</dd></div>
-                        <div className="flex justify-between gap-3"><dt className="text-fog">Aktivitas</dt><dd className="text-muted">{lastAct(u)}</dd></div>
+                        <div className="flex justify-between gap-3"><dt className="text-fog">Aktivitas</dt><dd className="text-right text-muted">{lastAct(u)}</dd></div>
                         <div className="flex justify-between gap-3"><dt className="text-fog">Hari ini</dt><dd>{perfCell(u)}</dd></div>
                       </dl>
                     </div>
@@ -566,7 +577,10 @@ export default function Users() {
                       {e.kind === 'user' ? <UserPlus className="size-4" /> : e.kind === 'login' ? <UserRound className="size-4" /> : <ReceiptText className="size-4" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{e.text}</span>
-                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-fog">{e.label}</span>
+                    <span className="shrink-0 text-right leading-tight">
+                      <span className="block text-[11px] text-muted">{e.dateLabel}</span>
+                      <span className="block font-mono text-[11px] tabular-nums text-fog">{e.timeLabel}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
