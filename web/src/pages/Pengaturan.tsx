@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import {
-  ChevronRight, Clock, ImagePlus, Info, KeyRound, Lock, LogOut, Mail, MapPin, Phone, Printer, ShieldCheck, Users,
+  Check, Clock, Eye, EyeOff, ImagePlus, Info, KeyRound, Lock, LogOut, Mail, MapPin, Phone, Printer, ShieldCheck, Users,
 } from 'lucide-react'
 import {
   apiChangePassword, apiGetSettings, apiListTransactions, apiListUsers, apiLogout, apiSetPasscode, apiUpdateSettings,
@@ -82,6 +82,43 @@ function FormActions({ dirty, busy, onReset, onSave }: { dirty: boolean; busy: b
   )
 }
 
+function PwField({ label, value, onChange, show, onToggle, auto }: { label: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void; auto: string }) {
+  return (
+    <label className={LABEL_CLS}>
+      {label}
+      <span className="relative block">
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={auto}
+          className={`${INPUT_CLS} pr-11`}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={show ? `Sembunyikan ${label}` : `Tampilkan ${label}`}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-fog hover:text-fg"
+        >
+          {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </span>
+    </label>
+  )
+}
+
+function pwScore(pw: string) {
+  let s = 0
+  if (pw.length >= 8) s += 1
+  if (pw.length >= 12) s += 1
+  if (/\d/.test(pw) && /[a-zA-Z]/.test(pw)) s += 1
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw) && /[^a-zA-Z0-9]/.test(pw)) s += 1
+  return Math.min(s, 4)
+}
+
+const SCORE_LABEL = ['Lemah', 'Lemah', 'Cukup', 'Kuat', 'Sangat kuat']
+const SCORE_BAR = ['bg-ember', 'bg-ember', 'bg-sunbeam', 'bg-sprout', 'bg-sprout']
+
 const SAMPLE_ITEMS = [
   { name: 'Indomie Goreng', qty: 2, price: 12000 },
   { name: 'Aqua 600ml', qty: 1, price: 5000 },
@@ -99,7 +136,6 @@ export default function Pengaturan() {
   const accountList = useCache<User[]>(`users:${session?.id}`, () => apiListUsers())
   const users = accountList.data ?? []
   const todayTrx = useCache<Page<Trx>>(`pengaturan-trx:${session?.id}:${today}`, () => apiListTransactions({ date: today, limit: 200, page: 1 }))
-  const keamananRef = useRef<HTMLDivElement>(null)
 
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
@@ -112,8 +148,10 @@ export default function Pengaturan() {
   const [resetOpen, setResetOpen] = useState(false)
   const [confirmResetId, setConfirmResetId] = useState<string | null>(null)
 
-  // Ganti kata sandi (akses cepat).
-  const [pwdOpen, setPwdOpen] = useState(false)
+  // Ganti kata sandi (section khusus di tab Akun).
+  const [showOld, setShowOld] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const [showNew2, setShowNew2] = useState(false)
   const [oldPw, setOldPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [newPw2, setNewPw2] = useState('')
@@ -195,7 +233,7 @@ export default function Pengaturan() {
     setPwdBusy(true)
     try {
       await apiChangePassword(oldPw, newPw)
-      setPwdOpen(false); setOldPw(''); setNewPw(''); setNewPw2('')
+      setOldPw(''); setNewPw(''); setNewPw2('')
       await apiLogout()
       setSession(null)
       nav('/masuk', { replace: true })
@@ -340,13 +378,11 @@ export default function Pengaturan() {
             </Card>
 
             <Card>
-              <div ref={keamananRef} className="scroll-mt-4" tabIndex={-1}>
-                <div className="mb-4 flex items-center gap-2">
-                  <Lock className="size-4 text-steel" aria-hidden="true" />
-                  <div>
-                    <h2 className="text-[15px] font-medium text-fg">Keamanan &amp; Passcode</h2>
-                    <p className="mt-0.5 text-[13px] text-muted">Atur passcode untuk akses kasir dan keamanan sistem.</p>
-                  </div>
+              <div className="mb-4 flex items-center gap-2">
+                <Lock className="size-4 text-steel" aria-hidden="true" />
+                <div>
+                  <h2 className="text-[15px] font-medium text-fg">Keamanan &amp; Passcode</h2>
+                  <p className="mt-0.5 text-[13px] text-muted">Atur passcode untuk akses kasir dan keamanan sistem.</p>
                 </div>
               </div>
               <div className="divide-y divide-dove rounded-xl border border-dove px-4">
@@ -379,32 +415,51 @@ export default function Pengaturan() {
           </div>
 
           <Card>
-            <CardHead title="Akses Cepat" sub="Kelola pengaturan akun dengan cepat." />
-            <div className="grid gap-2.5 md:grid-cols-3">
-              <Link to="/app/users" className="flex items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-steel"><Users className="size-5" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-medium text-fg">Kelola Kasir</span>
-                  <span className="block truncate text-[13px] text-muted">Tambah, edit, atau nonaktifkan akun kasir</span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-fog" />
-              </Link>
-              <button onClick={() => { setPwdOpen(true); setOldPw(''); setNewPw(''); setNewPw2(''); setPwdErr('') }} className="flex items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-steel"><KeyRound className="size-5" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-medium text-fg">Ganti Kata Sandi</span>
-                  <span className="block truncate text-[13px] text-muted">Perbarui kata sandi akun Anda</span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-fog" />
-              </button>
-              <button onClick={() => keamananRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="flex items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-steel"><ShieldCheck className="size-5" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-medium text-fg">Preferensi Keamanan</span>
-                  <span className="block truncate text-[13px] text-muted">Atur passcode dan keamanan</span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-fog" />
-              </button>
+            <CardHead title="Kata Sandi Akun" sub="Perbarui kata sandi untuk melindungi akun Anda." />
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-4">
+                {pwdErr && <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember" role="alert">{pwdErr}</p>}
+                <PwField label="Kata sandi saat ini" value={oldPw} onChange={setOldPw} show={showOld} onToggle={() => setShowOld((v) => !v)} auto="current-password" />
+                <PwField label="Kata sandi baru" value={newPw} onChange={setNewPw} show={showNew} onToggle={() => setShowNew((v) => !v)} auto="new-password" />
+                {newPw !== '' && (
+                  <div aria-live="polite">
+                    <div className="flex gap-1" aria-hidden="true">
+                      {[0, 1, 2, 3].map((i) => (
+                        <span key={i} className={`h-1.5 flex-1 rounded-full ${i < pwScore(newPw) ? SCORE_BAR[pwScore(newPw)] : 'bg-dove'}`} />
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted">Kekuatan: <span className="font-medium text-fg">{SCORE_LABEL[pwScore(newPw)]}</span></p>
+                    <ul className="mt-2 space-y-1">
+                      {[
+                        { ok: newPw.length >= 8, label: 'Minimal 8 karakter' },
+                        { ok: /\d/.test(newPw), label: 'Mengandung angka' },
+                        { ok: /[a-z]/.test(newPw) && /[A-Z]/.test(newPw), label: 'Huruf besar dan kecil' },
+                      ].map((r) => (
+                        <li key={r.label} className={`flex items-center gap-1.5 text-xs ${r.ok ? 'text-sprout' : 'text-fog'}`}>
+                          {r.ok ? <Check className="size-3.5" /> : <span className="grid size-3.5 place-items-center" aria-hidden="true">·</span>}
+                          {r.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <PwField label="Ulangi kata sandi baru" value={newPw2} onChange={setNewPw2} show={showNew2} onToggle={() => setShowNew2((v) => !v)} auto="new-password" />
+                <Button onClick={changePw} disabled={pwdBusy || !oldPw || newPw.length < 8 || newPw !== newPw2} className="w-full sm:w-auto">
+                  {pwdBusy ? 'Menyimpan…' : 'Simpan kata sandi'}
+                </Button>
+              </div>
+              <div className="h-fit rounded-xl bg-surface p-4 text-[13px]">
+                <p className="flex items-center gap-2 font-medium text-fg"><ShieldCheck className="size-4 text-steel" /> Jaga akun tetap aman</p>
+                <ul className="mt-2.5 list-disc space-y-1.5 pl-5 text-muted">
+                  <li>Jangan pakai ulang kata sandi dari aplikasi lain.</li>
+                  <li>Ganti berkala, terutama setelah perangkat dipakai bersama.</li>
+                  <li>Passcode kasir terpisah — mengganti kata sandi tidak mengubah passcode.</li>
+                </ul>
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-paper px-3 py-2.5 text-muted">
+                  <Info className="mt-0.5 size-4 shrink-0 text-steel" aria-hidden="true" />
+                  <p>Setelah berhasil, semua sesi termasuk perangkat lain dicabut dan Anda diminta masuk kembali.</p>
+                </div>
+              </div>
             </div>
           </Card>
         </div>
@@ -741,20 +796,6 @@ export default function Pengaturan() {
             </div>
           ))}
           {cashiers.length === 0 && <p className="text-sm text-fog">Belum ada akun kasir.</p>}
-        </div>
-      </Modal>
-
-      <Modal open={pwdOpen} title="Ganti Kata Sandi" onClose={() => setPwdOpen(false)}>
-        <div className="space-y-4">
-          {pwdErr && <p className="rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember" role="alert">{pwdErr}</p>}
-          <Input label="Kata sandi lama" type="password" value={oldPw} onChange={setOldPw} />
-          <Input label="Kata sandi baru (min. 8 karakter)" type="password" value={newPw} onChange={setNewPw} />
-          <Input label="Ulangi kata sandi baru" type="password" value={newPw2} onChange={setNewPw2} />
-          <p className="text-xs text-fog">Setelah berhasil, semua sesi dicabut dan Anda diminta masuk kembali.</p>
-          <div className="flex gap-2">
-            <Button onClick={changePw} disabled={pwdBusy} className="flex-1">{pwdBusy ? '…' : 'Simpan kata sandi'}</Button>
-            <Button variant="ghost" onClick={() => setPwdOpen(false)}>Batal</Button>
-          </div>
         </div>
       </Modal>
 
