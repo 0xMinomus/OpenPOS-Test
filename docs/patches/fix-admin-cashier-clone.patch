@@ -1,0 +1,98 @@
+diff --git a/router/endpoints_test.go b/router/endpoints_test.go
+index 9a8aaeb..bfdfa5e 100644
+--- a/router/endpoints_test.go
++++ b/router/endpoints_test.go
+@@ -415,8 +415,8 @@ func TestAllEndpoints(t *testing.T) {
+ 	}
+ 	w, resp = doReq("GET", "/transactions", nil, kTok)
+ 	expect("list trx cashier -> 200", w, 200)
+-	// Admin checkouts without acting-as now attach to the admin's own cashier record
+-	// via GetOrCreateByName, so admin checkouts do not leak into Kasir1 -> total 1.
++	// Admin checkouts without acting-as are recorded as the admin (cashier_id=0),
++	// so admin checkouts do not leak into Kasir1 -> total 1.
+ 	if int(resp["total"].(float64)) != 1 {
+ 		t.Fatalf("trx cashier list: %v", resp)
+ 	}
+diff --git a/service/shift.go b/service/shift.go
+index ea55d70..5d2c945 100644
+--- a/service/shift.go
++++ b/service/shift.go
+@@ -22,27 +22,16 @@ func NewShiftService(shifts ShiftRepository, cashiers CashierRepository, stores
+ }
+ 
+ func (s *ShiftService) resolveCashier(ctx context.Context, storeID uint, actingAsCashierID *uint, fallbackName string) (uint, string, error) {
+-	var cashierID uint
++	// Admin tanpa switch memakai cashier_id=0 (shift admin sendiri),
++	// TANPA membuat baris cashiers kloningan. Kasir memakai id-nya.
+ 	cashierName := fallbackName
+-
+ 	if actingAsCashierID != nil {
+-		cashierID = *actingAsCashierID
+-		c, err := s.cashiers.GetByID(ctx, cashierID)
+-		if err == nil {
+-			cashierName = c.Name
+-		}
+-	} else {
+-		defID, err := s.cashiers.GetOrCreateByName(ctx, storeID, fallbackName)
+-		if err != nil {
+-			return 0, "", err
+-		}
+-		cashierID = defID
+-		c, err := s.cashiers.GetByID(ctx, cashierID)
+-		if err == nil {
++		if c, err := s.cashiers.GetByID(ctx, *actingAsCashierID); err == nil {
+ 			cashierName = c.Name
+ 		}
++		return *actingAsCashierID, cashierName, nil
+ 	}
+-	return cashierID, cashierName, nil
++	return 0, cashierName, nil
+ }
+ 
+ func (s *ShiftService) GetCashierShift(ctx context.Context, storeID uint, actingAsCashierID *uint, fallbackName string) (any, error) {
+diff --git a/service/transaction.go b/service/transaction.go
+index c8de83b..749dd26 100644
+--- a/service/transaction.go
++++ b/service/transaction.go
+@@ -35,9 +35,9 @@ type CheckoutItemCmd struct {
+ func (s *TrxService) Checkout(ctx context.Context, storeID uint, actingAsCashierID *uint, fallbackName string, cmd CheckoutCmd) (*model.Trx, error) {
+ 	// RBAC: transaksi selalu pakai identitas dari JWT (claims), bukan dari payload.
+ 	// fallbackName = claims.Name (JWT), actingAsCashierID = claims.ActingAsCashierID.
+-	// Jika admin tidak switch (actingAs==nil), buat/ambil baris cashiers bernama admin
+-	// sebagai pemilik transaksi agar admin tetap bisa checkout tanpa dianggap Kasir lain
+-	// (idempotent per store_id+name via GetOrCreateByName). Tidak pernah buat users/KASIR.
++	// Admin tanpa switch mencatat transaksi atas namanya sendiri (cashier_id=0),
++	// TANPA membuat baris cashiers kloningan. Kasir (actingAs) tetap memakai
++	// baris cashiers miliknya agar scope data kasir bekerja.
+ 	var cashierID uint
+ 	cashierName := fallbackName
+ 
+@@ -47,16 +47,6 @@ func (s *TrxService) Checkout(ctx context.Context, storeID uint, actingAsCashier
+ 		if err == nil {
+ 			cashierName = c.Name
+ 		}
+-	} else {
+-		defID, err := s.cashiers.GetOrCreateByName(ctx, storeID, fallbackName)
+-		if err != nil {
+-			return nil, err
+-		}
+-		cashierID = defID
+-		c, err := s.cashiers.GetByID(ctx, cashierID)
+-		if err == nil {
+-			cashierName = c.Name
+-		}
+ 	}
+ 
+ 	items := make([]repo.CheckoutItem, len(cmd.Items))
+@@ -69,7 +59,10 @@ func (s *TrxService) Checkout(ctx context.Context, storeID uint, actingAsCashier
+ 		Paid: cmd.Paid, Customer: cmd.Customer,
+ 	})
+ 	if err == nil && s.notif != nil {
+-		actorIDStr := fmt.Sprintf("%d", cashierID)
++		actorIDStr := ""
++		if cashierID != 0 {
++			actorIDStr = fmt.Sprintf("%d", cashierID)
++		}
+ 		refIDStr := fmt.Sprintf("%d", resTrx.ID)
+ 		title := "Transaksi baru"
+ 		message := fmt.Sprintf("Rp%d · %s", resTrx.Total, resTrx.Method)
