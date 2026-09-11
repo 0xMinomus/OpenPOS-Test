@@ -9,8 +9,8 @@ import {
   Search, ShieldCheck, UserPlus, UserRound, UserX, UsersRound,
 } from 'lucide-react'
 import {
-  apiCreateUser, apiDeleteUser, apiGetReport, apiListActivity, apiListUsers, apiRenameUser, apiSetUserActive,
-  setCachedAccounts, type ActivityItem, type Page, type ReportBundle, type User,
+  apiCreateUser, apiDeleteUser, apiGetReport, apiListActivity, apiListTransactions, apiListUsers, apiRenameUser, apiSetUserActive,
+  setCachedAccounts, type ActivityItem, type Page, type ReportBundle, type Trx, type User,
 } from '../lib/api'
 import { useCache } from '../lib/cache'
 import { exportCSV, fmtDate, fmtInv, fmtRp, fmtTime, useDB } from '../lib/store'
@@ -72,6 +72,9 @@ export default function Users() {
   const todayRep = useCache<ReportBundle>(`users-today:${s.id}`, () => apiGetReport('today'))
   const allRep = useCache<ReportBundle>(`users-all:${s.id}`, () => apiGetReport('all'))
   const actRep = useCache<Page<ActivityItem> | null>(`users-activity:${s.id}`, () => apiListActivity({ page: 1, limit: 20 }))
+  // Transaksi terbaru: sumber jam presisi (`created_at`) untuk kolom Aktivitas
+  // Terakhir + feed — laporan hanya menyimpan tanggal, tanpa jam.
+  const recentTrx = useCache<Page<Trx>>(`users-trx:${s.id}`, () => apiListTransactions({ page: 1, limit: 200 }))
   const data = list.data ?? null
 
   const [q, setQ] = useState('')
@@ -122,6 +125,15 @@ export default function Users() {
     return m
   }, [allRep.data])
 
+  // Jam presisi per nama dari transaksi terbaru (200 terakhir).
+  const lastAt = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const t of recentTrx.data?.items ?? []) {
+      if ((m.get(t.cashier_name) ?? '') < t.created_at) m.set(t.cashier_name, t.created_at)
+    }
+    return m
+  }, [recentTrx.data])
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
     const rows = (data ?? []).filter((u) => {
@@ -164,23 +176,23 @@ export default function Users() {
       ts: +new Date(u.created_at!),
       kind: 'user' as const,
       text: `${u.name} ditambahkan sebagai ${u.role === 'admin' ? 'admin' : 'kasir'}`,
-      label: u.created_at!.slice(0, 10) >= today ? 'Hari ini' : fmtDate(u.created_at!),
+      label: u.created_at!.slice(0, 10) >= today ? `Hari ini, ${fmtTime(u.created_at!)}` : `${fmtDate(u.created_at!)}, ${fmtTime(u.created_at!)}`,
     }))
-    const trxs = [...(allRep.data?.transactions ?? [])]
-      .sort((a, b) => b.date.localeCompare(a.date) || Number(b.id) - Number(a.id))
+    const trxs = [...(recentTrx.data?.items ?? [])]
+      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
       .slice(0, 8)
     for (const t of trxs) {
       evs.push({
         key: `t-${t.id}`,
-        date: t.date.slice(0, 10),
-        ts: +new Date(t.date),
+        date: t.created_at.slice(0, 10),
+        ts: +new Date(t.created_at),
         kind: 'trx',
-        text: `${t.cashier} · Transaksi ${fmtInv(t.id)} · ${fmtRp(t.total)}`,
-        label: t.date.slice(0, 10) >= today ? 'Hari ini' : fmtDate(t.date),
+        text: `${t.cashier_name} · Transaksi ${fmtInv(t.id)} · ${fmtRp(t.total)}`,
+        label: t.created_at.slice(0, 10) >= today ? `Hari ini, ${fmtTime(t.created_at)}` : `${fmtDate(t.created_at)}, ${fmtTime(t.created_at)}`,
       })
     }
     return evs.sort((a, b) => b.date.localeCompare(a.date) || b.ts - a.ts).slice(0, 15)
-  }, [data, allRep.data, actRep.data, today])
+  }, [data, recentTrx.data, actRep.data, today])
 
   const top3 = useMemo(
     () => [...perf.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.omzet - a.omzet).slice(0, 3),
@@ -202,6 +214,7 @@ export default function Users() {
     todayRep.reload()
     allRep.reload()
     actRep.reload()
+    recentTrx.reload()
   }
 
   async function create() {
@@ -285,6 +298,8 @@ export default function Users() {
   }
 
   function lastAct(u: User): string {
+    const iso = lastAt.get(u.name)
+    if (iso) return iso.slice(0, 10) >= today ? `Hari ini, ${fmtTime(iso)}` : `${fmtDate(iso)}, ${fmtTime(iso)}`
     const d = lastDate.get(u.name)
     if (!d) return '—'
     return d >= today ? 'Hari ini' : fmtDate(d)
