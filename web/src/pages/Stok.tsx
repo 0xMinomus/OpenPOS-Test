@@ -113,7 +113,7 @@ export default function Stok() {
 
       {(err || prod.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || prod.err}</p>}
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {!products ? (
           [0, 1, 2, 3].map((i) => (
             <Card key={i} aria-hidden="true">
@@ -129,14 +129,14 @@ export default function Stok() {
         ) : (
           stats.map((s) => (
             <Card key={s.label}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[13px] font-medium text-muted-foreground">{s.label}</span>
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-2 sm:gap-3">
+                  <span className="min-w-0 text-[13px] font-medium leading-snug text-muted-foreground">{s.label}</span>
                   <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${s.tint}`}>
                     <s.icon className="size-4.5" />
                   </span>
                 </div>
-                <p className="mt-3 text-[28px] font-semibold leading-none tabular-nums tracking-tight">{s.value}</p>
+                <p className="mt-3 truncate text-xl font-semibold leading-none tabular-nums tracking-tight sm:text-[28px]" title={String(s.value)}>{s.value}</p>
               </CardContent>
             </Card>
           ))

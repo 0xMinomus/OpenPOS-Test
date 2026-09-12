@@ -120,7 +120,7 @@ export default function AppShell() {
             <NotifBell />
           </div>
         </header>
-        <main className="flex-1 space-y-6 p-4 lg:p-6">
+        <main className="w-full min-w-0 flex-1 space-y-4 overflow-x-clip p-4 sm:space-y-6 lg:p-6">
           <Outlet />
         </main>
       </SidebarInset>
@@ -228,7 +228,7 @@ function UserMenu() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
           <div
             role="menu"
-            className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-64 rounded-lg bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+            className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-[calc(100vw-2rem)] rounded-lg bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-foreground/10 sm:min-w-64"
           >
             {pending ? (
               <div className="space-y-2 p-2">

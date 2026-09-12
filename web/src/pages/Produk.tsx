@@ -335,12 +335,14 @@ export default function Produk() {
 
       <Modal open={catOpen} title="Kelola Kategori" onClose={() => setCatOpen(false)}>
         <form
-          className="flex gap-2"
+          className="flex flex-col gap-3 sm:flex-row sm:gap-2"
           onSubmit={(e) => { e.preventDefault(); addCat() }}
         >
+          <div className="min-w-0 flex-1">
           <Input label="Nama kategori baru" value={catName} onChange={setCatName} placeholder="cth: Minuman" />
+          </div>
           <div className="flex items-end">
-            <Button type="submit" disabled={catBusy}>Simpan</Button>
+            <Button type="submit" disabled={catBusy} className="w-full sm:w-auto">Simpan</Button>
           </div>
         </form>
         <div className="mt-5 border-t border-dove pt-4">

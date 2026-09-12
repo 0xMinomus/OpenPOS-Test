@@ -68,7 +68,7 @@ function todayStr() {
 }
 
 function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-2xl bg-cream p-6 ${className}`}>{children}</section>
+  return <section className={`min-w-0 rounded-2xl bg-cream p-4 sm:p-6 ${className}`}>{children}</section>
 }
 
 function CardHead({ kicker, title, sub }: { kicker?: string; title: string; sub?: string }) {
@@ -84,8 +84,8 @@ function CardHead({ kicker, title, sub }: { kicker?: string; title: string; sub?
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2.5 text-sm">
-      <span className="text-muted">{label}</span>
-      <span className="text-right font-medium text-fg">{value}</span>
+      <span className="shrink-0 text-muted">{label}</span>
+      <span className="min-w-0 break-words text-right font-medium text-fg">{value}</span>
     </div>
   )
 }
@@ -106,7 +106,7 @@ function Soon({ children }: { children: ReactNode }) {
 
 function FormActions({ dirty, busy, onReset, onSave }: { dirty: boolean; busy: boolean; onReset: () => void; onSave: () => void }) {
   return (
-    <div className="mt-5 flex justify-end gap-2">
+    <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button variant="ghost" onClick={onReset} disabled={busy || !dirty}>Reset</Button>
       <Button onClick={onSave} disabled={busy || !dirty}>{busy ? 'Menyimpan…' : 'Simpan Perubahan'}</Button>
     </div>
@@ -403,7 +403,7 @@ export default function Pengaturan() {
       {err && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember" role="alert">{err}</p>}
       {msg && <p className="mb-4 rounded-lg bg-surface px-3.5 py-2.5 text-[13px] text-sprout">{msg}</p>}
 
-      <div className="mb-5 flex gap-2 overflow-x-auto" role="tablist" aria-label="Subhalaman pengaturan">
+      <div className="mb-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Subhalaman pengaturan">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -422,15 +422,15 @@ export default function Pengaturan() {
           <div className="grid items-start gap-4 lg:grid-cols-2">
             <Card>
               <CardHead kicker="Akun saya" title="Informasi Akun" />
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-jet font-mono text-lg text-paper" aria-hidden="true">
                   {(session?.name ?? '?').charAt(0).toUpperCase()}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-medium text-fg">{session?.name ?? '—'}</p>
-                  <p className="truncate text-[13px] text-muted">{session?.email || 'Tanpa email'} · {session?.store ?? '—'}</p>
+                <div className="min-w-0 flex-1 basis-32">
+                  <p className="break-words text-[15px] font-medium text-fg">{session?.name ?? '—'}</p>
+                  <p className="break-words text-[13px] text-muted">{session?.email || 'Tanpa email'} · {session?.store ?? '—'}</p>
                 </div>
-                <span className="flex gap-1.5">
+                <span className="flex flex-wrap gap-1.5">
                   <Pill tone={session?.role === 'admin' ? 'ok' : 'muted'}>{session?.role === 'admin' ? 'Admin' : 'Kasir'}</Pill>
                   <Pill tone={me?.active === false ? 'muted' : 'ok'}>{me?.active === false ? 'Nonaktif' : 'Akun Aktif'}</Pill>
                 </span>
@@ -443,13 +443,13 @@ export default function Pengaturan() {
                   value={!me?.last_seen_at ? '—' : me.last_seen_at.slice(0, 10) >= today ? `Hari ini, ${fmtTime(me.last_seen_at)}` : fmtDate(me.last_seen_at)}
                 />
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 {session?.role === 'admin' && (
-                  <Link to="/app/users" className="inline-flex items-center justify-center gap-2 rounded-full border border-dove bg-transparent px-6 py-3 text-[15px] font-medium transition hover:border-jet">
+                  <Link to="/app/users" className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-dove bg-transparent px-6 py-3 text-[15px] font-medium transition hover:border-jet sm:w-auto">
                     <Users className="size-4" /> Kelola Kasir
                   </Link>
                 )}
-                <Button variant="danger" onClick={keluar} disabled={busy}><LogOut className="size-4" /> Keluar</Button>
+                <Button variant="danger" onClick={keluar} disabled={busy} className="w-full sm:w-auto"><LogOut className="size-4" /> Keluar</Button>
               </div>
             </Card>
 
@@ -472,7 +472,7 @@ export default function Pengaturan() {
                 </div>
                 <div className="flex items-center justify-between gap-3 py-3 text-sm">
                   <span className="text-muted">Akun dilindungi</span>
-                  <span className="text-right font-medium text-fg">{session?.name ?? '—'}</span>
+                  <span className="min-w-0 break-words text-right font-medium text-fg">{session?.name ?? '—'}</span>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -841,7 +841,7 @@ export default function Pengaturan() {
             <Card>
               <CardHead title="Preview Struk" sub="Ini adalah tampilan struk yang akan dicetak." />
               <div className="flex justify-center overflow-x-auto rounded-xl bg-surface p-4">
-                <div className="bg-white px-3 py-4 font-mono text-[11px] leading-relaxed text-black" style={{ width: form.paper }}>
+                <div className="bg-white px-3 py-4 font-mono text-[11px] leading-relaxed text-black" style={{ width: form.paper, maxWidth: '100%' }}>
                   <p className="text-center text-[13px] font-bold uppercase">{form.storeName || '—'}</p>
                   {form.address && <p className="mt-0.5 text-center text-[10px]">{form.address}</p>}
                   {form.phone && <p className="text-center text-[10px]">{form.phone}</p>}
@@ -878,16 +878,16 @@ export default function Pengaturan() {
 
       {tab === 'pajak' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-3 xl:grid-cols-4">
             {[
               { label: 'Pajak Aktif', value: form.taxEnabled ? 'Ya' : 'Tidak', sub: 'Pajak sedang digunakan' },
               { label: 'Tarif Pajak', value: `${form.taxPct}%`, sub: form.taxName || 'Tarif pajak saat ini' },
               { label: 'Harga Sudah Termasuk Pajak', value: !hasExt ? '—' : form.taxInclusive ? 'Ya' : 'Tidak', sub: !hasExt ? 'Segera hadir' : form.taxInclusive ? 'Pajak di dalam harga' : 'Pajak di luar harga' },
               { label: 'Transaksi Kena Pajak Hari Ini', value: String(taxed), sub: `Dari ${trxTotal} transaksi` },
             ].map((k) => (
-              <div key={k.label} className="rounded-2xl bg-cream p-4">
+              <div key={k.label} className="min-w-0 rounded-2xl bg-cream p-4">
                 <p className="font-mono text-[11px] uppercase tracking-wider text-fog">{k.label}</p>
-                <p className="mt-1 text-2xl font-medium tabular-nums text-fg">{k.value}</p>
+                <p className="mt-1 break-words text-xl font-medium tabular-nums text-fg sm:text-2xl">{k.value}</p>
                 <p className="mt-0.5 text-xs text-muted">{k.sub}</p>
               </div>
             ))}
@@ -1009,7 +1009,7 @@ export default function Pengaturan() {
           aria-label="Passcode baru"
           className="w-full rounded-md border border-border bg-paper px-3.5 py-3 text-center font-mono text-lg tracking-[0.5em] focus:border-jet focus:outline-none"
         />
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => pcTarget && savePc(pcTarget)} disabled={pcBusy || pcVal.length !== 5} className="flex-1">{pcBusy ? '…' : 'Simpan passcode'}</Button>
           <Button variant="ghost" onClick={() => { setPcTarget(null); setPcVal('') }}>Batal</Button>
         </div>

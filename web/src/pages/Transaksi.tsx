@@ -116,7 +116,7 @@ export default function Transaksi() {
 
       {(err || list.err) && <p className="mb-4 rounded-lg bg-sand px-3.5 py-2.5 text-[13px] text-ember">{err || list.err}</p>}
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {cards.map((c) => (
           <Card key={c.label}>
             <CardContent className="p-5">
@@ -184,7 +184,7 @@ export default function Transaksi() {
                   <Td>{t.customer || '—'}</Td>
                   {isAdmin && <Td>{t.cashier_name}</Td>}
                   <Td>
-                    <TrxItems items={t.items} className="max-w-64" />
+                    <TrxItems items={t.items} className="max-w-full sm:max-w-64" />
                   </Td>
                   <Td right><span className="text-[15px] font-semibold text-fg">{fmtRp(t.total)}</span></Td>
                   <Td>{t.method}</Td>

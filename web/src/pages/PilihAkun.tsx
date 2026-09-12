@@ -77,8 +77,8 @@ export default function PilihAkun() {
   return (
     <div className="landing-light bg-bg text-fg">
       <Navbar logoTone="light" />
-      <main className="grid min-h-[calc(100vh-116px)] place-items-center px-8 py-12">
-        <section className="auth-card w-full max-w-105 rounded-2xl border border-dove bg-paper p-10 shadow-xl">
+      <main className="grid min-h-[calc(100vh-116px)] place-items-center px-4 py-8 sm:px-8 sm:py-12">
+        <section className="auth-card w-full max-w-105 rounded-2xl border border-dove bg-paper p-5 shadow-xl sm:p-10">
           <p className="font-mono text-xs uppercase tracking-widest text-steel">Pilih akun</p>
           <h1 className="mt-3 text-[clamp(28px,4vw,36px)] font-normal leading-[1.1] tracking-[-0.025em]">Masuk sebagai siapa?</h1>
           <p className="mt-2 mb-7 text-[15px] text-muted">Satu akun untuk tiap peran di toko Anda.</p>
@@ -96,7 +96,7 @@ export default function PilihAkun() {
               <button
                 onClick={() => adminUser && tapAccount(adminUser, 'admin')}
                 disabled={busyId === adminUser?.id}
-                className="flex w-full items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-xl border border-dove p-3 text-left transition hover:border-jet disabled:opacity-50 sm:p-4"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-jet text-paper">
                   <UserRound className="size-5" />
@@ -115,7 +115,7 @@ export default function PilihAkun() {
                   key={u.id}
                   disabled={!u.active || busyId === u.id}
                   onClick={() => tapAccount(u, 'cashier')}
-                  className="flex w-full items-center gap-3 rounded-xl border border-dove p-4 text-left transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-dove"
+                  className="flex w-full items-center gap-3 rounded-xl border border-dove p-3 text-left transition hover:border-jet disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-dove sm:p-4"
                 >
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-steel">
                     <UserRound className="size-5" />
@@ -135,7 +135,7 @@ export default function PilihAkun() {
           {pending && (
             <div className="mt-4 rounded-xl border border-dove p-4">
               <p className="text-sm text-muted">Akun <strong className="text-fg">{pending.u.name}</strong> dilindungi passcode.</p>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <input
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 5))}

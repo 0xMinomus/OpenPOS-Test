@@ -234,6 +234,38 @@ html { scroll-behavior: smooth; overflow-x: hidden; }
 body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 button { cursor: pointer; }
 
+/* ─── mobile-first responsive safety net (< 480px smartphone) ──────────
+   Hanya sizing/spacing/wrapping. Tidak mengubah warna/desain desktop. */
+img, svg, video, canvas { max-width: 100%; }
+p, h1, h2, h3, h4, li, span, a, td, th { overflow-wrap: anywhere; }
+
+@media (max-width: 479px) {
+  /* Halaman app: padding 16px, cegah konten keluar viewport */
+  main { min-width: 0; }
+  /* Sentuh nyaman satu tangan: input setinggi ~44px + cegah auto-zoom iOS.
+     ponytail: tombol utama sudah py-3 (≈48px); chip/stepper kecil dibiarkan. */
+  input:not([type='checkbox']):not([type='radio']),
+  select, textarea { min-height: 44px; font-size: 16px; }
+  /* Tombol berdampingan: wrap / vertikal bila sempit */
+  .flex.gap-2, .flex.gap-3 { flex-wrap: wrap; }
+  /* Tabel desktop: scroll di dalam wrapper, bukan halaman */
+  .overflow-x-auto > table { min-width: 560px; }
+  /* Teks panjang (email/nama toko): wrap, jangan lebarkan halaman */
+  .truncate { overflow-wrap: anywhere; }
+  /* Modal: muat di layar kecil + bisa scroll dalam */
+  div[role='dialog'] > div { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+  /* Dropdown kalender / notifikasi: jangan keluar viewport */
+  div[role='dialog'].absolute, .absolute.right-0 { max-width: calc(100vw - 2rem); }
+}
+
+/* 480–767px: large phone — longgarkan sedikit, desktop ≥768px utuh. */
+@media (min-width: 480px) and (max-width: 767px) {
+  main { min-width: 0; }
+  input:not([type='checkbox']):not([type='radio']),
+  select, textarea { font-size: 16px; }
+  div[role='dialog'] > div { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+}
+
 :focus-visible { outline: 2px solid var(--t-steel); outline-offset: 3px; border-radius: 2px; }
 ::selection { background: var(--t-jet); color: var(--t-paper); }
 * { scrollbar-width: thin; scrollbar-color: var(--t-dove) transparent; }

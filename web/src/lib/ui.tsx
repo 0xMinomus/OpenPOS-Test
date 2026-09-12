@@ -159,9 +159,9 @@ export function Modal({
 }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-3 sm:p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
       <div
-        className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-cream p-6 shadow-xl`}
+        className={`max-h-[calc(100dvh-1.5rem)] w-full ${wide ? 'max-w-2xl' : 'max-w-md'} overflow-y-auto rounded-2xl bg-cream p-4 shadow-xl sm:p-6`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

@@ -208,8 +208,8 @@ export default function Daftar() {
   return (
     <div className="landing-light bg-bg text-fg">
       <Navbar logoTone="light" />
-      <main className="relative grid min-h-[calc(100vh-116px)] place-items-center overflow-hidden px-8 py-12">
-        <section className="auth-card w-full max-w-110 rounded-2xl border border-dove bg-paper p-10 shadow-xl">
+      <main className="relative grid min-h-[calc(100vh-116px)] place-items-center overflow-hidden px-4 py-8 sm:px-8 sm:py-12">
+        <section className="auth-card w-full max-w-110 rounded-2xl border border-dove bg-paper p-5 shadow-xl sm:p-10">
           {mode !== 'choice' && (
             <div className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Langkah pendaftaran">
               {STEPS.map((s, i) => (
@@ -380,8 +380,8 @@ export default function Daftar() {
           </p>
         </section>
       </main>
-      <footer className="border-t border-border py-14 text-[13px] text-muted">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
+      <footer className="border-t border-border px-4 py-8 text-[13px] text-muted sm:py-14">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-1.5 text-center sm:flex-row sm:justify-between sm:text-left">
           <span>© 2026 OpenPOS</span>
           <span className="font-mono text-xs text-fog">gratis selamanya · untuk UMKM</span>
         </div>

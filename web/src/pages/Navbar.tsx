@@ -32,7 +32,7 @@ export default function Navbar({ dark, logoTone = 'auto' }: { dark?: boolean; lo
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 md:gap-5 md:px-8">
+      <div className="mx-auto grid min-w-0 max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-4 py-3 md:gap-5 md:px-8">
         <Link to="/" onClick={goHome} className="flex items-center justify-self-start">
           <Logo tone={logoTone} className="h-6 w-auto sm:h-7" />
         </Link>
@@ -45,9 +45,9 @@ export default function Navbar({ dark, logoTone = 'auto' }: { dark?: boolean; lo
             ))}
           </nav>
         )}
-        <div className="flex items-center justify-self-end gap-1.5 md:gap-2.5">
-          <Link to="/masuk" className="rounded-full border border-dove px-3 py-1.5 text-[13px] font-medium hover:border-jet md:px-4 md:py-2 md:text-sm">Masuk</Link>
-          <Link to="/daftar" className="rounded-full border border-jet px-3 py-1.5 text-[13px] font-medium hover:bg-jet hover:text-paper md:px-4 md:py-2 md:text-sm">Mulai Gratis</Link>
+        <div className="flex min-w-0 items-center justify-self-end gap-1.5 md:gap-2.5">
+          <Link to="/masuk" className="rounded-full border border-dove px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap hover:border-jet sm:px-3 md:px-4 md:py-2 md:text-sm">Masuk</Link>
+          <Link to="/daftar" className="rounded-full border border-jet px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap hover:bg-jet hover:text-paper sm:px-3 md:px-4 md:py-2 md:text-sm">Mulai Gratis</Link>
         </div>
       </div>
     </header>
